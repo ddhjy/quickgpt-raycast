@@ -1,58 +1,42 @@
-# QuickGPT
+### QuickGPT：您的  ChatGPT  提示词库
 
-**QuickGPT** is a tool designed to augment the capabilities of ChatGPT. It functions as a Raycast extension and aims to enhance productivity.
+QuickGPT  是一个  Raycast  扩展程序，旨在通过提供全面的提示词和操作库来简化您与  ChatGPT  的交互。它使您能够高效地提取信息、有效地写作、翻译语言，甚至生成代码片段，所有这一切都在熟悉的  Raycast  环境中完成。
 
----
+### 主要功能
 
-## Features
+- **丰富的提示词库：**  访问大量预定义的提示词，涵盖各种类别，例如提问、阅读理解、写作辅助、编码和翻译。
+- **自定义提示词：**  从  JSON  文件导入您自己的提示词，以个性化提示词库并使其适应您的特定需求。
+- **占位符系统：**  使用  {{i}}、{{s}}  和  {{c}}  等占位符将您的查询、选定文本或剪贴板内容动态插入提示词中。
+- **可操作的提示词：**  利用触发操作的提示词，例如打开  URL、将内容复制到剪贴板或运行  AppleScripts。
+- **命令前缀：**  通过添加前缀来控制  QuickGPT  的行为，例如  !c  用于中文回复或  !ne  用于禁止解释。
+- **置顶：**  将常用的提示词置顶到列表顶部，以便快速访问。
+- **搜索和筛选：**  使用搜索栏按标题或内容轻松查找相关提示词。
 
-### Initialization and Execution
+### 入门指南
 
-- Initialize the tool with the \`quickgpt_start\` command. This command doesn't require a view and accepts an optional \`action\` argument.
-- Run the tool with the \`quickgpt\` command. This command requires a view and accepts three optional arguments: \`clipboardText\`, \`selectionText\`, and \`action\`.
+#### 快速开始
 
-### Additional Functionalities
+1. **安装  QuickGPT：**  将  QuickGPT  扩展程序添加到您的  Raycast  设置中。
 
-- **Pinning Actions**: Prioritize and display pinned actions at the top of the list.
-- **Identifier Support**: Directly invoke actions using identifiers.
-- **Action Management**: Manage actions defined in the \`actions.json\` file, supporting a variety of actions like code analysis, translation, and more.
-- **Clipboard and Selection Text Support**: Accept clipboard text and selection text as arguments, allowing for dynamic and context-aware prompts.
+```
+git clone https://github.com/quickgpt/quickgpt.git
+npm install
+npm run dev
+```
 
----
+2. **探索提示词：**  浏览预定义的提示词或添加您自己的自定义提示词。
+3. **调用  QuickGPT：**  打开  Raycast  并开始输入“QuickGPT”。选择所需的提示词并提供任何必要的输入。
+4. **获取结果：** QuickGPT  将根据所选提示词和您的输入生成  ChatGPT  回复。
 
-## Installation
+#### 自定义
 
-1. Clone the repository
-2. Install dependencies with \`npm install\`
-3. Build the project with \`npm run build\`
-4. Start the project in development mode with \`npm run dev\`
+- **偏好设置：**  通过各种偏好设置配置  QuickGPT，例如关闭默认提示词、设置主要和次要操作以及指定自定义  AppleScripts。
+- **前缀命令：**  通过添加命令前缀来修改提示词的行为。
+- **提示词管理：**  通过置顶、搜索和筛选来组织您的提示词。
 
----
+#### 优势
 
-## Usage
+- **使用场景丰富：** 相对于浏览器插件只能在浏览器中使用，QuickGPT 可以在任何地方使用
+- **可扩展性强：** 支持多种激活方式，多种输入内容，灵活的占位符系统，多种输出方式
 
-Interact with the tool using the \`quickgpt_start\` and \`quickgpt\` commands. The \`quickgpt_start\` command initializes the tool, while the \`quickgpt\` command runs it.
-
----
-
-## Contributing
-
-Contributions are welcome. Please submit a pull request or open an issue to discuss your ideas.
-
----
-
-## License
-
-This project is licensed under the MIT License.
-
----
-
-## Changelog
-
-For the list of changes, please refer to \`CHANGELOG.md\`.
-
----
-
-## Author
-
-This project was created by ddhjy2012.
+使用  QuickGPT，您可以释放  ChatGPT  的全部潜力，并将您的生产力提升到一个新的水平。立即开始探索各种可能性！
