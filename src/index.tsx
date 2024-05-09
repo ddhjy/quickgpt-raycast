@@ -134,7 +134,7 @@ function getPromptActions(formattedDescription: string) {
       {action
         .sort((a, b) =>
           a.name == preferences.primaryAction ||
-          (a.name == preferences.secondaryAction && b.name != preferences.primaryAction)
+            (a.name == preferences.secondaryAction && b.name != preferences.primaryAction)
             ? -1
             : 0
         )
@@ -264,7 +264,13 @@ function PromptList({
   );
 }
 
-export default function MainCommand(props: LaunchProps<{ arguments: Arguments.Index }>) {
+interface ExtendedIndex extends Arguments.Index {
+  clipboardText?: string;
+  selectionText?: string;
+  target?: string;
+}
+
+export default function MainCommand(props: LaunchProps<{ arguments: ExtendedIndex }>) {
   const {
     selectionText: argumentSelectionText,
     clipboardText: argumentClipboardText,
