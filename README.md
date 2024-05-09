@@ -16,17 +16,18 @@ QuickGPT  是一个  Raycast  扩展程序，旨在通过提供全面的提�
 
 #### 快速开始
 
-1. 安装 [ChatGPT 客户端](https://github.com/tw93/Pake/releases/latest/download/ChatGPT.dmg)
-2. 安装  QuickGPT：\*\*  将  QuickGPT  扩展程序添加到您的  Raycast  设置中。
+1. 点击下载安装 [ChatGPT 客户端](https://github.com/tw93/Pake/releases/latest/download/ChatGPT.dmg)；
+2. 安装  QuickGPT：
 
-```
+```sh
 git clone https://github.com/quickgpt/quickgpt.git
 npm install
 npm run dev
+# 退出终端
 ```
 
-3. QuickGPT 设置快捷键
-4. 选中一个文本，使用快捷键激活 QuickGPT，接着选择一个提示词
+3. 给 QuickGPT 设置快捷键；
+4. 选中一个文本，使用快捷键激活 QuickGPT，接着选择一个提示词。
 
 #### 自定义
 
