@@ -14,27 +14,7 @@
       "name": "index",
       "title": "Index",
       "description": "运行quickgpt工具，该工具用于为 chatgpt 提供提示词。需要一个视图，并接受三个可选参数：剪贴板文本、选择文本和动作。",
-      "mode": "view",
-      "arguments": [
-        {
-          "name": "clipboardText",
-          "placeholder": "clipboardText",
-          "type": "text",
-          "required": false
-        },
-        {
-          "name": "selectionText",
-          "placeholder": "selectionText",
-          "type": "text",
-          "required": false
-        },
-        {
-          "name": "target",
-          "placeholder": "target",
-          "type": "text",
-          "required": false
-        }
-      ]
+      "mode": "view"
     }
   ],
   "preferences": [
