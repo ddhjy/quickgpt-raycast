@@ -20,7 +20,7 @@ QuickGPT  是一个  Raycast  扩展程序，旨在通过提供全面的提�
 2. 安装  QuickGPT：
 
 ```sh
-git clone https://github.com/quickgpt/quickgpt.git
+git clone https://github.com/ddhjy/quickgpt-raycast.git
 npm install
 npm run dev
 # 退出终端
