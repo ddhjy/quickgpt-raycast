@@ -287,9 +287,8 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
   });
 
   const [quickAction, cleanSelectionText] = findQuickPrompt(selectionText, target);
-  const actionsForUse = quickAction ? [quickAction] : [...pinnedActions, ...promptManager.getRootPrompts()];
+  const actionsForUse = quickAction?.subprompts ? quickAction.subprompts : (quickAction ? [quickAction] : [...pinnedActions, ...promptManager.getRootPrompts()]);
   const selectionTextForUse = quickAction ? cleanSelectionText : selectionText;
-
   const uniqueFilteredActions = Array.from(new Set(actionsForUse.map((action) => action.identifier || action.title)))
     .map((unique) => actionsForUse.find((action) => action.identifier === unique || action.title === unique))
     .filter(Boolean) as PromptProps[];
