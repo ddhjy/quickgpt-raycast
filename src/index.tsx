@@ -295,7 +295,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
 
   return (
     <PromptList
-      searchMode={true}
+      searchMode={quickAction ? false : true}
       prompts={uniqueFilteredActions}
       clipboardText={clipboardText}
       selectionText={selectionTextForUse}
