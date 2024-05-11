@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   List,
   ActionPanel,
@@ -10,6 +10,7 @@ import {
   Color,
   closeMainWindow,
   getPreferenceValues,
+  clearSearchBar,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
@@ -155,22 +156,34 @@ function PromptList({
   selectionText: string;
 }) {
   const [searchText, setSearchText] = useState<string>("");
+  const [, forceUpdate] = useState(0);
 
   if (searchMode && searchText.length > 0) {
     prompts = promptManager.getFilteredPrompts((prompt) => {
       return (
-        prompt.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        match(prompt.title, searchText, { continuous: true })
+        prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+        match(prompt.title, searchText.trim(), { continuous: true })
       );
     });
   }
 
-  const [, forceUpdate] = useState(0);
+  if (searchMode && searchText && searchText.slice(-1) === " ") {
+    clearSearchBar({ forceScrollToTop: true });
+    return (
+      <PromptList
+        searchMode={false}
+        prompts={prompts}
+        clipboardText={clipboardText}
+        selectionText={selectionText}
+      />
+    );
+  }
+
   const activeSearchText = searchMode ? "" : searchText;
   const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText };
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
-    .map((prompt) => {
+    .map((prompt, index) => {
       const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
       const [formattedTitle, missingTitleTags] = contentFormat(prompt.title || "", replacements);
       const [formattedDescription, missingDescriptionTags] = contentFormat(content || "", replacements);
@@ -193,7 +206,7 @@ function PromptList({
 
       return (
         <List.Item
-          key={promptTitle}
+          key={index}
           title={promptTitle.replace(/\n/g, " ")}
           icon={prompt.icon ?? DEFAULT_ICON}
           subtitle={subtitle}
@@ -258,7 +271,11 @@ function PromptList({
     });
 
   return (
-    <List onSearchTextChange={setSearchText} filtering={false}>
+    <List
+      searchBarPlaceholder={searchMode ? "Search mode" : "Input mode"}
+      onSearchTextChange={setSearchText}
+      filtering={false}
+    >
       {promptItems}
     </List>
   );
