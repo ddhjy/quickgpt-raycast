@@ -148,6 +148,63 @@
       ]
     },
     {
+      "name": "thirdAction",
+      "title": "Action: Third Action",
+      "required": false,
+      "description": "Third action to use",
+      "type": "dropdown",
+      "data": [
+        {
+          "value": "runScript0",
+          "title": "ChatGPT"
+        },
+        {
+          "value": "copyToClipboard",
+          "title": "Copy to Clipboard"
+        },
+        {
+          "value": "openURL",
+          "title": "Open URL"
+        },
+        {
+          "value": "runScript1",
+          "title": "Run Script 1"
+        },
+        {
+          "value": "runScript2",
+          "title": "Run Script 2"
+        },
+        {
+          "value": "runScript3",
+          "title": "Run Script 3"
+        },
+        {
+          "value": "runScript4",
+          "title": "Run Script 4"
+        },
+        {
+          "value": "runScript5",
+          "title": "Run Script 5"
+        },
+        {
+          "value": "runScript6",
+          "title": "Run Script 6"
+        },
+        {
+          "value": "runScript7",
+          "title": "Run Script 7"
+        },
+        {
+          "value": "runScript8",
+          "title": "Run Script 8"
+        },
+        {
+          "value": "runScript9",
+          "title": "Run Script 9"
+        }
+      ]
+    },
+    {
       "name": "openURL",
       "title": "Action: Open URL",
       "required": false,
