@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   List,
   ActionPanel,
@@ -223,7 +223,7 @@ function PromptList({
             <ActionPanel>
               {prompt.subprompts && (
                 <RaycastAction.Push
-                  title={promptTitle}
+                  title="Open"
                   icon={prompt.icon ?? DEFAULT_ICON}
                   target={
                     <PromptList
@@ -235,7 +235,7 @@ function PromptList({
                   }
                 />
               )}
-              {getPromptActions(formattedDescription)}
+              {!prompt.subprompts ? getPromptActions(formattedDescription) : null}
               {
                 <Action
                   title={prompt.pinned ? "Unpin" : "Pin"}
