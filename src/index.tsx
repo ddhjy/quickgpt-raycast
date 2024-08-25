@@ -21,7 +21,6 @@ import fs from "fs";
 import path from "path";
 import { match } from "pinyin-pro";
 import React from "react";
-import { LocalStorage } from "@raycast/api";
 import actionManager from "./actionManager";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
