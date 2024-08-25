@@ -248,6 +248,18 @@ function PromptList({
                 <Action.SubmitForm
                   title="Execute"
                   onSubmit={() => {
+                    if (prompt.rawRef) {
+                      for (const [key, filePath] of Object.entries(prompt.rawRef)) {
+                        try {
+                          const fileContent = fs.readFileSync(filePath, 'utf8');
+                          const placeholder = `{{${key}}}`;
+                          prompt.content = prompt.content?.replace(placeholder, fileContent);
+                        } catch (error) {
+                          console.error(`Error reading file: ${filePath}`, error);
+                        }
+                      }
+                      delete prompt.rawRef;
+                    }
                     const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
                     const [formattedDescription, missingDescriptionTags] = contentFormat(content || "", replacements);
                     const actions = getPromptActions(formattedDescription);

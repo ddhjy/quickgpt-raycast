@@ -15,6 +15,7 @@ export type PromptProps = {
   noexplanation?: boolean;
   forbidChinese?: boolean;
   ref?: { [key: string]: string };
+  rawRef?: { [key: string]: string };
 };
 
 class PromptManager {
@@ -82,17 +83,8 @@ class PromptManager {
 
   private handleFileReference(prompt: PromptProps): PromptProps {
     if (prompt.ref) {
-      console.log(prompt.ref);
-      for (const [key, filePath] of Object.entries(prompt.ref)) {
-        try {
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          console.log( "zkdebug fileContent:  ", fileContent);
-          const placeholder = `{{${key}}}`;
-          prompt.content = prompt.content?.replace(placeholder, fileContent);
-        } catch (error) {
-          console.error(`Error reading file: ${filePath}`, error);
-        }
-      }
+      prompt.rawRef = { ...prompt.ref };
+      delete prompt.ref;
     }
     return prompt;
   }
