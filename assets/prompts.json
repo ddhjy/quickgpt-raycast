@@ -6,11 +6,6 @@
       {
         "icon": "⭕️",
         "title": "{{p:s}}中，\"{{i|c}}\"是什么？",
-        "content": "/Users/zengkai/TTIOS/quickgpt-raycast/assets/分析.md"
-      },
-      {
-        "icon": "⭕️",
-        "title": "{{p:s}}中，\"{{i|c}}\"是什么？",
         "content": "下列文本中，\"{{i|c}}\"是什么？\n\n文本：\"\"\"\n{{s}}\n\"\"\""
       },
       {
