@@ -27,6 +27,7 @@ class PromptManager {
       ...(preferences.customPrompts ? [preferences.customPrompts] : []),
     ];
     this.rootPrompts = this.loadPrompts();
+    this.loadCustomPromptsFromDirectory();
   }
 
   private loadPrompts() {
@@ -47,6 +48,27 @@ class PromptManager {
     };
     traverse(promptsData);
     return promptsData;
+  }
+
+  loadCustomPromptsFromDirectory() {
+    const preferences = getPreferenceValues<Preferences>();
+    const customPromptsDirectory = preferences.customPromptsDirectory;
+
+    if (customPromptsDirectory && fs.existsSync(customPromptsDirectory)) {
+      const files = fs.readdirSync(customPromptsDirectory);
+      for (const file of files) {
+        if (path.extname(file) === '.json') {
+          const filePath = path.join(customPromptsDirectory, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          try {
+            const customPrompts = JSON.parse(content);
+            this.rootPrompts = [...this.rootPrompts, ...customPrompts];
+          } catch (error) {
+            console.error(`Error parsing custom prompt file ${file}:`, error);
+          }
+        }
+      }
+    }
   }
 
   public getRootPrompts() {
