@@ -41,6 +41,12 @@ class PromptManager {
     if (preferences.customPromptsDirectory) {
       this.promptsPaths.push(preferences.customPromptsDirectory);
     }
+    if (preferences.customPromptsDirectory2) {
+      this.promptsPaths.push(preferences.customPromptsDirectory2);
+    }
+    if (preferences.customPromptsDirectory3) {
+      this.promptsPaths.push(preferences.customPromptsDirectory3);
+    }
     this.rootPrompts = this.loadAllPrompts();
   }
 
