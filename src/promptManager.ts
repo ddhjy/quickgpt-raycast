@@ -3,6 +3,16 @@ import * as path from "path";
 import md5 from "md5";
 import { getPreferenceValues } from "@raycast/api";
 
+type Preferences = {
+  disableDefaultPrompts: boolean;
+  customPrompts?: string;
+  customPrompts2?: string;
+  customPrompts3?: string;
+  customPromptsDirectory?: string;
+  customPromptsDirectory2?: string;
+  customPromptsDirectory3?: string;
+};
+
 export type PromptProps = {
   identifier: string;
   title: string;
@@ -37,6 +47,8 @@ class PromptManager {
     this.promptsPaths = [
       ...(preferences.disableDefaultPrompts ? [] : [path.join(__dirname, "assets/prompts.json")]),
       ...(preferences.customPrompts ? [preferences.customPrompts] : []),
+      ...(preferences.customPrompts2 ? [preferences.customPrompts2] : []),
+      ...(preferences.customPrompts3 ? [preferences.customPrompts3] : []),
     ];
     if (preferences.customPromptsDirectory) {
       this.promptsPaths.push(preferences.customPromptsDirectory);

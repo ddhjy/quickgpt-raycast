@@ -19,13 +19,6 @@
   ],
   "preferences": [
     {
-      "name": "customPrompts",
-      "title": "Prompts: Custom Prompts",
-      "required": false,
-      "description": "Use custom prompts",
-      "type": "file"
-    },
-    {
       "name": "customPromptsDirectory",
       "title": "Prompts: Custom Prompts Directory",
       "required": false,
@@ -45,6 +38,27 @@
       "required": false,
       "description": "使用第三个自定义提示词目录",
       "type": "directory"
+    },
+    {
+      "name": "customPrompts",
+      "title": "Prompts: Custom Prompts",
+      "required": false,
+      "description": "Use custom prompts",
+      "type": "file"
+    },
+    {
+      "name": "customPrompts2",
+      "title": "Prompts: Custom Prompts 2",
+      "required": false,
+      "description": "Use second custom prompts file",
+      "type": "file"
+    },
+    {
+      "name": "customPrompts3",
+      "title": "Prompts: Custom Prompts 3",
+      "required": false,
+      "description": "Use third custom prompts file",
+      "type": "file"
     },
     {
       "name": "disableDefaultPrompts",
