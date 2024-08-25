@@ -173,6 +173,7 @@ function PromptList({
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
 
+  // 只在搜索模式下进行筛选
   if (searchMode && searchText.length > 0) {
     prompts = promptManager.getFilteredPrompts((prompt) => {
       return (
@@ -204,11 +205,11 @@ function PromptList({
 
       const promptTitle = formattedTitle;
 
-      if (
-        activeSearchText &&
-        formattedTitle == prompt.title &&
-        prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
-        !match(prompt.title, activeSearchText, { continuous: true })
+      // 移除在 Input mode 下的筛选逻辑
+      if (searchMode && activeSearchText &&
+          formattedTitle == prompt.title &&
+          prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
+          !match(prompt.title, activeSearchText, { continuous: true })
       ) {
         return null;
       }
