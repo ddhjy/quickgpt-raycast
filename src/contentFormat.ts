@@ -2,9 +2,10 @@ type SpecificReplacements = {
   query?: string;
   clipboard?: string;
   selection?: string;
+  [key: string]: string | undefined;
 };
 
-const literalPlaceholder = {
+const literalPlaceholder: { [K in keyof SpecificReplacements]: string } = {
   query: "<输入文本>",
   clipboard: "<剪贴板文本>",
   selection: "<选中文本>",
@@ -33,6 +34,8 @@ const allCombinations = generateCombinations(Object.keys(inputPlaceholder));
 
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): [string, string[]] {
   const compositeReplacements: { [key: string]: string | undefined } = {};
+  
+  // 处理预定义的替换项
   for (const combination of allCombinations) {
     const keysInCombination = combination.split("|");
     for (const key of keysInCombination) {
@@ -41,6 +44,13 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
         compositeReplacements[`{{p:${combination}}}`] = literalPlaceholder[inputPlaceholder[key]];
         break;
       }
+    }
+  }
+  
+  // 处理 options 中的值
+  for (const [key, value] of Object.entries(specificReplacements)) {
+    if (!Object.values(inputPlaceholder).includes(key as keyof SpecificReplacements)) {
+      compositeReplacements[`{{${key}}}`] = value;
     }
   }
 

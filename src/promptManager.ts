@@ -24,8 +24,9 @@ export type PromptProps = {
   prefixCMD?: string;
   noexplanation?: boolean;
   forbidChinese?: boolean;
-  ref?: { [key: string]: string };
-  rawRef?: { [key: string]: string };
+  ref?: { [key: string]: string | string[] };
+  rawRef?: { [key: string]: string | string[] };
+  options?: { [key: string]: string[] };
 };
 
 function loadContentFromFile(filePath: string, baseDir: string): string {
@@ -119,6 +120,12 @@ class PromptManager {
     }
     if (prompt.ref) {
       prompt.rawRef = { ...prompt.ref };
+      prompt.options = {};
+      for (const [key, value] of Object.entries(prompt.ref)) {
+        if (Array.isArray(value)) {
+          prompt.options[key] = value;
+        }
+      }
       delete prompt.ref;
     }
     if (prompt.subprompts) {

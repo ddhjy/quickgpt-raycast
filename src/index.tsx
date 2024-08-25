@@ -12,6 +12,8 @@ import {
   getPreferenceValues,
   clearSearchBar,
   getSelectedText,
+  Form,
+  useNavigation,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
@@ -159,6 +161,31 @@ function getPromptActions(formattedDescription: string) {
   );
 }
 
+function OptionsForm({ prompt, selectedOptions, onSubmit }: { prompt: PromptProps; selectedOptions: { [key: string]: string }; onSubmit: (options: { [key: string]: string }) => void }) {
+  const [options, setOptions] = useState(selectedOptions);
+
+  return (
+    <Form
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm
+            title="确认选项并执行"
+            onSubmit={() => onSubmit(options)}
+          />
+        </ActionPanel>
+      }
+    >
+      {Object.entries(prompt.options || {}).map(([key, values]) => (
+        <Form.Dropdown key={key} id={key} title={key} onChange={(newValue) => setOptions({ ...options, [key]: newValue })}>
+          {values.map((value) => (
+            <Form.Dropdown.Item key={value} value={value} title={value} />
+          ))}
+        </Form.Dropdown>
+      ))}
+    </Form>
+  );
+}
+
 function PromptList({
   prompts: prompts,
   searchMode = false,
@@ -172,6 +199,7 @@ function PromptList({
 }) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
 
   // 只在搜索模式下进行筛选
   if (searchMode && searchText.length > 0) {
@@ -197,6 +225,8 @@ function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
   const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText };
+
+  const { push } = useNavigation();
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
@@ -245,26 +275,22 @@ function PromptList({
                 />
               )}
               {!prompt.subprompts && (
-                <Action.SubmitForm
+                <Action
                   title="Execute"
-                  onSubmit={() => {
-                    if (prompt.rawRef) {
-                      for (const [key, filePath] of Object.entries(prompt.rawRef)) {
-                        try {
-                          const fileContent = fs.readFileSync(filePath, 'utf8');
-                          const placeholder = `{{${key}}}`;
-                          prompt.content = prompt.content?.replace(placeholder, fileContent);
-                        } catch (error) {
-                          console.error(`Error reading file: ${filePath}`, error);
-                        }
-                      }
-                    }
-                    const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
-                    const [formattedDescription] = contentFormat(content || "", replacements);
-                    const actions = getPromptActions(formattedDescription);
-                    const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
-                    if (firstActionWithOnAction) {
-                      firstActionWithOnAction.props.onAction();
+                  onAction={() => {
+                    if (prompt.options && Object.keys(prompt.options).length > 0) {
+                      push(
+                        <OptionsForm
+                          prompt={prompt}
+                          selectedOptions={selectedOptions}
+                          onSubmit={(options) => {
+                            setSelectedOptions(options);
+                            executePrompt(prompt, options);
+                          }}
+                        />
+                      );
+                    } else {
+                      executePrompt(prompt, selectedOptions);
                     }
                   }}
                 />
@@ -302,6 +328,29 @@ function PromptList({
         />
       );
     });
+
+  function executePrompt(prompt: PromptProps, options: { [key: string]: string }) {
+    if (prompt.rawRef) {
+      for (const [key, filePath] of Object.entries(prompt.rawRef)) {
+        try {
+          if (typeof filePath === 'string') {
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const placeholder = `{{${key}}}`;
+            prompt.content = prompt.content?.replace(placeholder, fileContent);
+          }
+        } catch (error) {
+          console.error(`Error reading file: ${filePath}`, error);
+        }
+      }
+    }
+    const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
+    const [formattedDescription] = contentFormat(content || "", { ...replacements, ...options });
+    const actions = getPromptActions(formattedDescription);
+    const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
+    if (firstActionWithOnAction) {
+      firstActionWithOnAction.props.onAction();
+    }
+  }
 
   return (
     <List
