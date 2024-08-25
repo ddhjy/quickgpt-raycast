@@ -18,6 +18,16 @@ export type PromptProps = {
   rawRef?: { [key: string]: string };
 };
 
+function loadContentFromFile(filePath: string, baseDir: string): string {
+  const fullPath = path.isAbsolute(filePath) ? filePath : path.join(baseDir, filePath);
+  try {
+    return fs.readFileSync(fullPath, 'utf-8');
+  } catch (error) {
+    console.error(`Error reading file ${fullPath}: ${error}`);
+    return `Error: Unable to read file ${filePath}`;
+  }
+}
+
 class PromptManager {
   private promptsPaths: string[];
   private rootPrompts: PromptProps[];
@@ -57,7 +67,21 @@ class PromptManager {
   private loadPromptsFromFile(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
-      return JSON.parse(data);
+      const prompts = JSON.parse(data);
+      const baseDir = path.dirname(filePath);
+      for (const prompt of prompts) {
+        if (typeof prompt.content === 'string' && prompt.content.startsWith('/')) {
+          prompt.content = loadContentFromFile(prompt.content, baseDir);
+        }
+        if (prompt.subprompts) {
+          for (const subprompt of prompt.subprompts) {
+            if (typeof subprompt.content === 'string' && subprompt.content.startsWith('/')) {
+              subprompt.content = loadContentFromFile(subprompt.content, baseDir);
+            }
+          }
+        }
+      }
+      return prompts;
     } catch (error) {
       console.error(`Error loading prompts from ${filePath}:`, error);
       return [];
