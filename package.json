@@ -26,6 +26,13 @@
       "type": "file"
     },
     {
+      "name": "customPromptsDirectory",
+      "title": "Prompts: Custom Prompts Directory",
+      "required": false,
+      "description": "使用自定义提示词目录",
+      "type": "directory"
+    },
+    {
       "name": "disableDefaultPrompts",
       "title": "Prompts: Turn Off Default Prompts",
       "required": false,
