@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   List,
   ActionPanel,
@@ -11,6 +11,7 @@ import {
   closeMainWindow,
   getPreferenceValues,
   clearSearchBar,
+  getSelectedText,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
@@ -19,7 +20,6 @@ import { contentFormat } from "./contentFormat";
 import fs from "fs";
 import path from "path";
 import { match } from "pinyin-pro";
-import useClipboardAndSelectionText from "./useClipboardAndSelectionText";
 import React from "react";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
@@ -293,9 +293,44 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
     clipboardText: argumentClipboardText,
     target: target,
   } = props.arguments;
-  const { clipboardText: currentClipboardText, selectionText: currentSelectionText } = useClipboardAndSelectionText();
-  const clipboardText = argumentClipboardText ?? currentClipboardText;
-  const selectionText = argumentSelectionText ?? currentSelectionText;
+  const [clipboardText, setClipboardText] = useState(argumentClipboardText ?? "");
+  const [selectionText, setSelectionText] = useState(argumentSelectionText ?? "");
+
+  useEffect(() => {
+    const fetchClipboardText = async () => {
+      if (!argumentClipboardText || argumentClipboardText.length === 0) {
+        try {
+          const text = await Clipboard.readText() ?? "";
+          setClipboardText(text);
+        } catch (_) {
+          console.error("剪贴板文本读取失败，返回空字符串");
+          setClipboardText("");
+        }
+      }
+    };
+
+    if ((!target || target.length === 0) && (!argumentSelectionText || argumentSelectionText.length === 0)) {
+      const fetchSelectedText = async () => {
+        try {
+          const text = await getSelectedText();
+          console.log("选中的文本:", text);
+          setSelectionText(text);
+        } catch (_) {
+          console.error("选中文本读取失败，返回空字符串");
+          setSelectionText("");
+        }
+      };
+
+      const timer = setTimeout(() => {
+        fetchSelectedText();
+        fetchClipboardText();
+      }, 10);
+
+      return () => clearTimeout(timer);
+    } else {
+      fetchClipboardText();
+    }
+  }, []);
 
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
   const pinnedActions = promptManager.getFilteredPrompts((action) => {
