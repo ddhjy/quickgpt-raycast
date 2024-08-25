@@ -162,7 +162,13 @@ function getPromptActions(formattedDescription: string) {
 }
 
 function OptionsForm({ prompt, selectedOptions, onSubmit }: { prompt: PromptProps; selectedOptions: { [key: string]: string }; onSubmit: (options: { [key: string]: string }) => void }) {
-  const [options, setOptions] = useState(selectedOptions);
+  const [options, setOptions] = useState(() => {
+    const defaultOptions: { [key: string]: string } = {};
+    Object.entries(prompt.options || {}).forEach(([key, values]) => {
+      defaultOptions[key] = values[0] || '';
+    });
+    return { ...defaultOptions, ...selectedOptions };
+  });
 
   return (
     <Form
@@ -176,7 +182,7 @@ function OptionsForm({ prompt, selectedOptions, onSubmit }: { prompt: PromptProp
       }
     >
       {Object.entries(prompt.options || {}).map(([key, values]) => (
-        <Form.Dropdown key={key} id={key} title={key} onChange={(newValue) => setOptions({ ...options, [key]: newValue })}>
+        <Form.Dropdown key={key} id={key} title={key} value={options[key]} onChange={(newValue) => setOptions({ ...options, [key]: newValue })}>
           {values.map((value) => (
             <Form.Dropdown.Item key={value} value={value} title={value} />
           ))}
@@ -200,6 +206,7 @@ function PromptList({
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
+  const { push } = useNavigation();
 
   // 只在搜索模式下进行筛选
   if (searchMode && searchText.length > 0) {
@@ -225,8 +232,6 @@ function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
   const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText };
-
-  const { push } = useNavigation();
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
@@ -284,6 +289,7 @@ function PromptList({
                           prompt={prompt}
                           selectedOptions={selectedOptions}
                           onSubmit={(options) => {
+                            console.log("options", options);
                             setSelectedOptions(options);
                             executePrompt(prompt, options);
                           }}
