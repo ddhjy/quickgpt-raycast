@@ -14,6 +14,7 @@ export type PromptProps = {
   prefixCMD?: string;
   noexplanation?: boolean;
   forbidChinese?: boolean;
+  ref?: { [key: string]: string };
 };
 
 class PromptManager {
@@ -26,49 +27,74 @@ class PromptManager {
       ...(preferences.disableDefaultPrompts ? [] : [path.join(__dirname, "assets/prompts.json")]),
       ...(preferences.customPrompts ? [preferences.customPrompts] : []),
     ];
-    this.rootPrompts = this.loadPrompts();
-    this.loadCustomPromptsFromDirectory();
+    if (preferences.customPromptsDirectory) {
+      this.promptsPaths.push(preferences.customPromptsDirectory);
+    }
+    this.rootPrompts = this.loadAllPrompts();
   }
 
-  private loadPrompts() {
-    let promptsData: PromptProps[] = [];
+  private loadAllPrompts(): PromptProps[] {
+    let allPrompts: PromptProps[] = [];
+    
     for (const promptPath of this.promptsPaths) {
-      const data = fs.readFileSync(promptPath, "utf-8");
-      promptsData = [...promptsData, ...JSON.parse(data)];
-    }
-    const traverse = (prompts: PromptProps[]) => {
-      for (const prompt of prompts) {
-        if (!prompt.identifier) {
-          prompt.identifier = md5(prompt.title);
+      if (fs.statSync(promptPath).isDirectory()) {
+        const files = fs.readdirSync(promptPath);
+        for (const file of files) {
+          if (path.extname(file) === '.json') {
+            const filePath = path.join(promptPath, file);
+            allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
+          }
         }
-        if (prompt.subprompts) {
-          traverse(prompt.subprompts);
+      } else {
+        allPrompts = [...allPrompts, ...this.loadPromptsFromFile(promptPath)];
+      }
+    }
+
+    return this.processPrompts(allPrompts);
+  }
+
+  private loadPromptsFromFile(filePath: string): PromptProps[] {
+    try {
+      const data = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(data);
+    } catch (error) {
+      console.error(`Error loading prompts from ${filePath}:`, error);
+      return [];
+    }
+  }
+
+  private processPrompts(prompts: PromptProps[]): PromptProps[] {
+    const traverse = (items: PromptProps[]) => {
+      for (let item of items) {
+        if (!item.identifier) {
+          item.identifier = md5(item.title);
+        }
+        item = this.handleFileReference(item);
+        if (item.subprompts) {
+          item.subprompts = item.subprompts.map(this.handleFileReference);
+          traverse(item.subprompts);
         }
       }
     };
-    traverse(promptsData);
-    return promptsData;
+    traverse(prompts);
+    return prompts;
   }
 
-  loadCustomPromptsFromDirectory() {
-    const preferences = getPreferenceValues<Preferences>();
-    const customPromptsDirectory = preferences.customPromptsDirectory;
-
-    if (customPromptsDirectory && fs.existsSync(customPromptsDirectory)) {
-      const files = fs.readdirSync(customPromptsDirectory);
-      for (const file of files) {
-        if (path.extname(file) === '.json') {
-          const filePath = path.join(customPromptsDirectory, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          try {
-            const customPrompts = JSON.parse(content);
-            this.rootPrompts = [...this.rootPrompts, ...customPrompts];
-          } catch (error) {
-            console.error(`Error parsing custom prompt file ${file}:`, error);
-          }
+  private handleFileReference(prompt: PromptProps): PromptProps {
+    if (prompt.ref) {
+      console.log(prompt.ref);
+      for (const [key, filePath] of Object.entries(prompt.ref)) {
+        try {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          console.log( "zkdebug fileContent:  ", fileContent);
+          const placeholder = `{{${key}}}`;
+          prompt.content = prompt.content?.replace(placeholder, fileContent);
+        } catch (error) {
+          console.error(`Error reading file: ${filePath}`, error);
         }
       }
     }
+    return prompt;
   }
 
   public getRootPrompts() {
