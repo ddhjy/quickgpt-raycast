@@ -51,7 +51,7 @@ class PromptManager {
       if (fs.statSync(promptPath).isDirectory()) {
         const files = fs.readdirSync(promptPath);
         for (const file of files) {
-          if (path.extname(file) === '.json') {
+          if (file.endsWith('.pm.json')) {
             const filePath = path.join(promptPath, file);
             allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
           }
