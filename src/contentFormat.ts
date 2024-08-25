@@ -2,6 +2,7 @@ type SpecificReplacements = {
   query?: string;
   clipboard?: string;
   selection?: string;
+  currentApp?: string;
   [key: string]: string | undefined;
 };
 
@@ -9,6 +10,7 @@ const literalPlaceholder: { [K in keyof SpecificReplacements]: string } = {
   query: "<输入文本>",
   clipboard: "<剪贴板文本>",
   selection: "<选中文本>",
+  currentApp: "<当前应用>"
 };
 
 const inputPlaceholder: { [key: string]: keyof SpecificReplacements } = {
@@ -47,7 +49,6 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
     }
   }
   
-  // 处理 options 中的值
   for (const [key, value] of Object.entries(specificReplacements)) {
     if (!Object.values(inputPlaceholder).includes(key as keyof SpecificReplacements)) {
       compositeReplacements[`{{${key}}}`] = value;

@@ -14,6 +14,7 @@ import {
   getSelectedText,
   Form,
   useNavigation,
+  getFrontmostApplication,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
@@ -197,11 +198,13 @@ function PromptList({
   searchMode = false,
   clipboardText = "",
   selectionText = "",
+  currentApp = "",
 }: {
   prompts: PromptProps[];
   searchMode: boolean;
   clipboardText: string;
   selectionText: string;
+  currentApp: string;
 }) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
@@ -226,12 +229,13 @@ function PromptList({
         prompts={prompts}
         clipboardText={clipboardText}
         selectionText={selectionText}
+        currentApp={currentApp}
       />
     );
   }
 
   const activeSearchText = searchMode ? "" : searchText;
-  const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText };
+  const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp };
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
@@ -275,6 +279,7 @@ function PromptList({
                       prompts={prompt.subprompts}
                       clipboardText={clipboardText}
                       selectionText={selectionText}
+                      currentApp={currentApp}
                     />
                   }
                 />
@@ -383,6 +388,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
   } = props.arguments;
   const [clipboardText, setClipboardText] = useState(argumentClipboardText ?? "");
   const [selectionText, setSelectionText] = useState(argumentSelectionText ?? "");
+  const [currentApp, setCurrentApp] = useState("");
 
   useEffect(() => {
     const fetchClipboardText = async () => {
@@ -411,17 +417,19 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
       }
       return argumentSelectionText;
     };
-
+    
     if (!target || target.length === 0) {
       const timer = setTimeout(async () => {
-        const [clipboardText, selectedText] = await Promise.all([
+        const [clipboardText, selectedText, frontmostApplication] = await Promise.all([
           fetchClipboardText(),
-          fetchSelectedText()
+          fetchSelectedText(),
+          getFrontmostApplication()
         ]);
         setClipboardText(clipboardText);
         setSelectionText(selectedText);
+        setCurrentApp(frontmostApplication.name);
       }, 10);
-
+  
       return () => clearTimeout(timer);
     } else {
       fetchClipboardText().then(setClipboardText);
@@ -447,6 +455,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
       prompts={uniqueFilteredActions}
       clipboardText={clipboardText}
       selectionText={selectionTextForUse}
+      currentApp={currentApp}
     />
   );
 }
