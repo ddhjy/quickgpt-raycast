@@ -197,19 +197,13 @@ function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
   const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText };
+
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
-      const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
-      const [formattedTitle, missingTitleTags] = contentFormat(prompt.title || "", replacements);
-      const [formattedDescription, missingDescriptionTags] = contentFormat(content || "", replacements);
+      const [formattedTitle] = contentFormat(prompt.title || "", replacements);
 
-      const missingPlaceholders = [...new Set([...missingTitleTags, ...missingDescriptionTags])].join(", ");
-
-      const isSubtitleMissingTags = missingPlaceholders.length > 0;
-      const subtitle = isSubtitleMissingTags ? `missing Placeholders: ${missingPlaceholders}` : undefined;
-
-      const promptTitle = isSubtitleMissingTags ? prompt.title : formattedTitle;
+      const promptTitle = formattedTitle;
 
       if (
         activeSearchText &&
@@ -225,7 +219,6 @@ function PromptList({
           key={index}
           title={promptTitle.replace(/\n/g, " ")}
           icon={prompt.icon ?? DEFAULT_ICON}
-          subtitle={subtitle}
           accessories={[
             prompt.pinned ? { tag: { value: "PIN", color: Color.SecondaryText } } : {},
             {
@@ -251,7 +244,20 @@ function PromptList({
                   }
                 />
               )}
-              {!prompt.subprompts ? getPromptActions(formattedDescription) : null}
+              {!prompt.subprompts && (
+                <Action.SubmitForm
+                  title="Execute"
+                  onSubmit={() => {
+                    const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
+                    const [formattedDescription, missingDescriptionTags] = contentFormat(content || "", replacements);
+                    const actions = getPromptActions(formattedDescription);
+                    const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
+                    if (firstActionWithOnAction) {
+                      firstActionWithOnAction.props.onAction();
+                    }
+                  }}
+                />
+              )}
               {
                 <Action
                   title={prompt.pinned ? "Unpin" : "Pin"}
