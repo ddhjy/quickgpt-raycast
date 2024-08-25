@@ -6,9 +6,10 @@
       {
         "title": "iconpark icon for {{i|s|c}}",
         "prefixCMD": "ne",
-        "content": "针对下列文本，选择十个合适的 iconpark 图标：\n文本具体内容就是：\"\"\"\n{{i|s|c}}\n\"\"\"\n\n所有 iconpark 图标名：\n\"\"\"\n\n\"\"\" {{type}}",
+        "content": "针对下列文本，选择十个合适的 iconpark 图标：\n文本具体内容就是：\"\"\"\n{{i|s|c}}\n\"\"\"\n\n所有 iconpark 图标名：\n\"\"\"\n\n\"\"\" {{type}}, {{name}}",
         "ref": {
-            "type": ["iconpark", "iconfont"]
+            "type": ["iconpark", "iconfont"],
+            "name": ["abc", "ef"]
         }
     },
       {
