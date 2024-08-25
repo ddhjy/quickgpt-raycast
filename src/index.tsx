@@ -301,34 +301,42 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
       if (!argumentClipboardText || argumentClipboardText.length === 0) {
         try {
           const text = await Clipboard.readText() ?? "";
-          setClipboardText(text);
+          return text;
         } catch (_) {
           console.error("剪贴板文本读取失败，返回空字符串");
-          setClipboardText("");
+          return "";
         }
       }
+      return argumentClipboardText;
     };
 
-    if ((!target || target.length === 0) && (!argumentSelectionText || argumentSelectionText.length === 0)) {
-      const fetchSelectedText = async () => {
+    const fetchSelectedText = async () => {
+      if (!argumentSelectionText || argumentSelectionText.length === 0) {
         try {
           const text = await getSelectedText();
-          console.log("选中的文本:", text);
-          setSelectionText(text);
+          // console.log("选中的文本:", text);
+          return text;
         } catch (_) {
           console.error("选中文本读取失败，返回空字符串");
-          setSelectionText("");
+          return "";
         }
-      };
+      }
+      return argumentSelectionText;
+    };
 
-      const timer = setTimeout(() => {
-        fetchSelectedText();
-        fetchClipboardText();
+    if (!target || target.length === 0) {
+      const timer = setTimeout(async () => {
+        const [clipboardText, selectedText] = await Promise.all([
+          fetchClipboardText(),
+          fetchSelectedText()
+        ]);
+        setClipboardText(clipboardText);
+        setSelectionText(selectedText);
       }, 10);
 
       return () => clearTimeout(timer);
     } else {
-      fetchClipboardText();
+      fetchClipboardText().then(setClipboardText);
     }
   }, []);
 
