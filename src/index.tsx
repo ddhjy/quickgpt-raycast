@@ -258,10 +258,9 @@ function PromptList({
                           console.error(`Error reading file: ${filePath}`, error);
                         }
                       }
-                      delete prompt.rawRef;
                     }
                     const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
-                    const [formattedDescription, missingDescriptionTags] = contentFormat(content || "", replacements);
+                    const [formattedDescription] = contentFormat(content || "", replacements);
                     const actions = getPromptActions(formattedDescription);
                     const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
                     if (firstActionWithOnAction) {
