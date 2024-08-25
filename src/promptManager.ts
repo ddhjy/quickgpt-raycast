@@ -47,15 +47,23 @@ class PromptManager {
   private loadAllPrompts(): PromptProps[] {
     let allPrompts: PromptProps[] = [];
 
+    const traverseDirectory = (directoryPath: string) => {
+      const files = fs.readdirSync(directoryPath);
+      for (const file of files) {
+        const filePath = path.join(directoryPath, file);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+          traverseDirectory(filePath);
+        } else if (file.endsWith('.pm.json')) {
+          allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
+        }
+      }
+    };
+
     for (const promptPath of this.promptsPaths) {
       if (fs.statSync(promptPath).isDirectory()) {
-        const files = fs.readdirSync(promptPath);
-        for (const file of files) {
-          if (file.endsWith('.pm.json')) {
-            const filePath = path.join(promptPath, file);
-            allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
-          }
-        }
+        traverseDirectory(promptPath);
       } else {
         allPrompts = [...allPrompts, ...this.loadPromptsFromFile(promptPath)];
       }
