@@ -46,7 +46,7 @@ class PromptManager {
 
   private loadAllPrompts(): PromptProps[] {
     let allPrompts: PromptProps[] = [];
-    
+
     for (const promptPath of this.promptsPaths) {
       if (fs.statSync(promptPath).isDirectory()) {
         const files = fs.readdirSync(promptPath);
@@ -69,7 +69,7 @@ class PromptManager {
       const data = fs.readFileSync(filePath, "utf-8");
       const prompts = JSON.parse(data);
       const baseDir = path.dirname(filePath);
-      
+
       const loadContent = (prompt: PromptProps) => {
         if (typeof prompt.content === 'string' && prompt.content.startsWith('/')) {
           prompt.content = loadContentFromFile(prompt.content, baseDir);
@@ -87,21 +87,22 @@ class PromptManager {
     }
   }
 
+  private processPrompt(prompt: PromptProps): PromptProps {
+    if (!prompt.identifier) {
+      prompt.identifier = md5(prompt.title);
+    }
+    if (prompt.ref) {
+      prompt.rawRef = { ...prompt.ref };
+      delete prompt.ref;
+    }
+    if (prompt.subprompts) {
+      prompt.subprompts = prompt.subprompts.map(this.processPrompt.bind(this));
+    }
+    return prompt;
+  }
+
   private processPrompts(prompts: PromptProps[]): PromptProps[] {
-    const process = (prompt: PromptProps): PromptProps => {
-      if (!prompt.identifier) {
-        prompt.identifier = md5(prompt.title);
-      }
-      if (prompt.ref) {
-        prompt.rawRef = { ...prompt.ref };
-        delete prompt.ref;
-      }
-      if (prompt.subprompts) {
-        prompt.subprompts = prompt.subprompts.map(process);
-      }
-      return prompt;
-    };
-    return prompts.map(process);
+    return prompts.map(this.processPrompt.bind(this));
   }
 
   public getRootPrompts() {
