@@ -21,6 +21,8 @@ import fs from "fs";
 import path from "path";
 import { match } from "pinyin-pro";
 import React from "react";
+import { LocalStorage } from "@raycast/api";
+import actionManager from "./actionManager";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -133,13 +135,27 @@ function getPromptActions(formattedDescription: string) {
   return (
     <>
       {action
-        .sort((a, b) =>
-          a.name == preferences.primaryAction ||
-            (a.name == preferences.secondaryAction && b.name != preferences.primaryAction)
-            ? -1
-            : 0
-        )
-        .map((option, index) => option.condition && React.cloneElement(option.action, { key: index }))}
+        .sort((a, b) => {
+          const lastSelectedAction = actionManager.getLastSelectedAction();
+          if (a.name === preferences.primaryAction) return -1;
+          if (b.name === preferences.primaryAction) return 1;
+          if (a.name === lastSelectedAction) return -1;
+          if (b.name === lastSelectedAction) return 1;
+          if (a.name === preferences.secondaryAction && b.name !== preferences.primaryAction) return -1;
+          if (b.name === preferences.secondaryAction && a.name !== preferences.primaryAction) return 1;
+          return 0;
+        })
+        .map((option, index) =>
+          option.condition && React.cloneElement(option.action, {
+            key: index,
+            onAction: () => {
+              actionManager.setLastSelectedAction(option.name);
+              if (option.action.props.onAction) {
+                option.action.props.onAction();
+              }
+            }
+          })
+        )}
     </>
   );
 }
