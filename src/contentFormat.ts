@@ -34,7 +34,7 @@ const generateCombinations = (arr: string[]): string[] => {
 
 const allCombinations = generateCombinations(Object.keys(inputPlaceholder));
 
-export function contentFormat(text: string, specificReplacements: SpecificReplacements): [string, string[]] {
+export function contentFormat(text: string, specificReplacements: SpecificReplacements): [string] {
   const compositeReplacements: { [key: string]: string | undefined } = {};
   
   // 处理预定义的替换项
@@ -55,16 +55,14 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
     }
   }
 
-  const missingTags: string[] = [];
   for (const tag of Object.keys(compositeReplacements)) {
     const value = compositeReplacements[tag];
     if (value) {
       text = text.split(tag).join(value);
     } else if (text.includes(tag)) {
-      missingTags.push(tag);
       text = "";
     }
   }
 
-  return [text, missingTags];
+  return [text];
 }
