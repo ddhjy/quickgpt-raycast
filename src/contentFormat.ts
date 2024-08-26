@@ -35,32 +35,32 @@ const generateCombinations = (arr: string[]): string[] => {
 const allCombinations = generateCombinations(Object.keys(inputPlaceholder));
 
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): [string] {
-  const compositeReplacements: { [key: string]: string | undefined } = {};
+  const compositeReplacements = new Map<string, string>();
   
   // 处理预定义的替换项
   for (const combination of allCombinations) {
     const keysInCombination = combination.split("|");
     for (const key of keysInCombination) {
-      if (specificReplacements[inputPlaceholder[key]]) {
-        compositeReplacements[`{{${combination}}}`] = specificReplacements[inputPlaceholder[key]];
-        compositeReplacements[`{{p:${combination}}}`] = literalPlaceholder[inputPlaceholder[key]];
+      const value = specificReplacements[inputPlaceholder[key]];
+      if (value) {
+        compositeReplacements.set(`{{${combination}}}`, value);
+        compositeReplacements.set(`{{p:${combination}}}`, literalPlaceholder[inputPlaceholder[key]]);
         break;
       }
     }
   }
   
+  // 处理其他替换项
   for (const [key, value] of Object.entries(specificReplacements)) {
-    if (!Object.values(inputPlaceholder).includes(key as keyof SpecificReplacements)) {
-      compositeReplacements[`{{${key}}}`] = value;
+    if (value && !Object.values(inputPlaceholder).includes(key as keyof SpecificReplacements)) {
+      compositeReplacements.set(`{{${key}}}`, value);
     }
   }
 
-  for (const tag of Object.keys(compositeReplacements)) {
-    const value = compositeReplacements[tag];
-    if (value) {
+  // 应用替换
+  for (const [tag, value] of compositeReplacements) {
+    if (text.includes(tag)) {
       text = text.split(tag).join(value);
-    } else if (text.includes(tag)) {
-      text = "";
     }
   }
 
