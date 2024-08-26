@@ -181,7 +181,7 @@ function OptionsForm({ prompt, selectedAction, replacements }: { prompt: PromptP
             title={selectedAction.props.title}
             icon={selectedAction.props.icon}
             onAction={() => {
-              const formattedContent = contentFormat(prompt.content || "", { ...replacements, ...options })[0];
+              const formattedContent = contentFormat(prompt.content || "", { ...replacements, ...options });
               if (selectedAction.props.onAction) {
                 selectedAction.props.onAction(formattedContent);
               }
@@ -247,7 +247,7 @@ function PromptList({
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
-      const [formattedTitle] = contentFormat(prompt.title || "", replacements);
+      const formattedTitle = contentFormat(prompt.title || "", replacements);
 
       const promptTitle = formattedTitle;
 
@@ -293,7 +293,7 @@ function PromptList({
               )}
               {!prompt.subprompts && (
                 <>
-                  {getPromptActions(contentFormat(prompt.content || "", replacements)[0]).props.children
+                  {getPromptActions(contentFormat(prompt.content || "", replacements)).props.children
                     .filter((action: React.ReactElement | null): action is React.ReactElement => action !== null)
                     .map((action: React.ReactElement, index: number) => (
                       React.cloneElement(action, {
@@ -309,7 +309,7 @@ function PromptList({
                             );
                           } else {
                             if (action.props.onAction) {
-                              action.props.onAction(formattedContent || contentFormat(prompt.content || "", replacements)[0]);
+                              action.props.onAction(formattedContent || contentFormat(prompt.content || "", replacements));
                             }
                           }
                         }
@@ -367,7 +367,7 @@ function PromptList({
       }
     }
     const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
-    const [formattedDescription] = contentFormat(content || "", { ...replacements, ...options });
+    const formattedDescription = contentFormat(content || "", { ...replacements, ...options });
     const actions = getPromptActions(formattedDescription);
     const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
     if (firstActionWithOnAction) {
