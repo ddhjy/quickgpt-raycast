@@ -148,36 +148,44 @@ function getPromptActions(formattedDescription: string) {
           return 0;
         })
         .map((option, index) =>
-          option.condition && React.cloneElement(option.action, {
+          option.condition && option.action ? React.cloneElement(option.action, {
             key: index,
             onAction: () => {
-              actionManager.setLastSelectedAction(option.name);
+              actionManager.setLastSelectedAction(option.name)
               if (option.action.props.onAction) {
                 option.action.props.onAction();
               }
             }
-          })
-        )}
+          }) : null
+        )
+        .filter(Boolean) // 过滤掉 null 值
+      }
     </>
   );
 }
 
-function OptionsForm({ prompt, selectedOptions, onSubmit }: { prompt: PromptProps; selectedOptions: { [key: string]: string }; onSubmit: (options: { [key: string]: string }) => void }) {
+function OptionsForm({ prompt, selectedAction, replacements }: { prompt: PromptProps; selectedAction: React.ReactElement; replacements: any }) {
   const [options, setOptions] = useState(() => {
     const defaultOptions: { [key: string]: string } = {};
     Object.entries(prompt.options || {}).forEach(([key, values]) => {
       defaultOptions[key] = values[0] || '';
     });
-    return { ...defaultOptions, ...selectedOptions };
+    return defaultOptions;
   });
 
   return (
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm
-            title="确认选项并执行"
-            onSubmit={() => onSubmit(options)}
+          <Action
+            title={selectedAction.props.title}
+            icon={selectedAction.props.icon}
+            onAction={() => {
+              const formattedContent = contentFormat(prompt.content || "", { ...replacements, ...options })[0];
+              if (selectedAction.props.onAction) {
+                selectedAction.props.onAction(formattedContent);
+              }
+            }}
           />
         </ActionPanel>
       }
@@ -208,7 +216,6 @@ function PromptList({
 }) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
   const { push } = useNavigation();
 
   // 只在搜索模式下进行筛选
@@ -244,7 +251,7 @@ function PromptList({
 
       const promptTitle = formattedTitle;
 
-      // 移除在 Input mode 下的筛选逻辑
+      // 移除在 Input mode 下的筛选辑
       if (searchMode && activeSearchText &&
           formattedTitle == prompt.title &&
           prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
@@ -285,26 +292,31 @@ function PromptList({
                 />
               )}
               {!prompt.subprompts && (
-                <Action
-                  title="Execute"
-                  onAction={() => {
-                    if (prompt.options && Object.keys(prompt.options).length > 0) {
-                      push(
-                        <OptionsForm
-                          prompt={prompt}
-                          selectedOptions={selectedOptions}
-                          onSubmit={(options) => {
-                            console.log("options", options);
-                            setSelectedOptions(options);
-                            executePrompt(prompt, options);
-                          }}
-                        />
-                      );
-                    } else {
-                      executePrompt(prompt, selectedOptions);
-                    }
-                  }}
-                />
+                <>
+                  {getPromptActions(contentFormat(prompt.content || "", replacements)[0]).props.children
+                    .filter((action: React.ReactElement | null): action is React.ReactElement => action !== null)
+                    .map((action: React.ReactElement, index: number) => (
+                      React.cloneElement(action, {
+                        key: index,
+                        onAction: (formattedContent?: string) => {
+                          if (prompt.options && Object.keys(prompt.options).length > 0) {
+                            push(
+                              <OptionsForm
+                                prompt={prompt}
+                                selectedAction={action}
+                                replacements={replacements}
+                              />
+                            );
+                          } else {
+                            if (action.props.onAction) {
+                              action.props.onAction(formattedContent || contentFormat(prompt.content || "", replacements)[0]);
+                            }
+                          }
+                        }
+                      })
+                    ))
+                  }
+                </>
               )}
               {
                 <Action
