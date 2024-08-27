@@ -132,6 +132,20 @@ function getPromptActions(formattedDescription: string) {
         />
       ),
     },
+    {
+      name: "paste",
+      condition: true,
+      action: (
+        <Action
+          title="Paste"
+          icon={Icon.Document}
+          onAction={() => {
+            closeMainWindow();
+            Clipboard.paste(formattedDescription);
+          }}
+        />
+      ),
+    },
   ];
 
   return (
