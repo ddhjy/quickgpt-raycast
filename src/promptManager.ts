@@ -27,6 +27,7 @@ export type PromptProps = {
   ref?: { [key: string]: string | string[] };
   rawRef?: { [key: string]: string | string[] };
   options?: { [key: string]: string[] };
+  actions?: string[];
 };
 
 function loadContentFromFile(filePath: string, baseDir: string): string {
