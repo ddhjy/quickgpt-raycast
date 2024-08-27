@@ -26,7 +26,7 @@ interface Preferences {
   runScript9?: string;
 }
 
-export function getPromptActions(formattedDescription: string) {
+export function getPromptActions(formattedDescription: string, actions?: string[]) {
   const preferences = getPreferenceValues<Preferences>();
   const createRaycastOpenInBrowser = (
     title: string | undefined,
@@ -37,6 +37,7 @@ export function getPromptActions(formattedDescription: string) {
   const action = [
     {
       name: "openURL",
+      displayName: "Open URL",
       condition: preferences.openURL,
       action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", formattedDescription),
     },
@@ -54,6 +55,7 @@ export function getPromptActions(formattedDescription: string) {
     ].map((script, index) => {
       return {
         name: `runScript${index}`,
+        displayName: `Run ${path.basename(script ?? "", path.extname(script ?? ""))}`,
         condition: script,
         action: (
           <Action
@@ -73,6 +75,7 @@ export function getPromptActions(formattedDescription: string) {
     {
       name: "copyToClipboard",
       condition: true,
+      displayName: "Copy",
       action: (
         <Action.CopyToClipboard
           title="Copy"
@@ -84,6 +87,7 @@ export function getPromptActions(formattedDescription: string) {
     {
       name: "paste",
       condition: true,
+      displayName: "Paste",
       action: (
         <Action
           title="Paste"
@@ -102,6 +106,9 @@ export function getPromptActions(formattedDescription: string) {
       {action
         .sort((a, b) => {
           const lastSelectedAction = actionManager.getLastSelectedAction();
+          console.log("zkdebug actions", actions, a.name, b.name);
+          if (actions && actions.includes(a.displayName)) return -1;
+          if (actions && actions.includes(b.displayName)) return 1;
           if (a.name === preferences.primaryAction) return -1;
           if (b.name === preferences.primaryAction) return 1;
           if (a.name === lastSelectedAction) return -1;
