@@ -94,7 +94,7 @@ function OptionsForm({
           key={key}
           id={key} 
           title={key} 
-          value={currentOptions[key]} 
+          value={currentOptions[key] || values[0]} 
           onChange={(newValue) => {
             setCurrentOptions({ ...currentOptions, [key]: newValue });
           }}

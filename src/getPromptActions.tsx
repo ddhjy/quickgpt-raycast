@@ -92,6 +92,7 @@ export function getPromptActions(formattedDescription: string, actions?: string[
         <Action
           title="Paste"
           icon={Icon.Document}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
           onAction={() => {
             closeMainWindow();
             Clipboard.paste(formattedDescription);
