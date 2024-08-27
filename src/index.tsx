@@ -13,7 +13,6 @@ import {
   clearSearchBar,
   getSelectedText,
   Form,
-  useNavigation,
   getFrontmostApplication,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
@@ -248,7 +247,6 @@ function PromptList({
 }) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
-  const { push } = useNavigation();
 
   // 只在搜索模式下进行筛选
   if (searchMode && searchText.length > 0) {
