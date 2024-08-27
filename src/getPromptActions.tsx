@@ -107,7 +107,6 @@ export function getPromptActions(formattedDescription: string, actions?: string[
       {action
         .sort((a, b) => {
           const lastSelectedAction = actionManager.getLastSelectedAction();
-          console.log("zkdebug actions", actions, a.name, b.name);
           if (actions && actions.includes(a.displayName)) return -1;
           if (actions && actions.includes(b.displayName)) return 1;
           if (a.name === preferences.primaryAction) return -1;
