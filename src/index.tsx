@@ -230,7 +230,7 @@ function PromptList({
                       }
                     />
                   ) : (
-                    getPromptActions(formattedContent)
+                    getPromptActions(formattedContent, prompt.actions)
                   )}
                 </>
               )}
