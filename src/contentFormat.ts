@@ -1,4 +1,4 @@
-type SpecificReplacements = {
+export type SpecificReplacements = {
   query?: string;
   clipboard?: string;
   selection?: string;
