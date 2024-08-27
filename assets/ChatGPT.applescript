@@ -3,7 +3,7 @@
 on run
     restoreAndActivate("ChatGPT")
     delay 0.2
-    pressKeyCommandShift("o")
+    pressKeyCommand("n")
     delay 0.3
     pressKeyCommand("v")
     delay 0.1
