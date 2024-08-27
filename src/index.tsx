@@ -19,7 +19,7 @@ import {
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
-import { contentFormat } from "./contentFormat";
+import { contentFormat, SpecificReplacements } from "./contentFormat";
 import fs from "fs";
 import path from "path";
 import { match } from "pinyin-pro";
@@ -164,34 +164,33 @@ function getPromptActions(formattedDescription: string) {
   );
 }
 
-function OptionsForm({ prompt, selectedAction, replacements }: { prompt: PromptProps; selectedAction: React.ReactElement; replacements: any }) {
-  const [options, setOptions] = useState(() => {
-    const defaultOptions: { [key: string]: string } = {};
-    Object.entries(prompt.options || {}).forEach(([key, values]) => {
-      defaultOptions[key] = values[0] || '';
-    });
-    return defaultOptions;
-  });
-
+function OptionsForm({
+  prompt,
+  formattedContent,
+}: {
+  prompt: PromptProps;
+  formattedContent: string;
+}) {
+  const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
+  const formattedContentWithOptions = contentFormat(formattedContent || "", currentOptions);
   return (
     <Form
       actions={
         <ActionPanel>
-          <Action
-            title={selectedAction.props.title}
-            icon={selectedAction.props.icon}
-            onAction={() => {
-              const formattedContent = contentFormat(prompt.content || "", { ...replacements, ...options });
-              if (selectedAction.props.onAction) {
-                selectedAction.props.onAction(formattedContent);
-              }
-            }}
-          />
+          {getPromptActions(formattedContentWithOptions)}
         </ActionPanel>
       }
     >
       {Object.entries(prompt.options || {}).map(([key, values]) => (
-        <Form.Dropdown key={key} id={key} title={key} value={options[key]} onChange={(newValue) => setOptions({ ...options, [key]: newValue })}>
+        <Form.Dropdown 
+          key={key}
+          id={key} 
+          title={key} 
+          value={currentOptions[key]} 
+          onChange={(newValue) => {
+            setCurrentOptions({ ...currentOptions, [key]: newValue });
+          }}
+        >
           {values.map((value) => (
             <Form.Dropdown.Item key={value} value={value} title={value} />
           ))}
@@ -199,6 +198,25 @@ function OptionsForm({ prompt, selectedAction, replacements }: { prompt: PromptP
       ))}
     </Form>
   );
+}
+
+function buildFormattedPromptContent(prompt: PromptProps, replacements: SpecificReplacements) {
+  if (prompt.rawRef) {
+    for (const [key, filePath] of Object.entries(prompt.rawRef)) {
+      try {
+        if (typeof filePath === 'string') {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          const placeholder = `{{${key}}}`;
+          prompt.content = prompt.content?.replace(placeholder, fileContent);
+        }
+      } catch (error) {
+        console.error(`错误：读取文件失败: ${filePath}`, error);
+      }
+    }
+  }
+  const processedContent = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
+  const formattedContent = contentFormat(processedContent || "", replacements);
+  return formattedContent;
 }
 
 function PromptList({
@@ -242,14 +260,15 @@ function PromptList({
   }
 
   const activeSearchText = searchMode ? "" : searchText;
-  const replacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp };
+
+  const replacements: SpecificReplacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp};
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
       const formattedTitle = contentFormat(prompt.title || "", replacements);
-
-      const promptTitle = formattedTitle;
+      const formattedContent = buildFormattedPromptContent(prompt, replacements);
+      console.log("53453 1 formattedContent", formattedContent);
 
       // 移除在 Input mode 下的筛选辑
       if (searchMode && activeSearchText &&
@@ -263,7 +282,7 @@ function PromptList({
       return (
         <List.Item
           key={index}
-          title={promptTitle.replace(/\n/g, " ")}
+          title={formattedTitle.replace(/\n/g, " ")}
           icon={prompt.icon ?? DEFAULT_ICON}
           accessories={[
             prompt.pinned ? { tag: { value: "PIN", color: Color.SecondaryText } } : {},
@@ -293,29 +312,20 @@ function PromptList({
               )}
               {!prompt.subprompts && (
                 <>
-                  {getPromptActions(contentFormat(prompt.content || "", replacements)).props.children
-                    .filter((action: React.ReactElement | null): action is React.ReactElement => action !== null)
-                    .map((action: React.ReactElement, index: number) => (
-                      React.cloneElement(action, {
-                        key: index,
-                        onAction: (formattedContent?: string) => {
-                          if (prompt.options && Object.keys(prompt.options).length > 0) {
-                            push(
-                              <OptionsForm
-                                prompt={prompt}
-                                selectedAction={action}
-                                replacements={replacements}
-                              />
-                            );
-                          } else {
-                            if (action.props.onAction) {
-                              action.props.onAction(formattedContent || contentFormat(prompt.content || "", replacements));
-                            }
-                          }
-                        }
-                      })
-                    ))
-                  }
+                  {prompt.options && Object.keys(prompt.options).length > 0 ? (
+                    <RaycastAction.Push
+                      title="选择参数"
+                      icon={Icon.Gear}
+                      target={
+                        <OptionsForm
+                          prompt={prompt}
+                          formattedContent={formattedContent}
+                        />
+                      }
+                    />
+                  ) : (
+                    getPromptActions(formattedContent)
+                  )}
                 </>
               )}
               {
@@ -351,29 +361,6 @@ function PromptList({
         />
       );
     });
-
-  function executePrompt(prompt: PromptProps, options: { [key: string]: string }) {
-    if (prompt.rawRef) {
-      for (const [key, filePath] of Object.entries(prompt.rawRef)) {
-        try {
-          if (typeof filePath === 'string') {
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const placeholder = `{{${key}}}`;
-            prompt.content = prompt.content?.replace(placeholder, fileContent);
-          }
-        } catch (error) {
-          console.error(`Error reading file: ${filePath}`, error);
-        }
-      }
-    }
-    const content = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
-    const formattedDescription = contentFormat(content || "", { ...replacements, ...options });
-    const actions = getPromptActions(formattedDescription);
-    const firstActionWithOnAction = actions.props.children.find((action: React.ReactElement) => action.props.onAction);
-    if (firstActionWithOnAction) {
-      firstActionWithOnAction.props.onAction();
-    }
-  }
 
   return (
     <List
