@@ -26,20 +26,26 @@ interface Preferences {
   runScript9?: string;
 }
 
-export function getPromptActions(formattedDescription: string, actions?: string[]) {
+export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
   const preferences = getPreferenceValues<Preferences>();
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
-    formattedDescription: string | number | Clipboard.Content
-  ) => <Action.OpenInBrowser title={title} url={url} onOpen={() => Clipboard.copy(formattedDescription)} />;
+    getFormattedDescription: () => string | number | Clipboard.Content
+  ) => (
+    <Action.OpenInBrowser
+      title={title}
+      url={url}
+      onOpen={() => Clipboard.copy(getFormattedDescription())}
+    />
+  );
 
   const action = [
     {
       name: "openURL",
       displayName: "Open URL",
       condition: preferences.openURL,
-      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", formattedDescription),
+      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", getFormattedDescription),
     },
     ...[
       path.join(__dirname, "assets/ChatGPT.applescript"),
@@ -64,7 +70,7 @@ export function getPromptActions(formattedDescription: string, actions?: string[
             icon={Icon.Terminal}
             onAction={() => {
               closeMainWindow();
-              Clipboard.copy(formattedDescription);
+              Clipboard.copy(getFormattedDescription());
               const myScript = fs.readFileSync(script ?? "", "utf8");
               runAppleScript(myScript);
             }}
@@ -77,10 +83,11 @@ export function getPromptActions(formattedDescription: string, actions?: string[
       condition: true,
       displayName: "Copy",
       action: (
-        <Action.CopyToClipboard
+        <Action
           title="Copy"
-          content={formattedDescription}
+          icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+          onAction={() => Clipboard.copy(getFormattedDescription())}
         />
       ),
     },
@@ -95,7 +102,7 @@ export function getPromptActions(formattedDescription: string, actions?: string[
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
           onAction={() => {
             closeMainWindow();
-            Clipboard.paste(formattedDescription);
+            Clipboard.paste(getFormattedDescription());
           }}
         />
       ),
