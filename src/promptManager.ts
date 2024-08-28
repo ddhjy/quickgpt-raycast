@@ -70,6 +70,11 @@ class PromptManager {
     const traverseDirectory = (directoryPath: string) => {
       const files = fs.readdirSync(directoryPath);
       for (const file of files) {
+        // 忽略以 # 开头的文件和目录
+        if (file.startsWith('#')) {
+          continue;
+        }
+
         const filePath = path.join(directoryPath, file);
         const stat = fs.statSync(filePath);
         
