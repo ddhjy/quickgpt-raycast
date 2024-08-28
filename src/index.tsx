@@ -74,13 +74,13 @@ function findQuickPrompt(selectionText: string, identifier?: string): [PromptPro
 
 function OptionsForm({
   prompt,
-  formattedContent,
+  getFormattedContent,
 }: {
   prompt: PromptProps;
-  formattedContent: string;
+  getFormattedContent: () => string;
 }) {
   const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
-  const formattedContentWithOptions = contentFormat(formattedContent || "", currentOptions);
+  const formattedContentWithOptions = () => contentFormat(getFormattedContent() || "", currentOptions);
   return (
     <Form
       actions={
@@ -90,11 +90,11 @@ function OptionsForm({
       }
     >
       {Object.entries(prompt.options || {}).map(([key, values]) => (
-        <Form.Dropdown 
+        <Form.Dropdown
           key={key}
-          id={key} 
-          title={key} 
-          value={currentOptions[key] || values[0]} 
+          id={key}
+          title={key}
+          value={currentOptions[key] || values[0]}
           onChange={(newValue) => {
             setCurrentOptions({ ...currentOptions, [key]: newValue });
           }}
@@ -168,19 +168,21 @@ function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
 
-  const replacements: SpecificReplacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp};
+  const replacements: SpecificReplacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp };
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
       const formattedTitle = contentFormat(prompt.title || "", replacements);
-      const formattedContent = buildFormattedPromptContent(prompt, replacements);
+
+      // 将 formattedContent 的生成延后
+      const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements);
 
       // 移除在 Input mode 下的筛选辑
       if (searchMode && activeSearchText &&
-          formattedTitle == prompt.title &&
-          prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
-          !match(prompt.title, activeSearchText, { continuous: true })
+        formattedTitle == prompt.title &&
+        prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
+        !match(prompt.title, activeSearchText, { continuous: true })
       ) {
         return null;
       }
@@ -225,12 +227,12 @@ function PromptList({
                       target={
                         <OptionsForm
                           prompt={prompt}
-                          formattedContent={formattedContent}
+                          getFormattedContent={getFormattedContent}
                         />
                       }
                     />
                   ) : (
-                    getPromptActions(formattedContent, prompt.actions)
+                    getPromptActions(getFormattedContent, prompt.actions)
                   )}
                 </>
               )}
@@ -322,7 +324,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
       }
       return argumentSelectionText;
     };
-    
+
     if (!target || target.length === 0) {
       const timer = setTimeout(async () => {
         const [clipboardText, selectedText, frontmostApplication] = await Promise.all([
@@ -334,7 +336,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
         setSelectionText(selectedText);
         setCurrentApp(frontmostApplication.name);
       }, 10);
-  
+
       return () => clearTimeout(timer);
     } else {
       fetchClipboardText().then(setClipboardText);
