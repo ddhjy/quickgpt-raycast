@@ -87,7 +87,10 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           title="Copy"
           icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          onAction={() => Clipboard.copy(getFormattedDescription())}
+          onAction={() => {
+            closeMainWindow();
+            Clipboard.copy(getFormattedDescription());
+          }}
         />
       ),
     },
