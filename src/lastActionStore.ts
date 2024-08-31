@@ -1,6 +1,6 @@
 import { Cache } from "@raycast/api";
 
-class ActionManager {
+class LastActionStore {
   private cache: Cache;
   private key: string;
 
@@ -9,16 +9,16 @@ class ActionManager {
     this.key = key;
   }
 
-  setLastSelectedAction(action: string) {
+  setLastAction(action: string) {
     this.cache.set(this.key, action);
   }
 
-  getLastSelectedAction(): string | undefined {
+  getLastAction(): string | undefined {
     return this.cache.get(this.key);
   }
 }
 
 const cache = new Cache();
-const actionManager = new ActionManager(cache);
+const lastActionStore = new LastActionStore(cache);
 
-export default actionManager;
+export default lastActionStore;

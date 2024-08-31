@@ -9,7 +9,7 @@ import {
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import path from "path";
-import actionManager from "./actionManager";
+import lastActionStore from "./lastActionStore";
 
 interface Preferences {
   openURL?: string;
@@ -116,7 +116,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     <>
       {action
         .sort((a, b) => {
-          const lastSelectedAction = actionManager.getLastSelectedAction();
+          const lastSelectedAction = lastActionStore.getLastAction();
           if (actions && actions.includes(a.displayName)) return -1;
           if (actions && actions.includes(b.displayName)) return 1;
           if (a.name === preferences.primaryAction) return -1;
@@ -131,7 +131,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           option.condition && option.action ? React.cloneElement(option.action, {
             key: index,
             onAction: () => {
-              actionManager.setLastSelectedAction(option.name)
+              lastActionStore.setLastAction(option.name)
               if (option.action.props.onAction) {
                 option.action.props.onAction();
               }
