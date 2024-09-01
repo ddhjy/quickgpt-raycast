@@ -313,6 +313,8 @@
   "dependencies": {
     "@raycast/api": "^1.56.3",
     "@raycast/utils": "^1.9.1",
+    "@types/hjson": "^2.4.6",
+    "hjson": "^3.2.2",
     "md5": "^2.3.0",
     "pinyin-pro": "^3.16.3"
   },

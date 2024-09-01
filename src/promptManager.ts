@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import md5 from "md5";
 import { getPreferenceValues } from "@raycast/api";
+import * as hjson from 'hjson';
 
 type Preferences = {
   disableDefaultPrompts: boolean;
@@ -64,43 +65,22 @@ class PromptManager {
     this.rootPrompts = this.loadAllPrompts();
   }
 
-  private loadAllPrompts(): PromptProps[] {
-    let allPrompts: PromptProps[] = [];
-
-    const traverseDirectory = (directoryPath: string) => {
-      const files = fs.readdirSync(directoryPath);
-      for (const file of files) {
-        // 忽略以 # 开头的文件和目录
-        if (file.startsWith('#')) {
-          continue;
-        }
-
-        const filePath = path.join(directoryPath, file);
-        const stat = fs.statSync(filePath);
-        
-        if (stat.isDirectory()) {
-          traverseDirectory(filePath);
-        } else if (file.endsWith('.pm.json')) {
-          allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
-        }
-      }
-    };
-
-    for (const promptPath of this.promptsPaths) {
-      if (fs.statSync(promptPath).isDirectory()) {
-        traverseDirectory(promptPath);
-      } else {
-        allPrompts = [...allPrompts, ...this.loadPromptsFromFile(promptPath)];
-      }
-    }
-
-    return this.processPrompts(allPrompts);
-  }
-
   private loadPromptsFromFile(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
-      const prompts = JSON.parse(data);
+      let prompts: PromptProps[];
+
+      const fileExtension = path.extname(filePath).toLowerCase();
+
+      if (fileExtension === '.hjson') {
+        prompts = hjson.parse(data);
+      } else if (fileExtension === '.json') {
+        prompts = JSON.parse(data);
+      } else {
+        console.error(`Unsupported file extension: ${fileExtension}`);
+        return [];
+      }
+
       const baseDir = path.dirname(filePath);
 
       const loadContent = (prompt: PromptProps) => {
@@ -118,6 +98,39 @@ class PromptManager {
       console.error(`Error loading prompts from ${filePath}:`, error);
       return [];
     }
+  }
+
+  private loadAllPrompts(): PromptProps[] {
+    let allPrompts: PromptProps[] = [];
+
+    const traverseDirectory = (directoryPath: string) => {
+      const files = fs.readdirSync(directoryPath);
+      for (const file of files) {
+        // 忽略以 # 开头的文件和目录
+        if (file.startsWith('#')) {
+          continue;
+        }
+
+        const filePath = path.join(directoryPath, file);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+          traverseDirectory(filePath);
+        } else if (file.endsWith('.pm.json') || file.endsWith('.pm.hjson')) {
+          allPrompts = [...allPrompts, ...this.loadPromptsFromFile(filePath)];
+        }
+      }
+    };
+
+    for (const promptPath of this.promptsPaths) {
+      if (fs.statSync(promptPath).isDirectory()) {
+        traverseDirectory(promptPath);
+      } else {
+        allPrompts = [...allPrompts, ...this.loadPromptsFromFile(promptPath)];
+      }
+    }
+
+    return this.processPrompts(allPrompts);
   }
 
   private processPrompt(prompt: PromptProps): PromptProps {
