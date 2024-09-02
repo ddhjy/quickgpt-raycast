@@ -29,6 +29,7 @@ export type PromptProps = {
   rawRef?: { [key: string]: string | string[] };
   options?: { [key: string]: string[] };
   actions?: string[];
+  textInputs?: { [key: string]: string };
 };
 
 function loadContentFromFile(filePath: string, baseDir: string): string {
@@ -140,9 +141,12 @@ class PromptManager {
     if (prompt.ref) {
       prompt.rawRef = { ...prompt.ref };
       prompt.options = {};
+      prompt.textInputs = {};
       for (const [key, value] of Object.entries(prompt.ref)) {
         if (Array.isArray(value)) {
           prompt.options[key] = value;
+        } else if (typeof value === 'string') {
+          prompt.textInputs[key] = value;
         }
       }
       delete prompt.ref;
