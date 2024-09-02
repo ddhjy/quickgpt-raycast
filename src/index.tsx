@@ -80,7 +80,9 @@ function OptionsForm({
   getFormattedContent: () => string;
 }) {
   const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
-  const formattedContentWithOptions = () => contentFormat(getFormattedContent() || "", currentOptions);
+  const [currentTextInputs, setCurrentTextInputs] = useState<{ [key: string]: string }>({});
+  const formattedContentWithOptions = () => contentFormat(getFormattedContent() || "", { ...currentOptions, ...currentTextInputs });
+  
   return (
     <Form
       actions={
@@ -103,6 +105,18 @@ function OptionsForm({
             <Form.Dropdown.Item key={value} value={value} title={value} />
           ))}
         </Form.Dropdown>
+      ))}
+      {Object.entries(prompt.textInputs || {}).map(([key, placeholder]) => (
+        <Form.TextField
+          key={key}
+          id={key}
+          title={key}
+          placeholder={placeholder}
+          value={currentTextInputs[key] || ""}
+          onChange={(newValue) => {
+            setCurrentTextInputs({ ...currentTextInputs, [key]: newValue });
+          }}
+        />
       ))}
     </Form>
   );
