@@ -145,7 +145,7 @@ class PromptManager {
       for (const [key, value] of Object.entries(prompt.ref)) {
         if (Array.isArray(value)) {
           prompt.options[key] = value;
-        } else if (typeof value === 'string') {
+        } else if (typeof value === 'string' && !value.startsWith('/')) {
           prompt.textInputs[key] = value;
         }
       }
