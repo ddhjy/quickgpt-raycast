@@ -18,7 +18,6 @@ import promptManager, { PromptProps } from "./promptManager";
 import { contentFormat, SpecificReplacements } from "./contentFormat";
 import fs from "fs";
 import { match } from "pinyin-pro";
-import React from "react";
 import { getPromptActions } from "./getPromptActions";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
@@ -329,7 +328,6 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedInde
       if (!argumentSelectionText || argumentSelectionText.length === 0) {
         try {
           const text = await getSelectedText();
-          // console.log("选中的文本:", text);
           return text;
         } catch (_) {
           console.error("选中文本读取失败，返回空字符串");
