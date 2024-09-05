@@ -105,7 +105,9 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
           onAction={() => {
             closeMainWindow();
-            Clipboard.paste(getFormattedDescription());
+            const description = getFormattedDescription();
+            Clipboard.copy(description);
+            Clipboard.paste(description);
           }}
         />
       ),
