@@ -28,6 +28,7 @@ const supportedPrefixCMD: { [key: string]: string } = {
   ne: "NO EXPLANATION",
   np: "Do not use plugins and data analysis",
   cot: "Take a deep breath and work on this problem step-by-step",
+  w: "Do not use Web Search",
 };
 
 const defaultPrefixCMD = ["c", "cot"];
