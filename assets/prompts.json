@@ -167,7 +167,7 @@
       {
         "title": "Commit Message",
         "identifier": "CommitMessage-C6856812",
-        "prefixCMD": "ne,!c",
+        "prefixCMD": "ne,!c,w",
         "content": "为下列diff生成简短的commit, 按下面的格式展示，英文作答：\n\n格式：\"\"\"\n```\ngit commit -m \"<简短的commit message>\"\ngit push\n```\n\"\"\"\n\ndiff内容：\"\"\"\n{{c}}\n\"\"\""
       },
       {
