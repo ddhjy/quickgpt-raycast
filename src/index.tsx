@@ -27,7 +27,7 @@ const supportedPrefixCMD: { [key: string]: string } = {
   c: "简体中文作答",
   ne: "NO EXPLANATION",
   np: "Do not use plugins and data analysis",
-  cot: "Take a deep breath and work on this problem step-by-step",
+  cot: "Take a deep breath and work on this problem step-by-step, first analyze, then draw conclusions",
   ns: "Do not use Web Search",
 };
 
