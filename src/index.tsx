@@ -23,7 +23,7 @@ import { getPromptActions } from "./getPromptActions";
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
 
-const supportedPrefixCMD: { [key: string]: string } = {
+const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
   c: "简体中文作答",
   ne: "NO EXPLANATION",
   np: "Do not use plugins and data analysis",
@@ -31,63 +31,71 @@ const supportedPrefixCMD: { [key: string]: string } = {
   ns: "Do not use tool and Web Search",
 };
 
-const defaultPrefixCMD = ["ns", "c", "cot"];
+const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
 
-function processActionPrefixCMD(content: string, actionPrefixCMD: string | undefined) {
-  let currentPrefixCMD = defaultPrefixCMD.slice();
-  const actionPrefixes = actionPrefixCMD?.split(",");
-  actionPrefixes?.forEach((cmd) => {
-    cmd.startsWith("!")
-      ? (currentPrefixCMD = currentPrefixCMD.filter((c) => c !== cmd.substring(1)))
-      : currentPrefixCMD.push(cmd);
+function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
+  let activePrefixCommands = [...DEFAULT_PREFIX_COMMANDS];
+  const prefixes = prefixCommands?.split(",");
+  
+  prefixes?.forEach((cmd) => {
+    if (cmd.startsWith("!")) {
+      activePrefixCommands = activePrefixCommands.filter((c) => c !== cmd.substring(1));
+    } else {
+      activePrefixCommands.push(cmd);
+    }
   });
-  currentPrefixCMD = [...new Set(currentPrefixCMD)];
 
-  currentPrefixCMD.reverse().forEach((cmd) => {
-    content = `! ${supportedPrefixCMD[cmd]}\n` + content;
+  activePrefixCommands = Array.from(new Set(activePrefixCommands));
+
+  activePrefixCommands.reverse().forEach((cmd) => {
+    content = `! ${SUPPORTED_PREFIX_COMMANDS[cmd]}\n` + content;
   });
 
   return content;
 }
 
-function findQuickPrompt(selectionText: string, identifier?: string): [PromptProps | undefined, string] {
-  let foundAction;
+function getQuickPrompt(selectionText: string, identifier?: string): [PromptProps | undefined, string] {
+  let foundPrompt;
   let cleanedText = selectionText;
 
   if (identifier) {
-    foundAction = promptManager.findPrompt((action) => `${IDENTIFIER_PREFIX}${action.identifier}` === identifier);
-  } else {
-    foundAction = promptManager.findPrompt(
-      (action) => (action.identifier && selectionText.includes(IDENTIFIER_PREFIX + action.identifier)) || false
+    foundPrompt = promptManager.findPrompt(
+      (prompt) => `${IDENTIFIER_PREFIX}${prompt.identifier}` === identifier
     );
-    if (foundAction?.identifier) {
+  } else {
+    foundPrompt = promptManager.findPrompt(
+      (prompt) =>
+        !!prompt.identifier && selectionText.includes(`${IDENTIFIER_PREFIX}${prompt.identifier}`)
+    );
+    if (foundPrompt?.identifier) {
       cleanedText = selectionText
-        .split(IDENTIFIER_PREFIX + foundAction.identifier)
+        .split(`${IDENTIFIER_PREFIX}${foundPrompt.identifier}`)
         .slice(1)
         .join("")
         .trim();
     }
   }
 
-  return [foundAction, cleanedText];
+  return [foundPrompt, cleanedText];
 }
 
-function OptionsForm({
-  prompt,
-  getFormattedContent,
-}: {
+interface OptionsFormProps {
   prompt: PromptProps;
   getFormattedContent: () => string;
-}) {
-  const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
-  const [currentTextInputs, setCurrentTextInputs] = useState<{ [key: string]: string }>({});
-  const formattedContentWithOptions = () => contentFormat(getFormattedContent() || "", { ...currentOptions, ...currentTextInputs });
-  
+}
+
+function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
+  const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
+  const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
+
+  const formattedContent = () =>
+    contentFormat(getFormattedContent() || "", { ...selectedOptions, ...selectedTextInputs });
+
   return (
     <Form
       actions={
         <ActionPanel>
-          {getPromptActions(formattedContentWithOptions)}
+          {getPromptActions(formattedContent)}
         </ActionPanel>
       }
     >
@@ -96,9 +104,9 @@ function OptionsForm({
           key={key}
           id={key}
           title={key}
-          value={currentOptions[key] || values[0]}
+          value={selectedOptions[key] || values[0]}
           onChange={(newValue) => {
-            setCurrentOptions({ ...currentOptions, [key]: newValue });
+            setSelectedOptions({ ...selectedOptions, [key]: newValue });
           }}
         >
           {values.map((value) => (
@@ -112,9 +120,9 @@ function OptionsForm({
           id={key}
           title={key}
           placeholder={placeholder}
-          value={currentTextInputs[key] || ""}
+          value={selectedTextInputs[key] || ""}
           onChange={(newValue) => {
-            setCurrentTextInputs({ ...currentTextInputs, [key]: newValue });
+            setSelectedTextInputs({ ...selectedTextInputs, [key]: newValue });
           }}
         />
       ))}
@@ -122,7 +130,7 @@ function OptionsForm({
   );
 }
 
-function buildFormattedPromptContent(prompt: PromptProps, replacements: SpecificReplacements) {
+function buildFormattedPromptContent(prompt: PromptProps, replacements: SpecificReplacements): string {
   if (prompt.rawRef) {
     for (const [key, filePath] of Object.entries(prompt.rawRef)) {
       try {
@@ -132,32 +140,38 @@ function buildFormattedPromptContent(prompt: PromptProps, replacements: Specific
           prompt.content = prompt.content?.replace(placeholder, fileContent);
         }
       } catch (error) {
-        console.error(`错误：读取文件失败: ${filePath}`, error);
+        console.error(`Error: Failed to read file: ${filePath}`, error);
       }
     }
   }
-  const processedContent = prompt.content ? processActionPrefixCMD(prompt.content, prompt.prefixCMD) : undefined;
+  
+  const processedContent = prompt.content
+    ? applyPrefixCommandsToContent(prompt.content, prompt.prefixCMD)
+    : undefined;
+  
   const formattedContent = contentFormat(processedContent || "", replacements);
   return formattedContent;
 }
 
-function PromptList({
-  prompts: prompts,
-  searchMode = false,
-  clipboardText = "",
-  selectionText = "",
-  currentApp = "",
-}: {
+interface PromptListProps {
   prompts: PromptProps[];
-  searchMode: boolean;
+  searchMode?: boolean;
   clipboardText: string;
   selectionText: string;
   currentApp: string;
-}) {
+}
+
+function PromptList({
+  prompts,
+  searchMode = false,
+  clipboardText,
+  selectionText,
+  currentApp,
+}: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
 
-  // 只在搜索模式下进行筛选
+  // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
     prompts = promptManager.getFilteredPrompts((prompt) => {
       return (
@@ -167,7 +181,7 @@ function PromptList({
     });
   }
 
-  if (searchMode && searchText && searchText.slice(-1) === " ") {
+  if (searchMode && searchText.endsWith(" ")) {
     clearSearchBar({ forceScrollToTop: true });
     return (
       <PromptList
@@ -182,20 +196,27 @@ function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
 
-  const replacements: SpecificReplacements = { query: activeSearchText, clipboard: clipboardText, selection: selectionText, currentApp: currentApp };
+  const replacements: SpecificReplacements = {
+    query: activeSearchText,
+    clipboard: clipboardText,
+    selection: selectionText,
+    currentApp: currentApp,
+  };
 
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
       const formattedTitle = contentFormat(prompt.title || "", replacements);
 
-      // 将 formattedContent 的生成延后
+      // Lazy generation of formatted content
       const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements);
 
-      // 移除在 Input mode 下的筛选辑
-      if (searchMode && activeSearchText &&
-        formattedTitle == prompt.title &&
-        prompt.title.toLowerCase().indexOf(activeSearchText.toLowerCase()) == -1 &&
+      // Exclude prompts not matching search criteria in input mode
+      if (
+        searchMode &&
+        activeSearchText &&
+        formattedTitle === prompt.title &&
+        !prompt.title.toLowerCase().includes(activeSearchText.toLowerCase()) &&
         !match(prompt.title, activeSearchText, { continuous: true })
       ) {
         return null;
@@ -207,17 +228,21 @@ function PromptList({
           title={formattedTitle.replace(/\n/g, " ")}
           icon={prompt.icon ?? DEFAULT_ICON}
           accessories={[
-            prompt.pinned ? { tag: { value: "PIN", color: Color.SecondaryText } } : {},
+            prompt.pinned
+              ? { tag: { value: "PIN", color: Color.SecondaryText } }
+              : {},
             {
               icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
               tooltip:
                 prompt.content ??
-                prompt.subprompts?.map((subaction, index) => `${index + 1}. ${subaction.title} `).join("\n"),
+                prompt.subprompts
+                  ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
+                  .join("\n"),
             },
           ]}
           actions={
             <ActionPanel>
-              {prompt.subprompts && (
+              {prompt.subprompts ? (
                 <RaycastAction.Push
                   title="Open"
                   icon={prompt.icon ?? DEFAULT_ICON}
@@ -231,15 +256,14 @@ function PromptList({
                     />
                   }
                 />
-              )}
-              {!prompt.subprompts && (
+              ) : (
                 <>
                   {prompt.options && Object.keys(prompt.options).length > 0 ? (
                     <RaycastAction.Push
-                      title="选择参数"
+                      title="Select Options"
                       icon={Icon.Gear}
                       target={
-                        <OptionsForm
+                        <PromptOptionsForm
                           prompt={prompt}
                           getFormattedContent={getFormattedContent}
                         />
@@ -250,34 +274,32 @@ function PromptList({
                   )}
                 </>
               )}
-              {
-                <Action
-                  title={prompt.pinned ? "Unpin" : "Pin"}
-                  icon={Icon.Pin}
-                  onAction={() => {
-                    prompt.pinned = !prompt.pinned;
-                    prompt.pinned ? pinsManager.pin(prompt.identifier) : pinsManager.unpin(prompt.identifier);
-                    forceUpdate((n) => n + 1);
-                  }}
-                  shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+              <Action
+                title={prompt.pinned ? "Unpin" : "Pin"}
+                icon={Icon.Pin}
+                onAction={() => {
+                  prompt.pinned = !prompt.pinned;
+                  prompt.pinned
+                    ? pinsManager.pin(prompt.identifier)
+                    : pinsManager.unpin(prompt.identifier);
+                  forceUpdate((n) => n + 1);
+                }}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+              />
+              <>
+                <RaycastAction.CopyToClipboard
+                  title="Copy Identifier"
+                  content={`${IDENTIFIER_PREFIX}${prompt.identifier}`}
+                  icon={Icon.Document}
                 />
-              }
-              {
-                <>
-                  <RaycastAction.CopyToClipboard
-                    title="Copy Identifier"
-                    content={IDENTIFIER_PREFIX + prompt.identifier}
-                    icon={Icon.Document}
-                  />
-                  <RaycastAction.CopyToClipboard
-                    title="Copy Deeplink"
-                    content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
-                      JSON.stringify({ target: IDENTIFIER_PREFIX + prompt.identifier })
-                    )}`}
-                    icon={Icon.Link}
-                  />
-                </>
-              }
+                <RaycastAction.CopyToClipboard
+                  title="Copy Deeplink"
+                  content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
+                    JSON.stringify({ target: `${IDENTIFIER_PREFIX}${prompt.identifier}` })
+                  )}`}
+                  icon={Icon.Link}
+                />
+              </>
             </ActionPanel>
           }
         />
@@ -286,7 +308,7 @@ function PromptList({
 
   return (
     <List
-      searchBarPlaceholder={searchMode ? "Search mode" : "Input mode"}
+      searchBarPlaceholder={searchMode ? "Search Mode" : "Input Mode"}
       onSearchTextChange={setSearchText}
       filtering={false}
     >
@@ -295,86 +317,100 @@ function PromptList({
   );
 }
 
-interface ExtendedIndex extends Arguments.Index {
+interface ExtendedArguments extends Arguments.Index {
   clipboardText?: string;
   selectionText?: string;
   target?: string;
 }
 
-export default function MainCommand(props: LaunchProps<{ arguments: ExtendedIndex }>) {
+export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const {
-    selectionText: argumentSelectionText,
-    clipboardText: argumentClipboardText,
-    target: target,
+    selectionText: initialSelectionText,
+    clipboardText: initialClipboardText,
+    target,
   } = props.arguments;
-  const [clipboardText, setClipboardText] = useState(argumentClipboardText ?? "");
-  const [selectionText, setSelectionText] = useState(argumentSelectionText ?? "");
+
+  const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
+  const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
   const [currentApp, setCurrentApp] = useState("");
 
   useEffect(() => {
-    const fetchClipboardText = async () => {
-      if (!argumentClipboardText || argumentClipboardText.length === 0) {
-        try {
-          const text = await Clipboard.readText() ?? "";
-          return text;
-        } catch (_) {
-          console.error("剪贴板文本读取失败，返回空字符串");
-          return "";
-        }
+    const fetchClipboardText = async (): Promise<string> => {
+      if (initialClipboardText && initialClipboardText.length > 0) {
+        return initialClipboardText;
       }
-      return argumentClipboardText;
+      try {
+        const text = await Clipboard.readText();
+        return text ?? "";
+      } catch (error) {
+        console.error("Failed to read clipboard text. Returning empty string.", error);
+        return "";
+      }
     };
 
-    const fetchSelectedText = async () => {
-      if (!argumentSelectionText || argumentSelectionText.length === 0) {
-        try {
-          const text = await getSelectedText();
-          return text;
-        } catch (_) {
-          console.error("选中文本读取失败，返回空字符串");
-          return "";
-        }
+    const fetchSelectedText = async (): Promise<string> => {
+      if (initialSelectionText && initialSelectionText.length > 0) {
+        return initialSelectionText;
       }
-      return argumentSelectionText;
+      try {
+        const text = await getSelectedText();
+        return text ?? "";
+      } catch (error) {
+        console.error("Failed to read selected text. Returning empty string.", error);
+        return "";
+      }
+    };
+
+    const fetchFrontmostApp = async (): Promise<string> => {
+      const app = await getFrontmostApplication();
+      return app.name;
     };
 
     if (!target || target.length === 0) {
       const timer = setTimeout(async () => {
-        const [clipboardText, selectedText, frontmostApplication] = await Promise.all([
+        const [fetchedClipboardText, fetchedSelectedText, frontmostApp] = await Promise.all([
           fetchClipboardText(),
           fetchSelectedText(),
-          getFrontmostApplication()
+          fetchFrontmostApp(),
         ]);
-        setClipboardText(clipboardText);
-        setSelectionText(selectedText);
-        setCurrentApp(frontmostApplication.name);
+        setClipboardText(fetchedClipboardText);
+        setSelectionText(fetchedSelectedText);
+        setCurrentApp(frontmostApp);
       }, 10);
 
       return () => clearTimeout(timer);
     } else {
       fetchClipboardText().then(setClipboardText);
     }
-  }, []);
+  }, [initialClipboardText, initialSelectionText, target]);
 
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
-  const pinnedActions = promptManager.getFilteredPrompts((action) => {
-    action.pinned = pinnedIdentifiers.has(action.identifier);
-    return action.pinned;
+  const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
+    prompt.pinned = pinnedIdentifiers.has(prompt.identifier);
+    return prompt.pinned;
   });
 
-  const [quickAction, cleanSelectionText] = findQuickPrompt(selectionText, target);
-  const actionsForUse = quickAction?.subprompts ? quickAction.subprompts : (quickAction ? [quickAction] : [...pinnedActions, ...promptManager.getRootPrompts()]);
-  const selectionTextForUse = quickAction ? cleanSelectionText : selectionText;
-  const uniqueFilteredActions = Array.from(new Set(actionsForUse.map((action) => action.identifier || action.title)))
-    .map((unique) => actionsForUse.find((action) => action.identifier === unique || action.title === unique))
+  const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
+  const availablePrompts = quickPrompt?.subprompts
+    ? quickPrompt.subprompts
+    : quickPrompt
+    ? [quickPrompt]
+    : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+
+  const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
+
+  const uniquePrompts = Array.from(
+    new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title))
+  )
+    .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
     .filter(Boolean) as PromptProps[];
 
   return (
     <PromptList
-      searchMode={quickAction ? false : true}
-      prompts={uniqueFilteredActions}
+      searchMode={!quickPrompt}
+      prompts={uniquePrompts}
       clipboardText={clipboardText}
-      selectionText={selectionTextForUse}
+      selectionText={effectiveSelectionText}
       currentApp={currentApp}
     />
   );
