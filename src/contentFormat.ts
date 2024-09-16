@@ -3,10 +3,11 @@ export type SpecificReplacements = {
   clipboard?: string;
   selection?: string;
   currentApp?: string;
+  browserContent?: string;
 };
 
 type PlaceholderInfo = {
-  literal: string;
+  literal?: string;
   alias?: string;
 };
 
@@ -15,6 +16,7 @@ const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
   selection: { literal: '<选中文本>', alias: 's' },
   clipboard: { literal: '<剪贴板文本>', alias: 'c' },
   currentApp: { literal: '<当前应用>' },
+  browserContent: {},
 };
 
 // 创建别名到键的映射
@@ -50,7 +52,7 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
       if (isPrefixed) {
         // 如果有 'p:' 前缀从 placeholders 获取 literal
         if (specificReplacements[key]) {
-          replacement = placeholders[key]?.literal ?? key;
+          replacement = placeholders[key]?.literal ?? `<${key}>`;
         }
       } else {
         // 否则从 specificReplacements 获取替换值
