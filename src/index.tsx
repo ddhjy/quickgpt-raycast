@@ -176,7 +176,7 @@ function PromptList({
     prompts = promptManager.getFilteredPrompts((prompt) => {
       return (
         prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
-        match(prompt.title, searchText.trim(), { continuous: true })
+        !!match(prompt.title, searchText.trim(), { continuous: true })
       );
     });
   }
@@ -343,7 +343,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         const text = await Clipboard.readText();
         return text ?? "";
       } catch (error) {
-        console.error("Failed to read clipboard text. Returning empty string.", error);
+        console.info("Failed to read clipboard text. Returning empty string.", error);
         return "";
       }
     };
@@ -356,11 +356,11 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         const text = await getSelectedText();
         return text ?? "";
       } catch (error) {
-        console.error("Failed to read selected text. Returning empty string.", error);
+        console.info("Failed to read selected text. Returning empty string.", error);
         return "";
       }
     };
-
+    
     const fetchFrontmostApp = async (): Promise<string> => {
       const app = await getFrontmostApplication();
       return app.name;
