@@ -36,7 +36,7 @@ const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
 function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
   let activePrefixCommands = [...DEFAULT_PREFIX_COMMANDS];
   const prefixes = prefixCommands?.split(",");
-  
+
   prefixes?.forEach((cmd) => {
     if (cmd.startsWith("!")) {
       activePrefixCommands = activePrefixCommands.filter((c) => c !== cmd.substring(1));
@@ -144,11 +144,11 @@ function buildFormattedPromptContent(prompt: PromptProps, replacements: Specific
       }
     }
   }
-  
+
   const processedContent = prompt.content
     ? applyPrefixCommandsToContent(prompt.content, prompt.prefixCMD)
     : undefined;
-  
+
   const formattedContent = contentFormat(processedContent || "", replacements);
   return formattedContent;
 }
@@ -197,7 +197,7 @@ function PromptList({
   const activeSearchText = searchMode ? "" : searchText;
 
   const replacements: SpecificReplacements = {
-    query: activeSearchText,
+    input: activeSearchText,
     clipboard: clipboardText,
     selection: selectionText,
     currentApp: currentApp,
@@ -394,8 +394,8 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
-    ? [quickPrompt]
-    : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+      ? [quickPrompt]
+      : [...pinnedPrompts, ...promptManager.getRootPrompts()];
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 

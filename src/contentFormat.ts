@@ -1,46 +1,67 @@
 export type SpecificReplacements = {
-  query?: string;
+  input?: string;
   clipboard?: string;
   selection?: string;
   currentApp?: string;
 };
 
-const placeholders: Record<string, { key: keyof SpecificReplacements; literal: string }> = {
-  i: { key: 'query', literal: '<输入文本>' },
-  s: { key: 'selection', literal: '<选中文本>' },
-  c: { key: 'clipboard', literal: '<剪贴板文本>' },
+type PlaceholderInfo = {
+  literal: string;
+  alias?: string;
 };
 
+const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
+  input: { literal: '<输入文本>', alias: 'i' },
+  selection: { literal: '<选中文本>', alias: 's' },
+  clipboard: { literal: '<剪贴板文本>', alias: 'c' },
+  currentApp: { literal: '<当前应用>' },
+};
+
+// 创建别名到键的映射
+const aliasMap: Record<string, keyof SpecificReplacements> = Object.entries(placeholders).reduce(
+  (acc, [key, placeholder]) => {
+    if (placeholder.alias) {
+      acc[placeholder.alias] = key as keyof SpecificReplacements;
+    }
+    return acc;
+  },
+  {} as Record<string, keyof SpecificReplacements>
+);
+
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
-  const compositeReplacements: Record<string, string> = {};
-
-  // 处理预定义的替换项
-  for (const [shortKey, { key, literal }] of Object.entries(placeholders)) {
-    const value = specificReplacements[key];
-    if (value) {
-      compositeReplacements[shortKey] = value;
-      compositeReplacements[`p:${shortKey}`] = literal;
-    }
-  }
-
-  // 处理其他替换项
-  for (const [key, value] of Object.entries(specificReplacements)) {
-    if (value && !Object.values(placeholders).some(p => p.key === key)) {
-      compositeReplacements[key] = value;
-    }
-  }
-
-  // 创建正则表达式匹配所有占位符，包括复合占位符
+  // 创建正则表达式匹配所有占位符
   const placeholderPattern = /{{([^}]+)}}/g;
 
-  // 替换文本中的占位符
+  // 修改占位符替换逻辑
   return text.replace(placeholderPattern, (_, placeholderContent) => {
-    const parts = placeholderContent.split('|');
+    // 检查是否有 'p:' 前缀
+    const isPrefixed = placeholderContent.startsWith('p:');
+    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
+
+    // 分割可能的多个选项
+    const parts = content.split('|');
+
     for (const part of parts) {
-      if (compositeReplacements[part]) {
-        return compositeReplacements[part];
+      // 首先尝试通过别名查找对应的键
+      const key = aliasMap[part] || (part as keyof SpecificReplacements);
+
+      let replacement: string | undefined;
+
+      if (isPrefixed) {
+        // 如果有 'p:' 前缀从 placeholders 获取 literal
+        if (specificReplacements[key]) {
+          replacement = placeholders[key]?.literal ?? key;
+        }
+      } else {
+        // 否则从 specificReplacements 获取替换值
+        replacement = specificReplacements[key];
+      }
+
+      if (replacement) {
+        return replacement;
       }
     }
+
     return _;
   });
 }
