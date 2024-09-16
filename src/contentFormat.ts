@@ -6,45 +6,45 @@ export type SpecificReplacements = {
   [key: string]: string | undefined;
 };
 
-const literalPlaceholder: { [K in keyof SpecificReplacements]: string } = {
+const literalPlaceholder: Record<keyof SpecificReplacements, string> = {
   query: "<输入文本>",
   clipboard: "<剪贴板文本>",
   selection: "<选中文本>",
-  currentApp: "<当前应用>"
+  currentApp: "<当前应用>",
 };
 
-const inputPlaceholder: { [key: string]: keyof SpecificReplacements } = {
+const inputPlaceholder: Record<string, keyof SpecificReplacements> = {
   i: "query",
   s: "selection",
   c: "clipboard",
 };
 
-const generateCombinations = (arr: string[]): string[] => {
-  if (arr.length === 1) return arr;
-  const combinations = [];
-  for (let i = 0; i < arr.length; i++) {
-    combinations.push(arr[i]);
-    const rest = arr.slice(0, i).concat(arr.slice(i + 1));
-    for (const restCombination of generateCombinations(rest)) {
-      combinations.push(`${arr[i]}|${restCombination}`);
-    }
+const generateCombinations = (keys: string[]): string[] => {
+  const combinations: string[] = [];
+  const total = 1 << keys.length; // 2^n combinations
+
+  for (let i = 1; i < total; i++) { // 从1开始，避免空组合
+    const combo = keys.filter((_, index) => (i & (1 << index)) !== 0);
+    combinations.push(combo.join("|"));
   }
+
   return combinations;
 };
 
 const allCombinations = generateCombinations(Object.keys(inputPlaceholder));
 
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
-  const compositeReplacements = new Map<string, string>();
+  const compositeReplacements: Record<string, string> = {};
 
   // 处理预定义的替换项
   for (const combination of allCombinations) {
-    const keysInCombination = combination.split("|");
+    const keysInCombination = combination.split("|") as (keyof SpecificReplacements)[];
     for (const key of keysInCombination) {
-      const value = specificReplacements[inputPlaceholder[key]];
+      const replacementKey = inputPlaceholder[key as string];
+      const value = specificReplacements[replacementKey];
       if (value) {
-        compositeReplacements.set(`{{${combination}}}`, value);
-        compositeReplacements.set(`{{p:${combination}}}`, literalPlaceholder[inputPlaceholder[key]]);
+        compositeReplacements[`{{${combination}}}`] = value;
+        compositeReplacements[`{{p:${combination}}}`] = literalPlaceholder[replacementKey];
         break;
       }
     }
@@ -52,17 +52,19 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
 
   // 处理其他替换项
   for (const [key, value] of Object.entries(specificReplacements)) {
-    if (value && !Object.values(inputPlaceholder).includes(key as keyof SpecificReplacements)) {
-      compositeReplacements.set(`{{${key}}}`, value);
+    if (value && !(key in inputPlaceholder)) {
+      compositeReplacements[`{{${key}}}`] = value;
     }
   }
 
-  // 应用替换
-  for (const [tag, value] of compositeReplacements) {
-    if (text.includes(tag)) {
-      text = text.split(tag).join(value);
-    }
-  }
+  // 创建正则表达式匹配所有占位符
+  const placeholderPattern = new RegExp(
+    Object.keys(compositeReplacements)
+      .map(tag => tag.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'))
+      .join('|'),
+    'g'
+  );
 
-  return text;
+  // 替换文本中的占位符
+  return text.replace(placeholderPattern, matched => compositeReplacements[matched] || matched);
 }
