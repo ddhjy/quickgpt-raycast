@@ -61,7 +61,7 @@ class PromptManager {
     const promptFiles: string[] = [];
 
     if (!preferences.disableDefaultPrompts) {
-      promptFiles.push(path.join(__dirname, "assets/prompts.json"));
+      promptFiles.push(path.join(__dirname, "assets/prompts.pm.json"));
     }
 
     const customPromptFiles = [
@@ -177,9 +177,9 @@ class PromptManager {
    * @returns 是否为支持的提示文件
    */
   private isPromptFile(filePath: string): boolean {
-    const supportedExtensions = ['.pm.json', '.pm.hjson'];
-    const ext = path.extname(filePath).toLowerCase();
-    return supportedExtensions.includes(ext);
+    const fileName = path.basename(filePath).toLowerCase();
+    return fileName.endsWith('.pm.json') ||
+           fileName.endsWith('.pm.hjson');
   }
 
   /**
