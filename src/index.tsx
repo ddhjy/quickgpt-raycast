@@ -12,6 +12,7 @@ import {
   getSelectedText,
   Form,
   getFrontmostApplication,
+  BrowserExtension
 } from "@raycast/api";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
@@ -159,6 +160,7 @@ interface PromptListProps {
   clipboardText: string;
   selectionText: string;
   currentApp: string;
+  browserContent: string;
 }
 
 function PromptList({
@@ -167,6 +169,7 @@ function PromptList({
   clipboardText,
   selectionText,
   currentApp,
+  browserContent,
 }: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
@@ -190,6 +193,7 @@ function PromptList({
         clipboardText={clipboardText}
         selectionText={selectionText}
         currentApp={currentApp}
+        browserContent={browserContent}
       />
     );
   }
@@ -201,6 +205,7 @@ function PromptList({
     clipboard: clipboardText,
     selection: selectionText,
     currentApp: currentApp,
+    browserContent: browserContent,
   };
 
   const promptItems = prompts
@@ -253,6 +258,7 @@ function PromptList({
                       clipboardText={clipboardText}
                       selectionText={selectionText}
                       currentApp={currentApp}
+                      browserContent={browserContent}
                     />
                   }
                 />
@@ -333,6 +339,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
   const [currentApp, setCurrentApp] = useState("");
+  const [browserContent, setBrowserContent] = useState("");
 
   useEffect(() => {
     const fetchClipboardText = async (): Promise<string> => {
@@ -366,16 +373,23 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       return app.name;
     };
 
+    const fetchBrowserContent = async (): Promise<string> => {
+      const content = await BrowserExtension.getContent({ format: "markdown" });
+      return content;
+    };
+
     if (!target || target.length === 0) {
       const timer = setTimeout(async () => {
-        const [fetchedClipboardText, fetchedSelectedText, frontmostApp] = await Promise.all([
+        const [fetchedClipboardText, fetchedSelectedText, frontmostApp, fetchedBrowserContent] = await Promise.all([
           fetchClipboardText(),
           fetchSelectedText(),
           fetchFrontmostApp(),
+          fetchBrowserContent(),
         ]);
         setClipboardText(fetchedClipboardText);
         setSelectionText(fetchedSelectedText);
         setCurrentApp(frontmostApp);
+        setBrowserContent(fetchedBrowserContent);
       }, 10);
 
       return () => clearTimeout(timer);
@@ -412,6 +426,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       clipboardText={clipboardText}
       selectionText={effectiveSelectionText}
       currentApp={currentApp}
+      browserContent={browserContent}
     />
   );
 }

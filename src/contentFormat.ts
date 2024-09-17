@@ -16,7 +16,7 @@ const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
   selection: { literal: '<选中文本>', alias: 's' },
   clipboard: { literal: '<剪贴板文本>', alias: 'c' },
   currentApp: { literal: '<当前应用>' },
-  browserContent: {},
+  browserContent: { literal: '<浏览器内容>' },
 };
 
 // 创建别名到键的映射
