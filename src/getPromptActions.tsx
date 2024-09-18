@@ -26,78 +26,62 @@ interface Preferences {
   runScript9?: string;
 }
 
-interface ActionItem {
-  name: string;
-  displayName: string;
-  condition: boolean | undefined;
-  action: React.ReactElement;
-}
-
-export function getPromptActions(
-  getFormattedDescription: () => string,
-  actions?: string[]
-): React.ReactNode[] {
+export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
   const preferences = getPreferenceValues<Preferences>();
-
-  const createOpenInBrowserAction = (
+  const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
-    description: () => string
+    getFormattedDescription: () => string | number | Clipboard.Content
   ) => (
     <Action.OpenInBrowser
       title={title}
       url={url}
-      onOpen={() => Clipboard.copy(description())}
+      onOpen={() => Clipboard.copy(getFormattedDescription())}
     />
   );
 
-  const scriptPaths = [
-    path.join(__dirname, "assets/ChatGPT.applescript"),
-    preferences.runScript1,
-    preferences.runScript2,
-    preferences.runScript3,
-    preferences.runScript4,
-    preferences.runScript5,
-    preferences.runScript6,
-    preferences.runScript7,
-    preferences.runScript8,
-    preferences.runScript9,
-  ];
-
-  const actionItems: ActionItem[] = [
+  const action = [
     {
       name: "openURL",
       displayName: "Open URL",
-      condition: !!preferences.openURL,
-      action: createOpenInBrowserAction(
-        "Open URL",
-        preferences.openURL || "",
-        getFormattedDescription
-      ),
+      condition: preferences.openURL,
+      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", getFormattedDescription),
     },
-    ...scriptPaths.map((script, index) => ({
-      name: `runScript${index + 1}`,
-      displayName: `Run ${path.basename(script || "", path.extname(script || ""))}`,
-      condition: !!script,
-      action: (
-        <Action
-          title={`Run ${path.basename(script || "", path.extname(script || ""))}`}
-          icon={Icon.Terminal}
-          onAction={() => {
-            closeMainWindow();
-            Clipboard.copy(getFormattedDescription());
-            if (script) {
-              const scriptContent = fs.readFileSync(script, "utf8");
-              runAppleScript(scriptContent);
-            }
-          }}
-        />
-      ),
-    })),
+    ...[
+      path.join(__dirname, "assets/ChatGPT.applescript"),
+      preferences.runScript1,
+      preferences.runScript2,
+      preferences.runScript3,
+      preferences.runScript4,
+      preferences.runScript5,
+      preferences.runScript6,
+      preferences.runScript7,
+      preferences.runScript8,
+      preferences.runScript9,
+    ].map((script, index) => {
+      return {
+        name: `runScript${index}`,
+        displayName: `Run ${path.basename(script ?? "", path.extname(script ?? ""))}`,
+        condition: script,
+        action: (
+          <Action
+            title={`Run ${path.basename(script ?? "", path.extname(script ?? ""))}`}
+            key={`runScript${index + 1}`}
+            icon={Icon.Terminal}
+            onAction={() => {
+              closeMainWindow();
+              Clipboard.copy(getFormattedDescription());
+              const myScript = fs.readFileSync(script ?? "", "utf8");
+              runAppleScript(myScript);
+            }}
+          />
+        ),
+      };
+    }),
     {
       name: "copyToClipboard",
-      displayName: "Copy",
       condition: true,
+      displayName: "Copy",
       action: (
         <Action
           title="Copy"
@@ -112,8 +96,8 @@ export function getPromptActions(
     },
     {
       name: "paste",
-      displayName: "Paste",
       condition: true,
+      displayName: "Paste",
       action: (
         <Action
           title="Paste"
@@ -130,34 +114,34 @@ export function getPromptActions(
     },
   ];
 
-  // 筛选并排序操作项
-  const sortedActions = actionItems
-    .filter(item => item.condition && item.action)
-    .sort((a, b) => {
-      const lastAction = lastActionStore.getLastAction();
-      if (actions && actions.includes(a.displayName)) return -1;
-      if (actions && actions.includes(b.displayName)) return 1;
-      if (a.name === preferences.primaryAction) return -1;
-      if (b.name === preferences.primaryAction) return 1;
-      if (a.name === lastAction) return -1;
-      if (b.name === lastAction) return 1;
-      if (a.name === preferences.secondaryAction && b.name !== preferences.primaryAction) return -1;
-      if (b.name === preferences.secondaryAction && a.name !== preferences.primaryAction) return 1;
-      return 0;
-    })
-    .map((item, index) =>
-      React.cloneElement(item.action, {
-        key: index,
-        onAction: () => {
-          lastActionStore.setLastAction(item.name);
-          const originalOnAction = item.action.props.onAction;
-          if (originalOnAction) {
-            originalOnAction();
-          }
-        },
-      })
-    )
-    .filter(Boolean);
-
-  return sortedActions;
+  return (
+    <>
+      {action
+        .sort((a, b) => {
+          const lastSelectedAction = lastActionStore.getLastAction();
+          if (actions && actions.includes(a.displayName)) return -1;
+          if (actions && actions.includes(b.displayName)) return 1;
+          if (a.name === preferences.primaryAction) return -1;
+          if (b.name === preferences.primaryAction) return 1;
+          if (a.name === lastSelectedAction) return -1;
+          if (b.name === lastSelectedAction) return 1;
+          if (a.name === preferences.secondaryAction && b.name !== preferences.primaryAction) return -1;
+          if (b.name === preferences.secondaryAction && a.name !== preferences.primaryAction) return 1;
+          return 0;
+        })
+        .map((option, index) =>
+          option.condition && option.action ? React.cloneElement(option.action, {
+            key: index,
+            onAction: () => {
+              lastActionStore.setLastAction(option.name)
+              if (option.action.props.onAction) {
+                option.action.props.onAction();
+              }
+            }
+          }) : null
+        )
+        .filter(Boolean)
+      }
+    </>
+  );
 }
