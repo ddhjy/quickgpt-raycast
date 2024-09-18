@@ -30,32 +30,27 @@ const aliasMap: Record<string, keyof SpecificReplacements> = Object.entries(plac
   {} as Record<string, keyof SpecificReplacements>
 );
 
+/**
+ * 格式化内容，替换占位符为具体值
+ * @param text 要格式化的文本
+ * @param specificReplacements 替换的具体值
+ * @returns 格式化后的文本
+ */
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
-  // 创建正则表达式匹配所有占位符
   const placeholderPattern = /{{([^}]+)}}/g;
 
-  // 修改占位符替换逻辑
   return text.replace(placeholderPattern, (_, placeholderContent) => {
-    // 检查是否有 'p:' 前缀
     const isPrefixed = placeholderContent.startsWith('p:');
     const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-
-    // 分割可能的多个选项
     const parts = content.split('|');
 
     for (const part of parts) {
-      // 首先尝试通过别名查找对应的键
       const key = aliasMap[part] || (part as keyof SpecificReplacements);
-
       let replacement: string | undefined;
 
       if (isPrefixed) {
-        // 如果有 'p:' 前缀从 placeholders 获取 literal
-        if (specificReplacements[key]) {
-          replacement = placeholders[key]?.literal ?? `<${key}>`;
-        }
+        replacement = specificReplacements[key] ? placeholders[key]?.literal || `<${key}>` : undefined;
       } else {
-        // 否则从 specificReplacements 获取替换值
         replacement = specificReplacements[key];
       }
 
@@ -64,6 +59,7 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
       }
     }
 
+    // 如果没有找到合适的替换，则返回原始占位符
     return _;
   });
 }
