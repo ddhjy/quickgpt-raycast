@@ -12,7 +12,6 @@ import {
   getSelectedText,
   Form,
   getFrontmostApplication,
-  BrowserExtension
 } from "@raycast/api";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
@@ -34,6 +33,12 @@ const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
 
 const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
 
+/**
+ * 应用前缀命令到内容
+ * @param content 原始内容
+ * @param prefixCommands 前缀命令
+ * @returns 处理后的内容
+ */
 function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
   let activePrefixCommands = [...DEFAULT_PREFIX_COMMANDS];
   const prefixes = prefixCommands?.split(",");
@@ -49,14 +54,23 @@ function applyPrefixCommandsToContent(content: string, prefixCommands: string | 
   activePrefixCommands = Array.from(new Set(activePrefixCommands));
 
   activePrefixCommands.reverse().forEach((cmd) => {
-    content = `! ${SUPPORTED_PREFIX_COMMANDS[cmd]}\n` + content;
+    const commandText = SUPPORTED_PREFIX_COMMANDS[cmd];
+    if (commandText) {
+      content = `! ${commandText}\n${content}`;
+    }
   });
 
   return content;
 }
 
+/**
+ * 获取快速提示
+ * @param selectionText 选中的文本
+ * @param identifier 目标标识符
+ * @returns 快速提示和清理后的选择文本
+ */
 function getQuickPrompt(selectionText: string, identifier?: string): [PromptProps | undefined, string] {
-  let foundPrompt;
+  let foundPrompt: PromptProps | undefined;
   let cleanedText = selectionText;
 
   if (identifier) {
@@ -141,7 +155,7 @@ function buildFormattedPromptContent(prompt: PromptProps, replacements: Specific
           prompt.content = prompt.content?.replace(placeholder, fileContent);
         }
       } catch (error) {
-        console.error(`Error: Failed to read file: ${filePath}`, error);
+        console.error(`错误: 无法读取文件: ${filePath}`, error);
       }
     }
   }
@@ -174,8 +188,8 @@ function PromptList({
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
 
-  // Filter prompts only in search mode
-  if (searchMode && searchText.length > 0) {
+  // 过滤提示（仅在搜索模式下）
+  if (searchMode && searchText.trim()) {
     prompts = promptManager.getFilteredPrompts((prompt) => {
       return (
         prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
@@ -184,6 +198,7 @@ function PromptList({
     });
   }
 
+  // input mode
   if (searchMode && searchText.endsWith(" ")) {
     clearSearchBar({ forceScrollToTop: true });
     return (
@@ -213,10 +228,10 @@ function PromptList({
     .map((prompt, index) => {
       const formattedTitle = contentFormat(prompt.title || "", replacements);
 
-      // Lazy generation of formatted content
+      // 懒加载格式化内容
       const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements);
 
-      // Exclude prompts not matching search criteria in input mode
+      // 在输入模式下排除不匹配的提示
       if (
         searchMode &&
         activeSearchText &&
@@ -231,7 +246,7 @@ function PromptList({
         <List.Item
           key={index}
           title={formattedTitle.replace(/\n/g, " ")}
-          icon={prompt.icon ?? DEFAULT_ICON}
+          icon={prompt.icon || DEFAULT_ICON}
           accessories={[
             prompt.pinned
               ? { tag: { value: "PIN", color: Color.SecondaryText } }
@@ -239,7 +254,7 @@ function PromptList({
             {
               icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
               tooltip:
-                prompt.content ??
+                prompt.content ||
                 prompt.subprompts
                   ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
                   .join("\n"),
@@ -250,7 +265,7 @@ function PromptList({
               {prompt.subprompts ? (
                 <RaycastAction.Push
                   title="Open"
-                  icon={prompt.icon ?? DEFAULT_ICON}
+                  icon={prompt.icon || DEFAULT_ICON}
                   target={
                     <PromptList
                       searchMode={false}
@@ -288,7 +303,7 @@ function PromptList({
                   prompt.pinned
                     ? pinsManager.pin(prompt.identifier)
                     : pinsManager.unpin(prompt.identifier);
-                  forceUpdate((n) => n + 1);
+                  forceUpdate(n => n + 1);
                 }}
                 shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
               />
@@ -336,50 +351,56 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     target,
   } = props.arguments;
 
-  const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
-  const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
+  const [clipboardText, setClipboardText] = useState(initialClipboardText || "");
+  const [selectionText, setSelectionText] = useState(initialSelectionText || "");
   const [currentApp, setCurrentApp] = useState("");
   const [browserContent, setBrowserContent] = useState("");
 
   useEffect(() => {
     const fetchClipboardText = async (): Promise<string> => {
-      if (initialClipboardText && initialClipboardText.length > 0) {
-        return initialClipboardText;
-      }
+      if (initialClipboardText) return initialClipboardText;
       try {
         const text = await Clipboard.readText();
-        return text ?? "";
-      } catch (error) {
-        console.info("Failed to read clipboard text. Returning empty string.", error);
+        return text || "";
+      } catch {
+        console.info("Failed to read clipboard text.");
         return "";
       }
     };
 
     const fetchSelectedText = async (): Promise<string> => {
-      if (initialSelectionText && initialSelectionText.length > 0) {
-        return initialSelectionText;
-      }
+      if (initialSelectionText) return initialSelectionText;
       try {
         const text = await getSelectedText();
-        return text ?? "";
-      } catch (error) {
-        console.info("Failed to read selected text. Returning empty string.", error);
+        return text || "";
+      } catch {
+        console.info("Failed to read selected text.");
         return "";
       }
     };
-    
+
     const fetchFrontmostApp = async (): Promise<string> => {
-      const app = await getFrontmostApplication();
-      return app.name;
+      try {
+        const app = await getFrontmostApplication();
+        return app.name;
+      } catch {
+        console.info("Failed to get frontmost application.");
+        return "";
+      }
     };
 
     const fetchBrowserContent = async (): Promise<string> => {
-      const content = await BrowserExtension.getContent({ format: "markdown" });
-      return content;
+      try {
+        const content = await Clipboard.readText(); // 假设从剪贴板获取浏览器内容
+        return content || "";
+      } catch {
+        console.info("Failed to read browser content.");
+        return "";
+      }
     };
 
-    if (!target || target.length === 0) {
-      const timer = setTimeout(async () => {
+    const initialize = async () => {
+      if (!target) {
         const [fetchedClipboardText, fetchedSelectedText, frontmostApp, fetchedBrowserContent] = await Promise.all([
           fetchClipboardText(),
           fetchSelectedText(),
@@ -390,19 +411,19 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         setSelectionText(fetchedSelectedText);
         setCurrentApp(frontmostApp);
         setBrowserContent(fetchedBrowserContent);
-      }, 10);
+      } else {
+        const fetchedClipboardText = await fetchClipboardText();
+        setClipboardText(fetchedClipboardText);
+      }
+    };
 
-      return () => clearTimeout(timer);
-    } else {
-      fetchClipboardText().then(setClipboardText);
-    }
+    initialize();
   }, [initialClipboardText, initialSelectionText, target]);
 
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
-  const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
-    prompt.pinned = pinnedIdentifiers.has(prompt.identifier);
-    return prompt.pinned;
-  });
+  const pinnedPrompts = promptManager.getFilteredPrompts(prompt =>
+    pinnedIdentifiers.has(prompt.identifier)
+  );
 
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
   const availablePrompts = quickPrompt?.subprompts
@@ -414,9 +435,9 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
   const uniquePrompts = Array.from(
-    new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title))
+    new Set(availablePrompts.map(prompt => prompt.identifier || prompt.title))
   )
-    .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
+    .map(unique => availablePrompts.find(prompt => prompt.identifier === unique || prompt.title === unique))
     .filter(Boolean) as PromptProps[];
 
   return (

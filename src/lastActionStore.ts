@@ -9,10 +9,18 @@ class LastActionStore {
     this.key = key;
   }
 
-  setLastAction(action: string) {
+  /**
+   * 设置最后一个执行的操作
+   * @param action 操作名称
+   */
+  setLastAction(action: string): void {
     this.cache.set(this.key, action);
   }
 
+  /**
+   * 获取最后一个执行的操作
+   * @returns 操作名称或undefined
+   */
   getLastAction(): string | undefined {
     return this.cache.get(this.key);
   }

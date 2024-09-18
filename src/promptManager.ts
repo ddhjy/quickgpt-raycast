@@ -32,24 +32,30 @@ export type PromptProps = {
   textInputs?: { [key: string]: string };
 };
 
-function loadContentFromFile(filePath: string, baseDir: string): string {
+/**
+ * 从文件同步加载内容
+ * @param filePath 文件路径
+ * @param baseDir 基础目录
+ * @returns 文件内容或错误信息
+ */
+function loadContentFromFileSync(filePath: string, baseDir: string): string {
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(baseDir, filePath);
   try {
     return fs.readFileSync(fullPath, 'utf-8');
   } catch (error) {
-    console.error(`Error reading file ${fullPath}: ${error}`);
+    console.error(`读取文件失败 ${fullPath}:`, error);
     return `Error: Unable to read file ${filePath}`;
   }
 }
 
 class PromptManager {
   private promptFilePaths: string[];
-  private prompts: PromptProps[];
+  private prompts: PromptProps[] = [];
 
   constructor() {
     const preferences = getPreferenceValues<Preferences>();
     this.promptFilePaths = this.buildPromptFilePaths(preferences);
-    this.prompts = this.loadAllPrompts();
+    this.loadAllPrompts();
   }
 
   /**
@@ -80,11 +86,11 @@ class PromptManager {
   }
 
   /**
-   * 从指定文件加载提示
+   * 从指定文件同步加载提示
    * @param filePath 提示文件的路径
    * @returns PromptProps 数组
    */
-  private loadPromptsFromFile(filePath: string): PromptProps[] {
+  private loadPromptsFromFileSync(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
       let prompts: PromptProps[];
@@ -96,78 +102,62 @@ class PromptManager {
       } else if (fileExtension === '.json') {
         prompts = JSON.parse(data);
       } else {
-        console.error(`Unsupported file extension: ${fileExtension}`);
+        console.error(`不支持的文件扩展名: ${fileExtension}`);
         return [];
       }
-
       const baseDir = path.dirname(filePath);
-
-      return prompts.map(prompt => this.resolvePromptContent(prompt, baseDir));
+      const resolvedPrompts = prompts.map(prompt => this.resolvePromptContentSync(prompt, baseDir));
+      return resolvedPrompts;
     } catch (error) {
-      console.error(`Error loading prompts from ${filePath}:`, error);
+      console.error(`加载提示失败 ${filePath}:`, error);
       return [];
     }
   }
 
   /**
-   * 递归加载所有提示
-   * @returns 所有加载的 PromptProps 数组
+   * 同步加载所有提示
    */
-  private loadAllPrompts(): PromptProps[] {
-    const allPrompts: PromptProps[] = [];
-
+  private loadAllPrompts(): void {
     for (const promptPath of this.promptFilePaths) {
-      if (!fs.existsSync(promptPath)) {
-        console.warn(`Prompt path does not exist: ${promptPath}`);
-        continue;
-      }
-
-      const stat = fs.statSync(promptPath);
-
-      if (stat.isDirectory()) {
-        this.traverseDirectory(promptPath, allPrompts);
-      } else if (this.isPromptFile(promptPath)) {
-        this.pushPrompts(allPrompts, this.loadPromptsFromFile(promptPath));
+      try {
+        const stat = fs.lstatSync(promptPath);
+        if (stat.isDirectory()) {
+          this.traverseDirectorySync(promptPath, this.prompts);
+        } else if (this.isPromptFile(promptPath)) {
+          const prompts = this.loadPromptsFromFileSync(promptPath);
+          this.prompts.push(...prompts);
+        }
+      } catch (error) {
+        console.warn(`提示路径不存在或无法访问: ${promptPath}`, error);
       }
     }
 
-    return this.processPrompts(allPrompts);
+    this.prompts = this.processPrompts(this.prompts);
   }
 
   /**
-   * 遍历目录并加载其中的提示文件
+   * 同步遍历目录并加载其中的提示文件
    * @param directoryPath 目录路径
    * @param accumulator 累积PromptProps的数组
    */
-  private traverseDirectory(directoryPath: string, accumulator: PromptProps[]): void {
-    let files: string[];
+  private traverseDirectorySync(directoryPath: string, accumulator: PromptProps[]): void {
     try {
-      files = fs.readdirSync(directoryPath);
+      const files = fs.readdirSync(directoryPath);
+      for (const file of files) {
+        if (file.startsWith('#')) continue;
+
+        const filePath = path.join(directoryPath, file);
+        const stat = fs.lstatSync(filePath);
+
+        if (stat.isDirectory()) {
+          this.traverseDirectorySync(filePath, accumulator);
+        } else if (this.isPromptFile(filePath)) {
+          const prompts = this.loadPromptsFromFileSync(filePath);
+          accumulator.push(...prompts);
+        }
+      }
     } catch (error) {
-      console.error(`Error reading directory ${directoryPath}:`, error);
-      return;
-    }
-
-    for (const file of files) {
-      // 忽略以 # 开头的文件和目录
-      if (file.startsWith('#')) {
-        continue;
-      }
-
-      const filePath = path.join(directoryPath, file);
-      let stat: fs.Stats;
-      try {
-        stat = fs.statSync(filePath);
-      } catch (error) {
-        console.error(`Error getting stats for ${filePath}:`, error);
-        continue;
-      }
-
-      if (stat.isDirectory()) {
-        this.traverseDirectory(filePath, accumulator);
-      } else if (this.isPromptFile(filePath)) {
-        this.pushPrompts(accumulator, this.loadPromptsFromFile(filePath));
-      }
+      console.error(`遍历目录失败 ${directoryPath}:`, error);
     }
   }
 
@@ -178,31 +168,21 @@ class PromptManager {
    */
   private isPromptFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
-    return fileName.endsWith('.pm.json') ||
-           fileName.endsWith('.pm.hjson');
+    return fileName.endsWith('.pm.json') || fileName.endsWith('.pm.hjson');
   }
 
   /**
-   * 将新的提示数组推入累积数组中，避免使用扩展运算符导致的性能问题
-   * @param accumulator 累积PromptProps的数组
-   * @param newPrompts 新的PromptProps数组
-   */
-  private pushPrompts(accumulator: PromptProps[], newPrompts: PromptProps[]): void {
-    accumulator.push(...newPrompts);
-  }
-
-  /**
-   * 解析Prompt的内容，如果content是文件路径则加载其内容
+   * 同步解析Prompt的内容，如果content是文件路径则加载其内容
    * @param prompt 单个PromptProps对象
    * @param baseDir 基础目录路径
    * @returns 处理后的PromptProps对象
    */
-  private resolvePromptContent(prompt: PromptProps, baseDir: string): PromptProps {
+  private resolvePromptContentSync(prompt: PromptProps, baseDir: string): PromptProps {
     if (typeof prompt.content === 'string' && prompt.content.startsWith('/')) {
-      prompt.content = loadContentFromFile(prompt.content, baseDir);
+      prompt.content = loadContentFromFileSync(prompt.content, baseDir);
     }
     if (Array.isArray(prompt.subprompts)) {
-      prompt.subprompts = prompt.subprompts.map(subprompt => this.resolvePromptContent(subprompt, baseDir));
+      prompt.subprompts = prompt.subprompts.map(subprompt => this.resolvePromptContentSync(subprompt, baseDir));
     }
     return prompt;
   }
