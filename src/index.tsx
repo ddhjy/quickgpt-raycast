@@ -41,6 +41,11 @@ const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
  * @returns 处理后的内容
  */
 function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
+  // 如果 prefixCommands 包含 "none"，直接返回原始内容
+  if (prefixCommands?.includes("none")) {
+    return content;
+  }
+
   let activePrefixCommands = [...DEFAULT_PREFIX_COMMANDS];
   const prefixes = prefixCommands?.split(",");
 
