@@ -391,8 +391,13 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     };
 
     const fetchBrowserContent = async (): Promise<string> => {
-      const content = await BrowserExtension.getContent({ format: "markdown" });
-      return content;
+      try {
+        const content = await BrowserExtension.getContent({ format: "markdown" });
+        return content;
+      } catch (error) {
+        console.info("Failed to fetch browser content:", error);
+        return "";
+      }
     };
 
     if (!target || target.length === 0) {
