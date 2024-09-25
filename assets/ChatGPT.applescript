@@ -4,7 +4,7 @@ on run
     restoreAndActivate("ChatGPT")
     delay 0.2
     pressKeyCommand("n")
-    delay 0.3
+    delay 1
     pressKeyCommand("v")
     delay 0.1
     pressKeyReturn()
