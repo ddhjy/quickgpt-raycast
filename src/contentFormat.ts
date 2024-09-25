@@ -12,54 +12,48 @@ type PlaceholderInfo = {
 };
 
 const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
-  input: { literal: '<输入文本>', alias: 'i' },
-  selection: { literal: '<选中文本>', alias: 's' },
-  clipboard: { literal: '<剪贴板文本>', alias: 'c' },
-  currentApp: { literal: '<当前应用>' },
-  browserContent: { literal: '<浏览器内容>' },
+  input: { literal: "<输入文本>", alias: "i" },
+  selection: { literal: "<选中文本>", alias: "s" },
+  clipboard: { literal: "<剪贴板文本>", alias: "c" },
+  currentApp: { literal: "<当前应用>" },
+  browserContent: { literal: "<浏览器内容>" },
 };
 
-// 创建别名到键的映射
-const aliasMap: Record<string, keyof SpecificReplacements> = Object.entries(placeholders).reduce(
-  (acc, [key, placeholder]) => {
-    if (placeholder.alias) {
-      acc[placeholder.alias] = key as keyof SpecificReplacements;
-    }
-    return acc;
-  },
-  {} as Record<string, keyof SpecificReplacements>
-);
+// Create alias to key mapping
+const aliasMap = Object.fromEntries(
+  Object.entries(placeholders)
+    .filter(([, placeholder]) => placeholder.alias)
+    .map(([key, placeholder]) => [placeholder.alias, key as keyof SpecificReplacements])
+) as Record<string, keyof SpecificReplacements>;
 
 /**
- * 格式化内容，替换占位符为具体值
- * @param text 要格式化的文本
- * @param specificReplacements 替换的具体值
- * @returns 格式化后的文本
+ * Formats the content by replacing placeholders with specific values.
+ * @param text - The text to format.
+ * @param specificReplacements - The specific values for replacement.
+ * @returns The formatted text.
  */
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
   const placeholderPattern = /{{([^}]+)}}/g;
 
-  return text.replace(placeholderPattern, (_, placeholderContent) => {
-    const isPrefixed = placeholderContent.startsWith('p:');
+  return text.replace(placeholderPattern, (match, placeholderContent) => {
+    const isPrefixed = placeholderContent.startsWith("p:");
     const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-    const parts = content.split('|');
+    const parts = content.split("|");
 
     for (const part of parts) {
       const key = aliasMap[part] || (part as keyof SpecificReplacements);
-      let replacement: string | undefined;
 
-      if (isPrefixed) {
-        replacement = specificReplacements[key] ? placeholders[key]?.literal || `<${key}>` : undefined;
-      } else {
-        replacement = specificReplacements[key];
-      }
-
-      if (replacement) {
-        return replacement;
+      if (key in specificReplacements) {
+        const value = specificReplacements[key];
+        if (isPrefixed) {
+          return value ? placeholders[key]?.literal || `<${key}>` : match;
+        } else if (value) {
+          return value;
+        }
       }
     }
 
-    // 如果没有找到合适的替换，则返回原始占位符
-    return _;
+    // Return the original placeholder if no replacement is found
+    return match;
   });
 }
