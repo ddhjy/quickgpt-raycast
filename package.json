@@ -81,7 +81,7 @@
         },
         {
           "value": "copyToClipboard",
-          "title": "Copy to Clipboard"
+          "title": "Copy"
         },
         {
           "value": "openURL",
@@ -138,7 +138,7 @@
         },
         {
           "value": "copyToClipboard",
-          "title": "Copy to Clipboard"
+          "title": "Copy"
         },
         {
           "value": "openURL",
@@ -195,7 +195,7 @@
         },
         {
           "value": "copyToClipboard",
-          "title": "Copy to Clipboard"
+          "title": "Copy"
         },
         {
           "value": "openURL",
