@@ -28,7 +28,7 @@ const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
   c: "简体中文作答",
   ne: "NO EXPLANATION",
   np: "Do not use plugins and data analysis",
-  cot: "Take a deep breath and work on this problem step-by-step, first think of a suitable solution, then analyze step by step, and finally draw conclusions based on the analysis",
+  cot: "",
   ns: "Do not use tool and Web Search",
 };
 
@@ -384,7 +384,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         return "";
       }
     };
-    
+
     const fetchFrontmostApp = async (): Promise<string> => {
       const app = await getFrontmostApplication();
       return app.name;
