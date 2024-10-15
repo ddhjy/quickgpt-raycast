@@ -33,6 +33,10 @@ const aliasMap = Object.fromEntries(
  * @returns The formatted text.
  */
 export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
+  const cleanedReplacements = Object.fromEntries(
+    Object.entries(specificReplacements).filter(([, value]) => value !== '')
+  ) as SpecificReplacements;
+
   const placeholderPattern = /{{([^}]+)}}/g;
 
   return text.replace(placeholderPattern, (match, placeholderContent) => {
@@ -43,8 +47,8 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
     for (const part of parts) {
       const key = aliasMap[part] || (part as keyof SpecificReplacements);
 
-      if (key in specificReplacements) {
-        const value = specificReplacements[key];
+      if (key in cleanedReplacements) {
+        const value = cleanedReplacements[key];
         if (isPrefixed) {
           return value ? placeholders[key]?.literal || `<${key}>` : match;
         } else if (value) {
