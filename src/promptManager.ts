@@ -65,7 +65,7 @@ class PromptManager {
       const fileExtension = path.extname(filePath).toLowerCase();
       const prompts = fileExtension === '.hjson' ? hjson.parse(data) : JSON.parse(data);
       const baseDir = path.dirname(filePath);
-      return prompts.map(prompt => this.resolvePromptContentSync(prompt, baseDir));
+      return prompts.map((prompt: PromptProps) => this.resolvePromptContentSync(prompt, baseDir));
     } catch (error) {
       console.error(`加载提示失败 ${filePath}:`, error);
       return [];
@@ -140,8 +140,10 @@ class PromptManager {
 
       Object.entries(prompt.ref).forEach(([key, value]) => {
         if (Array.isArray(value)) {
+          prompt.options = prompt.options || {};
           prompt.options[key] = value;
         } else if (typeof value === 'string' && !value.startsWith('/')) {
+          prompt.textInputs = prompt.textInputs || {};
           prompt.textInputs[key] = value;
         }
       });
