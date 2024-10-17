@@ -119,8 +119,9 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
       {action
         .sort((a, b) => {
           const lastSelectedAction = lastActionStore.getLastAction();
-          if (actions && actions.includes(a.displayName)) return -1;
-          if (actions && actions.includes(b.displayName)) return 1;
+          const stripRunPrefix = (name: string) => name.replace(/^Run /, '');
+          if (actions && actions.includes(stripRunPrefix(a.displayName))) return -1;
+          if (actions && actions.includes(stripRunPrefix(b.displayName))) return 1;
           if (a.name === preferences.primaryAction) return -1;
           if (b.name === preferences.primaryAction) return 1;
           if (a.name === lastSelectedAction) return -1;
