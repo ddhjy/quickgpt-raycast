@@ -12,7 +12,8 @@ import {
   getSelectedText,
   Form,
   getFrontmostApplication,
-  BrowserExtension
+  BrowserExtension,
+  getSelectedFinderItems
 } from "@raycast/api";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
@@ -20,6 +21,8 @@ import { contentFormat, SpecificReplacements } from "./contentFormat";
 import fs from "fs";
 import { match } from "pinyin-pro";
 import { getPromptActions } from "./getPromptActions";
+import path from "path";
+import fsPromises from "fs/promises";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -33,6 +36,60 @@ const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
 };
 
 const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
+
+const BINARY_MEDIA_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
+  '.mp3', '.wav', '.flac', '.mp4', '.avi', '.mkv',
+  '.exe', '.dll', '.bin', '.iso', '.zip', '.rar',
+  '.xcodeproj', '.xcworkspace', '.tiktoken'
+]);
+
+const IGNORED_PATTERNS = [
+  /^(node_modules|dist|build|coverage|tmp|logs|public|assets|vendor)$/,
+  /^\..+/,
+  /^(package-lock\.json|yarn\.lock)$/,
+  /^\.vscode$/,
+  /^\.idea$/,
+  /^\.env(\.local)?$/,
+  /^\.cache$/,
+  /^(bower_components|jspm_packages)$/,
+  /^\.DS_Store$/
+];
+
+const isBinaryOrMediaFile = (fileName: string): boolean => {
+  const ext = path.extname(fileName).toLowerCase();
+  return BINARY_MEDIA_EXTENSIONS.has(ext);
+};
+
+const isIgnoredItem = (itemName: string): boolean => {
+  return IGNORED_PATTERNS.some(pattern => pattern.test(itemName));
+};
+
+const readDirectoryContents = async (dirPath: string, basePath: string = ''): Promise<string> => {
+  let content = "";
+  const items = await fsPromises.readdir(dirPath, { withFileTypes: true });
+
+  for (const item of items) {
+    const itemName = item.name;
+    const itemPath = path.join(dirPath, itemName);
+    const relativePath = path.join(basePath, itemName);
+
+    if (isIgnoredItem(itemName) || isBinaryOrMediaFile(itemName)) {
+      content += `File: ${relativePath} (content ignored)\n\n`;
+    } else if (item.isDirectory()) {
+      content += await readDirectoryContents(itemPath, relativePath);
+    } else {
+      try {
+        const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
+        content += `File: ${relativePath}\n${fileContent}\n\n`;
+      } catch {
+        content += `File: ${relativePath} (read failed)\n\n`;
+      }
+    }
+  }
+
+  return content;
+};
 
 /**
  * 应用前缀命令到内容
@@ -377,10 +434,40 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         return initialSelectionText;
       }
       try {
+        // First, try to get selected text
         const text = await getSelectedText();
-        return text ?? "";
+        if (text) {
+          return text;
+        }
+
+        // If no text is selected, check for selected Finder items
+        const selectedItems = await getSelectedFinderItems();
+        if (selectedItems.length > 0) {
+          let content = '';
+          for (const item of selectedItems) {
+            const itemPath = item.path;
+            const stats = await fsPromises.stat(itemPath);
+            
+            if (stats.isFile()) {
+              if (!isBinaryOrMediaFile(itemPath)) {
+                // Read file content if it's a text file
+                const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
+                content += `File: ${path.basename(itemPath)}\n${fileContent}\n\n`;
+              } else {
+                content += `File: ${path.basename(itemPath)} (binary or media file, content ignored)\n\n`;
+              }
+            } else if (stats.isDirectory()) {
+              // Recursively read directory contents
+              content += await readDirectoryContents(itemPath);
+            }
+          }
+          return content;
+        }
+
+        // If no text or files are selected, return empty string
+        return "";
       } catch (error) {
-        console.info("Failed to read selected text. Returning empty string.", error);
+        console.info("Failed to read selected text or files. Returning empty string.", error);
         return "";
       }
     };
