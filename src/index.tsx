@@ -127,7 +127,7 @@ function applyPrefixCommandsToContent(content: string, prefixCommands: string | 
  * 获取快速提示
  * @param selectionText 选中的文本
  * @param identifier 目标标识符
- * @returns 快速提示和清理后的选择文本
+ * @returns 快速示和清理后的选择文本
  */
 function getQuickPrompt(selectionText: string, identifier?: string): [PromptProps | undefined, string] {
   let foundPrompt;
@@ -435,30 +435,32 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       }
       try {
         // First, check for selected Finder items
-        const selectedItems = await getSelectedFinderItems();
-        if (selectedItems.length > 0) {
-          let content = '';
-          for (const item of selectedItems) {
-            const itemPath = item.path;
-            const stats = await fsPromises.stat(itemPath);
-            
-            if (stats.isFile()) {
-              if (!isBinaryOrMediaFile(itemPath)) {
-                // Read file content if it's a text file
-                const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
-                content += `File: ${path.basename(itemPath)}\n${fileContent}\n\n`;
-              } else {
-                content += `File: ${path.basename(itemPath)} (binary or media file, content ignored)\n\n`;
+        try {
+          const selectedItems = await getSelectedFinderItems();
+          if (selectedItems.length > 0) {
+            let content = '';
+            for (const item of selectedItems) {
+              const itemPath = item.path;
+              const stats = await fsPromises.stat(itemPath);
+              
+              if (stats.isFile()) {
+                if (!isBinaryOrMediaFile(itemPath)) {
+                  const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
+                  content += `File: ${path.basename(itemPath)}\n${fileContent}\n\n`;
+                } else {
+                  content += `File: ${path.basename(itemPath)} (binary or media file, content ignored)\n\n`;
+                }
+              } else if (stats.isDirectory()) {
+                content += await readDirectoryContents(itemPath);
               }
-            } else if (stats.isDirectory()) {
-              // Recursively read directory contents
-              content += await readDirectoryContents(itemPath);
             }
+            return content;
           }
-          return content;
+        } catch (finderError) {
+          // Continue execution if there's an error with Finder items
         }
 
-        // If no files or folders are selected, try to get selected text
+        // If no files or folders are selected, or if there was an error, try to get selected text
         const text = await getSelectedText();
         if (text) {
           return text;
@@ -467,7 +469,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         // If no text or files are selected, return empty string
         return "";
       } catch (error) {
-        console.info("Failed to read selected text or files. Returning empty string.", error);
+        console.error("Error in fetchSelectedText:", error);
         return "";
       }
     };
