@@ -434,13 +434,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         return initialSelectionText;
       }
       try {
-        // First, try to get selected text
-        const text = await getSelectedText();
-        if (text) {
-          return text;
-        }
-
-        // If no text is selected, check for selected Finder items
+        // First, check for selected Finder items
         const selectedItems = await getSelectedFinderItems();
         if (selectedItems.length > 0) {
           let content = '';
@@ -462,6 +456,12 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
             }
           }
           return content;
+        }
+
+        // If no files or folders are selected, try to get selected text
+        const text = await getSelectedText();
+        if (text) {
+          return text;
         }
 
         // If no text or files are selected, return empty string
