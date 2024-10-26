@@ -573,7 +573,7 @@ function getPlaceholderIcons(
   usedPlaceholders.forEach((placeholder) => {
     const icon = placeholderIcons[placeholder];
     // 忽略 input 占位符的图标显示
-    if (icon && placeholder !== 'input') {
+    if (icon) {
       placeholderIconsArray.push({ icon });
     }
   });
