@@ -59,7 +59,7 @@ const IGNORED_PATTERNS = [
 const placeholderIcons: { [key: string]: Icon } = {
   input: Icon.TextInput,
   clipboard: Icon.Clipboard,
-  selection: Icon.TextSelection,
+  selection: Icon.Text,
   currentApp: Icon.Window,
   browserContent: Icon.Globe
 };
