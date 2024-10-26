@@ -572,7 +572,6 @@ function getPlaceholderIcons(
   const placeholderIconsArray: List.Item.Accessory[] = [];
   usedPlaceholders.forEach((placeholder) => {
     const icon = placeholderIcons[placeholder];
-    // 忽略 input 占位符的图标显示
     if (icon) {
       placeholderIconsArray.push({ icon });
     }
