@@ -35,7 +35,7 @@ const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
   ns: "Do not use tool and Web Search",
 };
 
-const DEFAULT_PREFIX_COMMANDS = ["ns", "c", "cot"];
+const DEFAULT_PREFIX_COMMANDS = ["c"];
 
 const BINARY_MEDIA_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
