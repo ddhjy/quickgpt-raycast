@@ -61,3 +61,37 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
     return match;
   });
 }
+
+export function resolvePlaceholders(
+  text: string,
+  specificReplacements: SpecificReplacements
+): Set<string> {
+  const cleanedReplacements = Object.fromEntries(
+    Object.entries(specificReplacements).filter(([, value]) => value !== "")
+  ) as SpecificReplacements;
+
+  const placeholderPattern = /{{([^}]+)}}/g;
+  const usedPlaceholders = new Set<string>();
+
+  let match;
+  while ((match = placeholderPattern.exec(text)) !== null) {
+    const placeholderContent = match[1];
+    const isPrefixed = placeholderContent.startsWith("p:");
+    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
+    const parts = content.split("|");
+
+    for (const part of parts) {
+      const key = aliasMap[part] || (part as keyof SpecificReplacements);
+
+      if (key in cleanedReplacements) {
+        const value = cleanedReplacements[key];
+        if (value) {
+          usedPlaceholders.add(key);
+          break; // 使用第一个可用的占位符
+        }
+      }
+    }
+  }
+
+  return usedPlaceholders;
+}

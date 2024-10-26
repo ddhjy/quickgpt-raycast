@@ -17,7 +17,7 @@ import {
 } from "@raycast/api";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
-import { contentFormat, SpecificReplacements } from "./contentFormat";
+import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./contentFormat";
 import fs from "fs";
 import { match } from "pinyin-pro";
 import { getPromptActions } from "./getPromptActions";
@@ -55,6 +55,14 @@ const IGNORED_PATTERNS = [
   /^(bower_components|jspm_packages)$/,
   /^\.DS_Store$/
 ];
+
+const placeholderIcons: { [key: string]: Icon } = {
+  input: Icon.TextInput,
+  clipboard: Icon.Clipboard,
+  selection: Icon.TextSelection,
+  currentApp: Icon.Window,
+  browserContent: Icon.Globe
+};
 
 const isBinaryOrMediaFile = (fileName: string): boolean => {
   const ext = path.extname(fileName).toLowerCase();
@@ -310,14 +318,25 @@ function PromptList({
             prompt.pinned
               ? { tag: { value: "PIN", color: Color.SecondaryText } }
               : {},
-            {
-              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts
-                  ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
-                  .join("\n"),
-            },
+            ...getPlaceholderIcons(prompt.content, replacements).map((accessory, i, arr) => 
+              i === arr.length - 1 
+                ? { 
+                    ...accessory, 
+                    tooltip: prompt.content ?? prompt.subprompts
+                      ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
+                      .join("\n")
+                  }
+                : accessory
+            ),
+            // 如果没有任何占位符图标，则显示一个带有 tooltip 的文件夹/段落图标
+            ...(getPlaceholderIcons(prompt.content, replacements).length === 0 
+              ? [{
+                  icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+                  tooltip: prompt.content ?? prompt.subprompts
+                    ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
+                    .join("\n")
+                }]
+              : [])
           ]}
           actions={
             <ActionPanel>
@@ -540,4 +559,24 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       browserContent={browserContent}
     />
   );
+}
+
+function getPlaceholderIcons(
+  content: string | undefined,
+  replacements: SpecificReplacements
+): List.Item.Accessory[] {
+  if (!content) return [];
+
+  const usedPlaceholders = resolvePlaceholders(content, replacements);
+
+  const placeholderIconsArray: List.Item.Accessory[] = [];
+  usedPlaceholders.forEach((placeholder) => {
+    const icon = placeholderIcons[placeholder];
+    // 忽略 input 占位符的图标显示
+    if (icon && placeholder !== 'input') {
+      placeholderIconsArray.push({ icon });
+    }
+  });
+
+  return placeholderIconsArray;
 }
