@@ -1,8 +1,15 @@
 import Cerebras from '@cerebras/cerebras_cloud_sdk';
+import { getPreferenceValues } from "@raycast/api";
+
+interface Preferences {
+  cerebrasApiKey: string;
+}
 
 export async function chat(message: string): Promise<string> {
+  const preferences = getPreferenceValues<Preferences>();
+  
   const cerebras = new Cerebras({
-    apiKey: "csk-f3ydpd23c4wxfnjwnwrdrtvh239455xd96tvp45jcjrwrnw4"
+    apiKey: preferences.cerebrasApiKey
   });
 
   const stream = await cerebras.chat.completions.create({
