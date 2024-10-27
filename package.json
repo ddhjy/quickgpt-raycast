@@ -311,6 +311,7 @@
     }
   ],
   "dependencies": {
+    "@cerebras/cerebras_cloud_sdk": "^1.8.0",
     "@eslint/config-array": "^0.18.0",
     "@eslint/object-schema": "^2.1.4",
     "@raycast/api": "^1.82.5",
