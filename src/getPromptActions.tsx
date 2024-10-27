@@ -51,7 +51,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     },
     {
       name: "cerebras",
-      displayName: "Ask Cerebras",
+      displayName: "Call Cerebras",
       condition: true,
       action: (
         <Action
