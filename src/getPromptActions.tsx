@@ -10,7 +10,7 @@ import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import path from "path";
 import lastActionStore from "./lastActionStore";
-
+import { chat } from "./cerebras";
 interface Preferences {
   openURL?: string;
   primaryAction: string;
@@ -46,6 +46,28 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
       displayName: "Open URL",
       condition: preferences.openURL,
       action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", getFormattedDescription),
+    },
+    {
+      name: "cerebras",
+      displayName: "Ask Cerebras",
+      condition: true,
+      action: (
+        <Action
+          title="Ask Cerebras"
+          icon={Icon.AddPerson}
+          onAction={async () => {
+            closeMainWindow();
+            const description = getFormattedDescription();
+            try {
+              const response = await chat(description);
+              await Clipboard.copy(response);
+              // await Clipboard.paste(response);
+            } catch (error) {
+              console.error("Cerebras API 调用失败:", error);
+            }
+          }}
+        />
+      ),
     },
     ...[
       path.join(__dirname, "assets/ChatGPT.applescript"),
