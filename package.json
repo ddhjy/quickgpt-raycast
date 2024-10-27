@@ -308,6 +308,13 @@
       "required": false,
       "description": "Run Apple Script 9",
       "type": "file"
+    },
+    {
+      "name": "cerebrasApiKey",
+      "title": "Cerebras API Key",
+      "description": "您的 Cerebras API 密钥",
+      "type": "password",
+      "required": false
     }
   ],
   "dependencies": {
