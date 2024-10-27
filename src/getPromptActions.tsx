@@ -56,14 +56,18 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           title="Ask Cerebras"
           icon={Icon.AddPerson}
           onAction={async () => {
-            closeMainWindow();
+            
             const description = getFormattedDescription();
+            console.log("准备发送到Cerebras的描述:", description);
             try {
+              console.log("正在调用Cerebras API...");
               const response = await chat(description);
-              await Clipboard.copy(response);
-              // await Clipboard.paste(response);
+              console.log("收到Cerebras的响应:", response);
+              await Clipboard.paste(response);
+              closeMainWindow();
             } catch (error) {
               console.error("Cerebras API 调用失败:", error);
+              console.log("错误详情:", JSON.stringify(error, null, 2));
             }
           }}
         />
