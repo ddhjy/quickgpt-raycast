@@ -3,8 +3,10 @@ import {
   Action,
   Clipboard,
   Icon,
+  Toast,
   closeMainWindow,
   getPreferenceValues,
+  showToast,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -56,18 +58,19 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           title="Ask Cerebras"
           icon={Icon.AddPerson}
           onAction={async () => {
-            
             const description = getFormattedDescription();
-            console.log("准备发送到Cerebras的描述:", description);
             try {
-              console.log("正在调用Cerebras API...");
+              const startTime = Date.now();
+              const toast = await showToast(Toast.Style.Animated, "Thinking...");
               const response = await chat(description);
-              console.log("收到Cerebras的响应:", response);
+              const endTime = Date.now();
+              const duration = ((endTime - startTime) / 1000).toFixed(1);
               await Clipboard.paste(response);
+              toast.style = Toast.Style.Success;
+              toast.title = `Done (${duration}s)`;
+              await showToast(toast);
               closeMainWindow();
             } catch (error) {
-              console.error("Cerebras API 调用失败:", error);
-              console.log("错误详情:", JSON.stringify(error, null, 2));
             }
           }}
         />
