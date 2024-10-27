@@ -65,6 +65,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
               const response = await chat(description);
               const endTime = Date.now();
               const duration = ((endTime - startTime) / 1000).toFixed(1);
+              await Clipboard.copy(response);
               await Clipboard.paste(response);
               toast.style = Toast.Style.Success;
               toast.title = `Done (${duration}s)`;

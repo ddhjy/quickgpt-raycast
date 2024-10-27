@@ -21,7 +21,7 @@ export async function chat(message: string): Promise<string> {
     ],
     model: 'llama3.1-70b',
     stream: true,
-    max_completion_tokens: 1024,
+    max_completion_tokens: 2048,
     temperature: 0.2,
     top_p: 1
   });
