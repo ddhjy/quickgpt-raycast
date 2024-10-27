@@ -55,7 +55,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
       condition: true,
       action: (
         <Action
-          title="Ask Cerebras"
+          title="Call Cerebras"
           icon={Icon.AddPerson}
           onAction={async () => {
             const description = getFormattedDescription();
