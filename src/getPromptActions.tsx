@@ -79,29 +79,45 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     },
     {
       name: "runScripts",
-      displayName: "Run Scripts",
+      displayName: "Run Scripts", 
       condition: preferences.scriptsDirectory,
       action: (() => {
         const scriptsDir = preferences.scriptsDirectory;
-        if (!scriptsDir) return null;
+        if (!scriptsDir) {
+          return null;
+        }
+
+        let scripts;
+        try {
+          scripts = fs.readdirSync(scriptsDir)
+            .filter(file => file.endsWith('.applescript') || file.endsWith('.scpt'))
+            .map(file => path.join(scriptsDir, file));
+        } catch (error) {
+          return null;
+        }
         
-        const scripts = fs.readdirSync(scriptsDir)
-          .filter(file => file.endsWith('.applescript') || file.endsWith('.scpt'))
-          .map(file => path.join(scriptsDir, file));
-        
-        return scripts.map((script, index) => (
-          <Action
-            key={`runScript${index}`}
-            title={`Run ${path.basename(script, path.extname(script))}`}
-            icon={Icon.Terminal}
-            onAction={() => {
-              closeMainWindow();
-              Clipboard.copy(getFormattedDescription());
-              const scriptContent = fs.readFileSync(script, "utf8");
-              runAppleScript(scriptContent);
-            }}
-          />
-        ));
+        return scripts.map((script, index) => {
+          const scriptName = path.basename(script, path.extname(script));
+          return (
+            <Action
+              key={`runScript${index}`}
+              title={`Run ${scriptName}`}
+              icon={Icon.Terminal}
+              onAction={() => {
+                closeMainWindow();
+                const description = getFormattedDescription();
+                Clipboard.copy(description);
+                
+                try {
+                  const scriptContent = fs.readFileSync(script, "utf8");
+                  runAppleScript(scriptContent);
+                } catch (error) {
+                  console.error(`执行脚本失败: ${error}`);
+                }
+              }}
+            />
+          );
+        });
       })()
     },
     {
