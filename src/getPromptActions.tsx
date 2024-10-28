@@ -48,17 +48,75 @@ export function getPromptActions(
     />
   );
 
+  const scriptActions: ActionItem[] = [];
+  if (preferences.scriptsDirectory) {
+    try {
+      const scriptsDir = preferences.scriptsDirectory;
+      const scripts = fs
+        .readdirSync(scriptsDir)
+        .filter(
+          (file) => file.endsWith(".applescript") || file.endsWith(".scpt")
+        )
+        .map((file) => path.join(scriptsDir, file));
+
+      scripts.forEach((script) => {
+        const scriptName = path.basename(script, path.extname(script));
+        scriptActions.push({
+          name: `script_${scriptName}`,
+          displayName: scriptName,
+          condition: true,
+          action: (
+            <Action
+              title={`Run ${scriptName}`}
+              icon={Icon.Terminal}
+              onAction={async () => {
+                const description = getFormattedDescription();
+                await Clipboard.copy(description);
+
+                try {
+                  const scriptContent = fs.readFileSync(script, "utf8");
+                  await runAppleScript(scriptContent);
+                } catch (error) {
+                  console.error(`Failed to execute script: ${error}`);
+                  await showToast(Toast.Style.Failure, "Error", String(error));
+                }
+              }}
+            />
+          ),
+        });
+      });
+    } catch (error) {
+      console.error("Failed to read scripts directory:", error);
+    }
+  }
+
   const actionItems: ActionItem[] = [
     {
-      name: "openURL",
-      displayName: "Open URL",
-      condition: Boolean(preferences.openURL),
-      action: createRaycastOpenInBrowser(
-        "Open URL",
-        preferences.openURL ?? "",
-        getFormattedDescription
+      name: "chatgpt",
+      displayName: "ChatGPT",
+      condition: true,
+      action: (
+        <Action
+          // eslint-disable-next-line @raycast/prefer-title-case
+          title="ChatGPT"
+          icon={Icon.Message}
+          onAction={async () => {
+            const description = getFormattedDescription();
+            await Clipboard.copy(description);
+            
+            try {
+              const scriptPath = path.join(__dirname, "assets/ChatGPT.applescript");
+              const scriptContent = fs.readFileSync(scriptPath, "utf8");
+              await runAppleScript(scriptContent, [description]);
+            } catch (error) {
+              console.error(`Failed to execute ChatGPT script: ${error}`);
+              await showToast(Toast.Style.Failure, "Error", String(error));
+            }
+          }}
+        />
       ),
     },
+    ...scriptActions,
     {
       name: "cerebras",
       displayName: "Call Cerebras",
@@ -87,6 +145,16 @@ export function getPromptActions(
             }
           }}
         />
+      ),
+    },
+    {
+      name: "openURL",
+      displayName: "Open URL",
+      condition: Boolean(preferences.openURL),
+      action: createRaycastOpenInBrowser(
+        "Open URL",
+        preferences.openURL ?? "",
+        getFormattedDescription
       ),
     },
     {
@@ -124,48 +192,6 @@ export function getPromptActions(
       ),
     },
   ];
-
-  // Load scripts and create script actions
-  if (preferences.scriptsDirectory) {
-    try {
-      const scriptsDir = preferences.scriptsDirectory;
-      const scripts = fs
-        .readdirSync(scriptsDir)
-        .filter(
-          (file) => file.endsWith(".applescript") || file.endsWith(".scpt")
-        )
-        .map((file) => path.join(scriptsDir, file));
-
-      scripts.forEach((script) => {
-        const scriptName = path.basename(script, path.extname(script));
-        actionItems.push({
-          name: `script_${scriptName}`,
-          displayName: scriptName,
-          condition: true,
-          action: (
-            <Action
-              title={`Run ${scriptName}`}
-              icon={Icon.Terminal}
-              onAction={async () => {
-                const description = getFormattedDescription();
-                await Clipboard.copy(description);
-
-                try {
-                  const scriptContent = fs.readFileSync(script, "utf8");
-                  await runAppleScript(scriptContent);
-                } catch (error) {
-                  console.error(`Failed to execute script: ${error}`);
-                  await showToast(Toast.Style.Failure, "Error", String(error));
-                }
-              }}
-            />
-          ),
-        });
-      });
-    } catch (error) {
-      console.error("Failed to read scripts directory:", error);
-    }
-  }
 
   // Filter and sort actions
   const filteredActions = actionItems.filter(
