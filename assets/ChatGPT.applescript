@@ -1,35 +1,13 @@
 #!/usr/bin/osascript
 
-on run
-    restoreAndActivate("ChatGPT")
-    delay 0.2
-    pressKeyCommand("n")
-    delay 0.5
-    pressKeyCommand("v")
-    delay 0.5
-    pressKeyReturn()
-end run
-
-on restoreAndActivate(appName)
-    tell application "System Events"
-        if not (exists process appName) then
-            do shell script "open -a " & quoted form of appName
-            delay 5
-        end if
-    end tell
-    tell application "System Events"
-        tell application process appName
-            set miniaturizedWindows to every window whose value of attribute "AXMinimized" is true
-            repeat with win in miniaturizedWindows
-                set value of attribute "AXMinimized" of win to false
-            end repeat
-        end tell
-    end tell
-
-    tell application appName
+on run {query}
+    tell application "ChatGPT"
         activate
+        open location "https://chatgpt.com/?&model=gpt-4o&hints=search&q=" & query
     end tell
-end restoreAndActivate
+    delay 0.5
+    my pressKeyReturn()
+end run
 
 on pressKeyCommand(key)
     tell application "System Events" to keystroke key using {command down}
@@ -37,8 +15,4 @@ end pressKeyCommand
 
 on pressKeyReturn()
     tell application "System Events" to keystroke return
-end 
-
-on pressKeyCommandShift(key)
-    tell application "System Events" to keystroke key using {command down, shift down}
-end pressKeyCommandShift
+end pressKeyReturn
