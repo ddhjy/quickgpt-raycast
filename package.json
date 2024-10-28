@@ -76,67 +76,11 @@
       "type": "textfield"
     },
     {
-      "name": "runScript1",
-      "title": "Action: Run Apple Script 1",
+      "name": "scriptsDirectory",
+      "title": "Action: Scripts Directory", 
       "required": false,
-      "description": "Run Apple Script 1",
-      "type": "file"
-    },
-    {
-      "name": "runScript2",
-      "title": "Action: Run Apple Script 2",
-      "required": false,
-      "description": "Run Apple Script 2",
-      "type": "file"
-    },
-    {
-      "name": "runScript3",
-      "title": "Action: Run Apple Script 3",
-      "required": false,
-      "description": "Run Apple Script 3",
-      "type": "file"
-    },
-    {
-      "name": "runScript4",
-      "title": "Action: Run Apple Script 4",
-      "required": false,
-      "description": "Run Apple Script 4",
-      "type": "file"
-    },
-    {
-      "name": "runScript5",
-      "title": "Action: Run Apple Script 5",
-      "required": false,
-      "description": "Run Apple Script 5",
-      "type": "file"
-    },
-    {
-      "name": "runScript6",
-      "title": "Action: Run Apple Script 6",
-      "required": false,
-      "description": "Run Apple Script 6",
-      "type": "file"
-    },
-    {
-      "name": "runScript7",
-      "title": "Action: Run Apple Script 7",
-      "required": false,
-      "description": "Run Apple Script 7",
-      "type": "file"
-    },
-    {
-      "name": "runScript8",
-      "title": "Action: Run Apple Script 8",
-      "required": false,
-      "description": "Run Apple Script 8",
-      "type": "file"
-    },
-    {
-      "name": "runScript9",
-      "title": "Action: Run Apple Script 9",
-      "required": false,
-      "description": "Run Apple Script 9",
-      "type": "file"
+      "description": "存放 AppleScript 脚本的目录。目录下所有的 .applescript 和 .scpt 文件都会被加载为可执行脚本。",
+      "type": "directory"
     },
     {
       "name": "cerebrasApiKey",
@@ -144,7 +88,7 @@
       "description": "您的 Cerebras API 密钥",
       "type": "password",
       "required": false
-    }
+    },
   ],
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.8.0",
