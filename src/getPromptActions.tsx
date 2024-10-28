@@ -23,10 +23,8 @@ interface Preferences {
 export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
   const preferences = getPreferenceValues<Preferences>();
 
-  // 从 preferences.primaryAction 中解析出用户配置的操作顺序
   const configuredActions = preferences.primaryAction?.split(',').map(action => action.trim()) || [];
 
-  // 合并传入的 actions 和配置的 actions
   const finalActions = [...(actions || []), ...configuredActions];
 
   const createRaycastOpenInBrowser = (

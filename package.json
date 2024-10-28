@@ -72,7 +72,7 @@
       "name": "primaryAction",
       "title": "Action: Actions",
       "required": false,
-      "description": "设置要执行的操作,多个操作用逗号分隔。支持的操作: runScript0(ChatGPT), copyToClipboard(Copy), openURL(Open URL), runScript1-9(Run Script 1-9), paste(Paste), cerebras(Call Cerebras)",
+      "description": "设置要执行的操作,多个操作用逗号分隔。支持的操作: ChatGPT, Copy, Paste, Cerebras",
       "type": "textfield"
     },
     {
