@@ -13,10 +13,10 @@ import fs from "fs";
 import path from "path";
 import lastActionStore from "./lastActionStore";
 import { chat } from "./cerebras";
+
 interface Preferences {
   openURL?: string;
   primaryAction: string;
-  secondaryAction: string;
   runScript1?: string;
   runScript2?: string;
   runScript3?: string;
@@ -30,6 +30,13 @@ interface Preferences {
 
 export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
   const preferences = getPreferenceValues<Preferences>();
+  
+  // 从 preferences.primaryAction 中解析出用户配置的操作顺序
+  const configuredActions = preferences.primaryAction?.split(',').map(action => action.trim()) || [];
+  
+  // 合并传入的 actions 和配置的 actions
+  const finalActions = [...(actions || []), ...configuredActions];
+
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
@@ -72,6 +79,7 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
               await showToast(toast);
               closeMainWindow();
             } catch (error) {
+              console.error(error);
             }
           }}
         />
@@ -150,14 +158,10 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
         .sort((a, b) => {
           const lastSelectedAction = lastActionStore.getLastAction();
           const stripRunPrefix = (name: string) => name.replace(/^Run /, '');
-          if (actions && actions.includes(stripRunPrefix(a.displayName))) return -1;
-          if (actions && actions.includes(stripRunPrefix(b.displayName))) return 1;
-          if (a.name === preferences.primaryAction) return -1;
-          if (b.name === preferences.primaryAction) return 1;
+          if (finalActions && finalActions.includes(stripRunPrefix(a.displayName))) return -1;
+          if (finalActions && finalActions.includes(stripRunPrefix(b.displayName))) return 1;
           if (a.name === lastSelectedAction) return -1;
           if (b.name === lastSelectedAction) return 1;
-          if (a.name === preferences.secondaryAction && b.name !== preferences.primaryAction) return -1;
-          if (b.name === preferences.secondaryAction && a.name !== preferences.primaryAction) return 1;
           return 0;
         })
         .map((option, index) =>
