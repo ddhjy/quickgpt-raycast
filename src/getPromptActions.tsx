@@ -35,15 +35,7 @@ export function getPromptActions(
 
   const configuredActions =
     preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
-
-  // log action names
-  console.log("actions", actions);
-  console.log("configuredActions", configuredActions);
-
   const finalActions = [...(actions || []), ...configuredActions];
-
-  console.log("finalActions", finalActions);
-
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
