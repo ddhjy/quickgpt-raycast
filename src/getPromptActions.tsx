@@ -36,7 +36,13 @@ export function getPromptActions(
   const configuredActions =
     preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
 
+  // log action names
+  console.log("actions", actions);
+  console.log("configuredActions", configuredActions);
+
   const finalActions = [...(actions || []), ...configuredActions];
+
+  console.log("finalActions", finalActions);
 
   const createRaycastOpenInBrowser = (
     title: string | undefined,
@@ -178,8 +184,17 @@ export function getPromptActions(
   filteredActions.sort((a, b) => {
     const lastSelectedAction = lastActionStore.getLastAction();
     const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
-    if (finalActions.includes(stripRunPrefix(a.displayName))) return -1;
-    if (finalActions.includes(stripRunPrefix(b.displayName))) return 1;
+    
+    const indexA = finalActions.indexOf(stripRunPrefix(a.displayName));
+    const indexB = finalActions.indexOf(stripRunPrefix(b.displayName));
+    
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    
     if (a.name === lastSelectedAction) return -1;
     if (b.name === lastSelectedAction) return 1;
     return 0;
