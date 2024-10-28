@@ -88,7 +88,7 @@
       "description": "您的 Cerebras API 密钥",
       "type": "password",
       "required": false
-    },
+    }
   ],
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.8.0",
