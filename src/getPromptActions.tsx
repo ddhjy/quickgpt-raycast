@@ -20,10 +20,21 @@ interface Preferences {
   scriptsDirectory?: string;
 }
 
-export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
+interface ActionItem {
+  name: string;
+  displayName: string;
+  condition: boolean;
+  action: React.ReactElement;
+}
+
+export function getPromptActions(
+  getFormattedDescription: () => string,
+  actions?: string[]
+) {
   const preferences = getPreferenceValues<Preferences>();
 
-  const configuredActions = preferences.primaryAction?.split(',').map(action => action.trim()) || [];
+  const configuredActions =
+    preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
 
   const finalActions = [...(actions || []), ...configuredActions];
 
@@ -39,12 +50,16 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     />
   );
 
-  const action = [
+  const actionItems: ActionItem[] = [
     {
       name: "openURL",
       displayName: "Open URL",
-      condition: preferences.openURL,
-      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? "", getFormattedDescription),
+      condition: Boolean(preferences.openURL),
+      action: createRaycastOpenInBrowser(
+        "Open URL",
+        preferences.openURL ?? "",
+        getFormattedDescription
+      ),
     },
     {
       name: "cerebras",
@@ -70,58 +85,16 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
               closeMainWindow();
             } catch (error) {
               console.error(error);
+              await showToast(Toast.Style.Failure, "Error", String(error));
             }
           }}
         />
       ),
     },
     {
-      name: "runScripts",
-      displayName: "Run Scripts", 
-      condition: preferences.scriptsDirectory,
-      action: (() => {
-        const scriptsDir = preferences.scriptsDirectory;
-        if (!scriptsDir) {
-          return null;
-        }
-
-        let scripts;
-        try {
-          scripts = fs.readdirSync(scriptsDir)
-            .filter(file => file.endsWith('.applescript') || file.endsWith('.scpt'))
-            .map(file => path.join(scriptsDir, file));
-        } catch (error) {
-          return null;
-        }
-        
-        return scripts.map((script, index) => {
-          const scriptName = path.basename(script, path.extname(script));
-          return (
-            <Action
-              key={`runScript${index}`}
-              title={`Run ${scriptName}`}
-              icon={Icon.Terminal}
-              onAction={() => {
-                closeMainWindow();
-                const description = getFormattedDescription();
-                Clipboard.copy(description);
-                
-                try {
-                  const scriptContent = fs.readFileSync(script, "utf8");
-                  runAppleScript(scriptContent);
-                } catch (error) {
-                  console.error(`执行脚本失败: ${error}`);
-                }
-              }}
-            />
-          );
-        });
-      })()
-    },
-    {
       name: "copyToClipboard",
-      condition: true,
       displayName: "Copy",
+      condition: true,
       action: (
         <Action
           title="Copy"
@@ -136,8 +109,8 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     },
     {
       name: "paste",
-      condition: true,
       displayName: "Paste",
+      condition: true,
       action: (
         <Action
           title="Paste"
@@ -154,45 +127,79 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
     },
   ];
 
+  // Load scripts and create script actions
+  if (preferences.scriptsDirectory) {
+    try {
+      const scriptsDir = preferences.scriptsDirectory;
+      const scripts = fs
+        .readdirSync(scriptsDir)
+        .filter(
+          (file) => file.endsWith(".applescript") || file.endsWith(".scpt")
+        )
+        .map((file) => path.join(scriptsDir, file));
+
+      scripts.forEach((script) => {
+        const scriptName = path.basename(script, path.extname(script));
+        actionItems.push({
+          name: `script_${scriptName}`,
+          displayName: scriptName,
+          condition: true,
+          action: (
+            <Action
+              title={`Run ${scriptName}`}
+              icon={Icon.Terminal}
+              onAction={async () => {
+                closeMainWindow();
+                const description = getFormattedDescription();
+                await Clipboard.copy(description);
+
+                try {
+                  const scriptContent = fs.readFileSync(script, "utf8");
+                  await runAppleScript(scriptContent);
+                } catch (error) {
+                  console.error(`Failed to execute script: ${error}`);
+                  await showToast(Toast.Style.Failure, "Error", String(error));
+                }
+              }}
+            />
+          ),
+        });
+      });
+    } catch (error) {
+      console.error("Failed to read scripts directory:", error);
+    }
+  }
+
+  // Filter and sort actions
+  const filteredActions = actionItems.filter(
+    (option) => option.condition && option.action
+  );
+
+  filteredActions.sort((a, b) => {
+    const lastSelectedAction = lastActionStore.getLastAction();
+    const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
+    if (finalActions.includes(stripRunPrefix(a.displayName))) return -1;
+    if (finalActions.includes(stripRunPrefix(b.displayName))) return 1;
+    if (a.name === lastSelectedAction) return -1;
+    if (b.name === lastSelectedAction) return 1;
+    return 0;
+  });
+
   return (
     <>
-      {action
-        .sort((a, b) => {
-          const lastSelectedAction = lastActionStore.getLastAction();
-          const stripRunPrefix = (name: string) => name.replace(/^Run /, '');
-          if (finalActions && finalActions.includes(stripRunPrefix(a.displayName))) return -1;
-          if (finalActions && finalActions.includes(stripRunPrefix(b.displayName))) return 1;
-          if (a.name === lastSelectedAction) return -1;
-          if (b.name === lastSelectedAction) return 1;
-          return 0;
-        })
-        .map((option, index) =>
-          option.condition && option.action ? (
-            Array.isArray(option.action) ? 
-              option.action.map((action, i) => 
-                React.cloneElement(action, {
-                  key: `${index}-${i}`,
-                  onAction: () => {
-                    lastActionStore.setLastAction(option.name);
-                    if (action.props.onAction) {
-                      action.props.onAction();
-                    }
-                  }
-                })
-              )
-            : React.cloneElement(option.action as React.ReactElement, {
-                key: index,
-                onAction: () => {
-                  lastActionStore.setLastAction(option.name);
-                  if ((option.action as React.ReactElement).props.onAction) {
-                    (option.action as React.ReactElement).props.onAction();
-                  }
-                }
-              })
-          ) : null
-        )
-        .filter(Boolean)
-      }
+      {filteredActions.map((option, index) => {
+        const handleAction = () => {
+          lastActionStore.setLastAction(option.name);
+          if (option.action.props.onAction) {
+            option.action.props.onAction();
+          }
+        };
+
+        return React.cloneElement(option.action, {
+          key: option.name || index,
+          onAction: handleAction,
+        });
+      })}
     </>
   );
 }
