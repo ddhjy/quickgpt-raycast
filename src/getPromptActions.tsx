@@ -147,7 +147,6 @@ export function getPromptActions(
               title={`Run ${scriptName}`}
               icon={Icon.Terminal}
               onAction={async () => {
-                closeMainWindow();
                 const description = getFormattedDescription();
                 await Clipboard.copy(description);
 
