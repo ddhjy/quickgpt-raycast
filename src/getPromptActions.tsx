@@ -17,15 +17,7 @@ import { chat } from "./cerebras";
 interface Preferences {
   openURL?: string;
   primaryAction: string;
-  runScript1?: string;
-  runScript2?: string;
-  runScript3?: string;
-  runScript4?: string;
-  runScript5?: string;
-  runScript6?: string;
-  runScript7?: string;
-  runScript8?: string;
-  runScript9?: string;
+  scriptsDirectory?: string;
 }
 
 export function getPromptActions(getFormattedDescription: () => string, actions?: string[]) {
@@ -85,37 +77,33 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
         />
       ),
     },
-    ...[
-      path.join(__dirname, "assets/ChatGPT.applescript"),
-      preferences.runScript1,
-      preferences.runScript2,
-      preferences.runScript3,
-      preferences.runScript4,
-      preferences.runScript5,
-      preferences.runScript6,
-      preferences.runScript7,
-      preferences.runScript8,
-      preferences.runScript9,
-    ].map((script, index) => {
-      return {
-        name: `runScript${index}`,
-        displayName: `Run ${path.basename(script ?? "", path.extname(script ?? ""))}`,
-        condition: script,
-        action: (
+    {
+      name: "runScripts",
+      displayName: "Run Scripts",
+      condition: preferences.scriptsDirectory,
+      action: (() => {
+        const scriptsDir = preferences.scriptsDirectory;
+        if (!scriptsDir) return null;
+        
+        const scripts = fs.readdirSync(scriptsDir)
+          .filter(file => file.endsWith('.applescript') || file.endsWith('.scpt'))
+          .map(file => path.join(scriptsDir, file));
+        
+        return scripts.map((script, index) => (
           <Action
-            title={`Run ${path.basename(script ?? "", path.extname(script ?? ""))}`}
-            key={`runScript${index + 1}`}
+            key={`runScript${index}`}
+            title={`Run ${path.basename(script, path.extname(script))}`}
             icon={Icon.Terminal}
             onAction={() => {
               closeMainWindow();
               Clipboard.copy(getFormattedDescription());
-              const myScript = fs.readFileSync(script ?? "", "utf8");
-              runAppleScript(myScript);
+              const scriptContent = fs.readFileSync(script, "utf8");
+              runAppleScript(scriptContent);
             }}
           />
-        ),
-      };
-    }),
+        ));
+      })()
+    },
     {
       name: "copyToClipboard",
       condition: true,
@@ -165,15 +153,29 @@ export function getPromptActions(getFormattedDescription: () => string, actions?
           return 0;
         })
         .map((option, index) =>
-          option.condition && option.action ? React.cloneElement(option.action, {
-            key: index,
-            onAction: () => {
-              lastActionStore.setLastAction(option.name)
-              if (option.action.props.onAction) {
-                option.action.props.onAction();
-              }
-            }
-          }) : null
+          option.condition && option.action ? (
+            Array.isArray(option.action) ? 
+              option.action.map((action, i) => 
+                React.cloneElement(action, {
+                  key: `${index}-${i}`,
+                  onAction: () => {
+                    lastActionStore.setLastAction(option.name);
+                    if (action.props.onAction) {
+                      action.props.onAction();
+                    }
+                  }
+                })
+              )
+            : React.cloneElement(option.action as React.ReactElement, {
+                key: index,
+                onAction: () => {
+                  lastActionStore.setLastAction(option.name);
+                  if ((option.action as React.ReactElement).props.onAction) {
+                    (option.action as React.ReactElement).props.onAction();
+                  }
+                }
+              })
+          ) : null
         )
         .filter(Boolean)
       }
