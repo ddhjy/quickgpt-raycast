@@ -5,6 +5,7 @@ on run {query}
         activate
         open location "https://chatgpt.com/?&model=gpt-4o&q="
     end tell
+    delay 0.1
     pressKeyCommand("v")
     delay 0.1
     my pressKeyReturn()
