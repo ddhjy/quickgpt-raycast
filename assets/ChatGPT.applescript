@@ -3,9 +3,10 @@
 on run {query}
     tell application "ChatGPT"
         activate
-        open location "https://chatgpt.com/?&model=gpt-4o&hints=search&q=" & query
+        open location "https://chatgpt.com/?&model=gpt-4o&q="
     end tell
-    delay 0.5
+    pressKeyCommand("v")
+    delay 0.1
     my pressKeyReturn()
 end run
 
