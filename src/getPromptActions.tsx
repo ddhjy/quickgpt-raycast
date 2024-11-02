@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Action,
   Clipboard,
@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import lastActionStore from "./lastActionStore";
 import { chat } from "./cerebras";
+import { ResultView } from "./components/ResultView";
 
 interface Preferences {
   openURL?: string;
@@ -122,28 +123,10 @@ export function getPromptActions(
       displayName: "Call Cerebras",
       condition: true,
       action: (
-        <Action
+        <Action.Push
           title="Call Cerebras"
           icon={Icon.AddPerson}
-          onAction={async () => {
-            const description = getFormattedDescription();
-            try {
-              const startTime = Date.now();
-              const toast = await showToast(Toast.Style.Animated, "Thinking...");
-              const response = await chat(description);
-              const endTime = Date.now();
-              const duration = ((endTime - startTime) / 1000).toFixed(1);
-              await Clipboard.copy(response);
-              await Clipboard.paste(response);
-              toast.style = Toast.Style.Success;
-              toast.title = `Done (${duration}s)`;
-              await showToast(toast);
-              closeMainWindow();
-            } catch (error) {
-              console.error(error);
-              await showToast(Toast.Style.Failure, "Error", String(error));
-            }
-          }}
+          target={<CerebrasView getFormattedDescription={getFormattedDescription} />}
         />
       ),
     },
@@ -233,5 +216,40 @@ export function getPromptActions(
         });
       })}
     </>
+  );
+}
+
+function CerebrasView({ getFormattedDescription }: { getFormattedDescription: () => string }) {
+  const [response, setResponse] = useState<string>();
+  const [duration, setDuration] = useState<string>();
+
+  useEffect(() => {
+    async function fetchResponse() {
+      try {
+        const description = getFormattedDescription();
+        const startTime = Date.now();
+        const toast = await showToast(Toast.Style.Animated, "Thinking...");
+        const result = await chat(description);
+        const endTime = Date.now();
+        setDuration(((endTime - startTime) / 1000).toFixed(1));
+        setResponse(result);
+        
+        toast.style = Toast.Style.Success;
+        toast.title = `Done (${duration}s)`;
+      } catch (error) {
+        console.error(error);
+        await showToast(Toast.Style.Failure, "Error", String(error));
+      }
+    }
+    fetchResponse();
+  }, []);
+
+  return (
+    <ResultView 
+      prompt={getFormattedDescription()}
+      response={response || ''}
+      duration={duration || ''}
+      isLoading={!response}
+    />
   );
 }
