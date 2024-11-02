@@ -20,7 +20,7 @@ ${response}
       actions={
         <ActionPanel>
           <Action
-            title="Paste Response"
+            title="Paste"
             icon={Icon.Document}
             shortcut={{ modifiers: ["cmd"], key: "return" }}
             onAction={async () => {
@@ -29,7 +29,7 @@ ${response}
             }}
           />
           <Action
-            title="Copy Response"
+            title="Copy"
             icon={Icon.Clipboard}
             onAction={async () => {
               await Clipboard.copy(response);
