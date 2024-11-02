@@ -2,24 +2,17 @@ import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow } from "@
 import { useState } from "react";
 
 interface ResultViewProps {
-  prompt: string;
   response: string;
   duration: string;
   isLoading: boolean;
 }
 
-export function ResultView({ prompt, response, duration }: ResultViewProps) {
+export function ResultView({response, duration }: ResultViewProps) {
   const [isLoading] = useState(false);
 
-  const markdown = `## Prompt
-${prompt}
-
-## Response
+  const markdown = `
 ${response}
-
----
-*Generated in ${duration}s*`;
-
+`;
   return (
     <Detail
       markdown={markdown}
@@ -27,19 +20,19 @@ ${response}
       actions={
         <ActionPanel>
           <Action
-            title="Copy Response"
-            icon={Icon.Clipboard}
-            onAction={async () => {
-              await Clipboard.copy(response);
-              closeMainWindow();
-            }}
-          />
-          <Action
             title="Paste Response"
             icon={Icon.Document}
             shortcut={{ modifiers: ["cmd"], key: "return" }}
             onAction={async () => {
               await Clipboard.paste(response);
+              closeMainWindow();
+            }}
+          />
+          <Action
+            title="Copy Response"
+            icon={Icon.Clipboard}
+            onAction={async () => {
+              await Clipboard.copy(response);
               closeMainWindow();
             }}
           />
@@ -54,4 +47,4 @@ ${response}
       }
     />
   );
-} 
+}
