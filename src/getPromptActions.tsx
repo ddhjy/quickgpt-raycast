@@ -246,7 +246,6 @@ function CerebrasView({ getFormattedDescription }: { getFormattedDescription: ()
 
   return (
     <ResultView 
-      prompt={getFormattedDescription()}
       response={response || ''}
       duration={duration || ''}
       isLoading={!response}
