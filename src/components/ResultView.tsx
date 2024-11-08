@@ -13,12 +13,32 @@ export function ResultView({response, duration }: ResultViewProps) {
   const markdown = `
 ${response}
 `;
+
+  const getLastCodeBlock = (text: string) => {
+    const matches = text.match(/```[\s\S]*?```/g);
+    if (!matches) return "";
+    const lastBlock = matches[matches.length - 1];
+    return lastBlock.replace(/```.*\n|```$/g, "").trim();
+  };
+
   return (
     <Detail
       markdown={markdown}
       isLoading={isLoading}
       actions={
         <ActionPanel>
+          <Action
+            title="Paste Last Code Block"
+            icon={Icon.Code}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "return" }}
+            onAction={async () => {
+              const lastCodeBlock = getLastCodeBlock(response);
+              if (lastCodeBlock) {
+                await Clipboard.paste(lastCodeBlock);
+                closeMainWindow();
+              }
+            }}
+          />
           <Action
             title="Paste"
             icon={Icon.Document}
