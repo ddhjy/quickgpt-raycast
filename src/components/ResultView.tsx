@@ -51,7 +51,7 @@ ${response}
     actions.unshift(
       <Action
         key="pasteCode"
-        title="Paste Last Code Block"
+        title="Paste Code Block"
         icon={Icon.Code}
         shortcut={{ modifiers: ["cmd", "shift"], key: "return" }}
         onAction={async () => {
