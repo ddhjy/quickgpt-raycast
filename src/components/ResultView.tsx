@@ -21,6 +21,15 @@ ${response}
     return lastBlock.replace(/```.*\n|```$/g, "").trim();
   };
 
+  const getLongestCodeBlock = (text: string) => {
+    const matches = text.match(/```[\s\S]*?```/g);
+    if (!matches) return "";
+    const longest = matches.reduce((max, current) => 
+      current.length > max.length ? current : max
+    );
+    return longest.replace(/```.*\n|```$/g, "").trim();
+  };
+
   const hasCodeBlock = getLastCodeBlock(response).length > 0;
   
   const actions = [
@@ -49,6 +58,17 @@ ${response}
   // 如果有代码块，将代码块粘贴操作插入到数组开头
   if (hasCodeBlock) {
     actions.unshift(
+      <Action
+        key="pasteLongestCode"
+        title="Paste Longest Code Block"
+        icon={Icon.Code}
+        shortcut={{ modifiers: ["cmd", "opt"], key: "return" }}
+        onAction={async () => {
+          const longestCodeBlock = getLongestCodeBlock(response);
+          await Clipboard.paste(longestCodeBlock);
+          closeMainWindow();
+        }}
+      />,
       <Action
         key="pasteCode"
         title="Paste Code Block"
