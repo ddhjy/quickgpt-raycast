@@ -407,7 +407,7 @@ function PromptList({
 
   return (
     <List
-      searchBarPlaceholder={searchMode ? "Search Mode" : "Input Mode"}
+      searchBarPlaceholder={searchMode ? "Search" : "Input"}
       onSearchTextChange={setSearchText}
       filtering={false}
     >
