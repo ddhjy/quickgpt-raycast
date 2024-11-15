@@ -75,6 +75,7 @@ export function getPromptActions(
                 await Clipboard.copy(description);
 
                 try {
+                  closeMainWindow();
                   const scriptContent = fs.readFileSync(script, "utf8");
                   await runAppleScript(scriptContent);
                 } catch (error) {
