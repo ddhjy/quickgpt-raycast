@@ -107,6 +107,7 @@ export function getPromptActions(
             await Clipboard.copy(description);
             
             try {
+              closeMainWindow();
               const scriptPath = path.join(__dirname, "assets/ChatGPT.applescript");
               const scriptContent = fs.readFileSync(scriptPath, "utf8");
               await runAppleScript(scriptContent, [description]);
