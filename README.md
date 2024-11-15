@@ -96,7 +96,7 @@ quickgpt/
 
 ## 贡献
 
-欢迎任何形式的贡献！如果您发现问题或有改进建议，请提交 [Issue](https://github.com/您的用户名/quickgpt/issues)。欢迎提交 Pull Request 来贡献代码。
+欢迎任何形式的贡献！如果您发现问题或有改进建议，请提交 [Issue](https://github.com/ddhjy/quickgpt/issues)。欢迎提交 Pull Request 来贡献代码。
 
 ## 许可证
 
