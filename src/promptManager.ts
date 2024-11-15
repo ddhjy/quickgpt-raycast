@@ -130,11 +130,27 @@ class PromptManager {
 
   private processPrompt(prompt: PromptProps): PromptProps {
     if (!prompt.identifier) {
-      prompt.identifier = md5(prompt.title);
+      const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
+      const emojis = prompt.title.match(emojiRegex) || [];
+      const emojiStr = emojis.join('');
+      
+      const placeholderRegex = /{{([^}]+)}}/g;
+      const placeholders = prompt.content?.match(placeholderRegex) || [];
+      const placeholderStr = placeholders
+        .map(p => p.replace(/[{}]/g, ''))
+        .join('-');
+      
+      const baseStr = [
+        emojiStr,
+        prompt.title.replace(emojiRegex, '').trim(),
+        placeholderStr
+      ].filter(Boolean).join('-');
+      
+      prompt.identifier = md5(baseStr).substring(0, 8);
     }
 
     if (prompt.ref) {
-      prompt.rawRef = { ...prompt.ref };
+      prompt.rawRef = { ...prompt.ref };;
       prompt.options = {};
       prompt.textInputs = {};
 
