@@ -127,17 +127,59 @@ class PromptManager {
 
   private processPrompts(prompts: PromptProps[], parentPath: string = ''): PromptProps[] {
     return prompts.map(prompt => {
+      prompt = this.processPrompt(prompt);
+      
       const currentPath = parentPath ? `${parentPath} / ${prompt.title}` : prompt.title;
+      prompt.path = currentPath;
       
       if (prompt.subprompts) {
         prompt.subprompts = this.processPrompts(prompt.subprompts, currentPath);
       }
       
-      return {
-        ...prompt,
-        path: currentPath
-      };
+      return prompt;
     });
+  }
+
+  private processPrompt(prompt: PromptProps): PromptProps {
+    if (!prompt.identifier) {
+      const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
+      const emojis = prompt.title.match(emojiRegex) || [];
+      const emojiStr = emojis.join('');
+      
+      const placeholderRegex = /{{([^}]+)}}/g;
+      const placeholders = prompt.content?.match(placeholderRegex) || [];
+      const placeholderStr = placeholders
+        .map(p => p.replace(/[{}]/g, ''))
+        .join('-');
+      
+      const baseStr = [
+        emojiStr,
+        prompt.title.replace(emojiRegex, '').trim(),
+        placeholderStr
+      ].filter(Boolean).join('-');
+      
+      prompt.identifier = md5(baseStr).substring(0, 8);
+    }
+
+    if (prompt.ref) {
+      prompt.rawRef = { ...prompt.ref };
+      prompt.options = {};
+      prompt.textInputs = {};
+
+      Object.entries(prompt.ref).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          prompt.options = prompt.options || {};
+          prompt.options[key] = value;
+        } else if (typeof value === 'string' && !value.startsWith('/')) {
+          prompt.textInputs = prompt.textInputs || {};
+          prompt.textInputs[key] = value;
+        }
+      });
+
+      delete prompt.ref;
+    }
+
+    return prompt;
   }
 
   public getRootPrompts(): PromptProps[] {
