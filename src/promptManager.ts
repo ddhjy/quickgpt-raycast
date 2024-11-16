@@ -31,6 +31,7 @@ export type PromptProps = {
   actions?: string[];
   textInputs?: { [key: string]: string };
   path?: string;
+  filePath?: string;
 };
 
 function loadContentFromFileSync(filePath: string, baseDir: string): string {
@@ -66,7 +67,11 @@ class PromptManager {
       const fileExtension = path.extname(filePath).toLowerCase();
       const prompts = fileExtension === '.hjson' ? hjson.parse(data) : JSON.parse(data);
       const baseDir = path.dirname(filePath);
-      return prompts.map((prompt: PromptProps) => this.resolvePromptContentSync(prompt, baseDir));
+      return prompts.map((prompt: PromptProps) => {
+        const processedPrompt = this.resolvePromptContentSync(prompt, baseDir);
+        processedPrompt.filePath = filePath;
+        return processedPrompt;
+      });
     } catch (error) {
       console.error(`加载提示失败 ${filePath}:`, error);
       return [];

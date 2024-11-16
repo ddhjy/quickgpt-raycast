@@ -28,9 +28,14 @@ interface ActionItem {
   action: React.ReactElement;
 }
 
+interface PromptProps {
+  filePath?: string;
+}
+
 export function getPromptActions(
   getFormattedDescription: () => string,
-  actions?: string[]
+  actions?: string[],
+  prompt?: PromptProps
 ) {
   const preferences = getPreferenceValues<Preferences>();
 
@@ -172,6 +177,37 @@ export function getPromptActions(
             const description = getFormattedDescription();
             Clipboard.copy(description);
             Clipboard.paste(description);
+          }}
+        />
+      ),
+    },
+    {
+      name: "editInVSCode",
+      displayName: "Edit in VSCode",
+      condition: Boolean(prompt?.filePath),
+      action: (
+        <Action
+          title="Edit in VSCode"
+          icon={Icon.Code}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "e" }}
+          onAction={async () => {
+            try {
+              if (!prompt?.filePath) {
+                await showToast(Toast.Style.Failure, "Error", "File path not found");
+                return;
+              }
+              
+              closeMainWindow();
+              await runAppleScript(`
+                tell application "Visual Studio Code"
+                  activate
+                  open POSIX file "${prompt.filePath}"
+                end tell
+              `);
+            } catch (error) {
+              console.error("Failed to open VSCode:", error);
+              await showToast(Toast.Style.Failure, "Error", String(error));
+            }
           }}
         />
       ),
