@@ -293,9 +293,9 @@ function PromptList({
   const promptItems = prompts
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
-      const title = searchMode ? prompt.title : contentFormat(prompt.title || "", replacements);
+      const title = contentFormat(prompt.title || "", replacements);
       const formattedTitle = searchMode && prompt.path 
-        ? `${prompt.path.replace(prompt.title, '')}${prompt.title}`.trim()
+        ? `${contentFormat(prompt.path, replacements).replace(title, '')}${title}`.trim()
         : title;
 
       // Lazy generation of formatted content
