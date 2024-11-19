@@ -187,6 +187,7 @@ export function getPromptActions(
       condition: Boolean(prompt?.filePath),
       action: (
         <Action
+          // eslint-disable-next-line @raycast/prefer-title-case
           title="Edit in VSCode"
           icon={Icon.Code}
           shortcut={{ modifiers: ["cmd", "shift"], key: "e" }}
