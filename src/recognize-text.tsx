@@ -13,6 +13,14 @@ export default async function command() {
         title: "No text detected",
       });
     }
+
+    if (recognizedText === "Error: failed to capture image") {
+      return await showToast({
+        style: Toast.Style.Failure,
+        title: "取消",
+      });
+    }
+
     await Clipboard.copy(recognizedText);
     await open("raycast://extensions/ddhjy2012/quickgpt/index");
 
