@@ -15,6 +15,12 @@
       "title": "Index",
       "description": "运行quickgpt工具，该工具用于为 chatgpt 提供提示词。需要一个视图，并接受三个可选参数：剪贴板文本、选择文本和动作。",
       "mode": "view"
+    },
+    {
+      "name": "recognize-text",
+      "title": "Recognize Text",
+      "description": "Detect all text from the captured screen area",
+      "mode": "no-view"
     }
   ],
   "preferences": [
@@ -88,6 +94,129 @@
       "description": "您的 Cerebras API 密钥",
       "type": "password",
       "required": false
+    },
+    {
+      "name": "primaryLanguage",
+      "title": "Primary Language",
+      "description": "Primary language for text recognition",
+      "type": "dropdown",
+      "required": true,
+      "data": [
+        {
+          "title": "🇺🇸 English (US)",
+          "value": "en-US"
+        },
+        {
+          "title": "🇫🇷 French (France)",
+          "value": "fr-FR"
+        },
+        {
+          "title": "🇮🇹 Italian (Italy)",
+          "value": "it-IT"
+        },
+        {
+          "title": "🇩🇪 German (Germany)",
+          "value": "de-DE"
+        },
+        {
+          "title": "🇪🇸 Spanish (Spain)",
+          "value": "es-ES"
+        },
+        {
+          "title": "🇧🇷 Portuguese (Brazil)",
+          "value": "pt-BR"
+        },
+        {
+          "title": "🇨🇳 Chinese (Simplified)",
+          "value": "zh-Hans"
+        },
+        {
+          "title": "🇹🇼 Chinese (Traditional)",
+          "value": "zh-Hant"
+        },
+        {
+          "title": "🇨🇳 Cantonese (Simplified)",
+          "value": "yue-Hans"
+        },
+        {
+          "title": "🇭🇰 Cantonese (Traditional)",
+          "value": "yue-Hant"
+        },
+        {
+          "title": "🇰🇷 Korean (South Korea)",
+          "value": "ko-KR"
+        },
+        {
+          "title": "🇯🇵 Japanese (Japan)",
+          "value": "ja-JP"
+        },
+        {
+          "title": "🇷🇺 Russian (Russia)",
+          "value": "ru-RU"
+        },
+        {
+          "title": "🇺🇦 Ukrainian (Ukraine)",
+          "value": "uk-UA"
+        },
+        {
+          "title": "🇹🇭 Thai (Thailand)",
+          "value": "th-TH"
+        },
+        {
+          "title": "🇻🇳 Vietnamese (Vietnam)",
+          "value": "vi-VT"
+        }
+      ]
+    },
+    {
+      "name": "ocrMode",
+      "title": "Recognition Level",
+      "description": "Affects performance and accuracy of the text recognition",
+      "type": "dropdown",
+      "required": true,
+      "data": [
+        {
+          "title": "Accurate",
+          "value": "accurate"
+        },
+        {
+          "title": "Fast",
+          "value": "fast"
+        }
+      ]
+    },
+    {
+      "name": "languageCorrection",
+      "title": "Options",
+      "description": "Disabling this property returns the raw recognition results, which provides performance benefits but less accurate results",
+      "type": "checkbox",
+      "required": true,
+      "label": "Use language correction",
+      "default": true
+    },
+    {
+      "name": "ignoreLineBreaks",
+      "description": "Ignores Line Breaks",
+      "type": "checkbox",
+      "required": false,
+      "label": "Ignore line breaks",
+      "default": false
+    },
+    {
+      "name": "keepImage",
+      "description": "Keep the image in the clipboard after text recognition",
+      "type": "checkbox",
+      "required": true,
+      "label": "Keep image in clipboard",
+      "default": false
+    },
+    {
+      "name": "customWordsList",
+      "title": "Custom Words List",
+      "description": "You can improve text recognition by providing a list of words that are special to your text",
+      "type": "textfield",
+      "required": false,
+      "label": "Custom Words List"
     }
   ],
   "dependencies": {
