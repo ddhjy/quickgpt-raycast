@@ -5,29 +5,40 @@ export default async function command() {
   await closeMainWindow();
 
   try {
+    const toast = await showToast({
+      style: Toast.Style.Animated,
+      title: "文本识别...",
+    });
+
     const recognizedText = await recognizeText();
+
+    await toast.hide();
 
     if (!recognizedText) {
       return await showToast({
         style: Toast.Style.Failure,
-        title: "No text detected",
+        title: "没有识别到文本",
       });
     }
 
     if (recognizedText === "Error: failed to capture image") {
       return await showToast({
         style: Toast.Style.Failure,
-        title: "取消",
+        title: "文本识别取消",
       });
     }
 
     await Clipboard.copy(recognizedText);
     await open("raycast://extensions/ddhjy2012/quickgpt/index");
+    await showToast({
+      style: Toast.Style.Success,
+      title: "文本识别成功",
+    });
   } catch (e) {
     console.error(e);
     await showToast({
       style: Toast.Style.Failure,
-      title: "Failed detecting text",
+      title: "文本识别失败",
     });
   }
 }

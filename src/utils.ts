@@ -9,10 +9,10 @@ export const recognizeText = async (isFullScreen = false) => {
 
     const recognizedText = await recognizeTextSwift(
       isFullScreen,
-      preference.keepImage,
+      preference.keepImage || false,
       preference.ocrMode === "fast",
-      preference.languageCorrection,
-      preference.ignoreLineBreaks,
+      preference.languageCorrection || false,
+      preference.ignoreLineBreaks || false,
       preference.customWordsList ? preference.customWordsList.split(",") : [],
       languages.map((lang) => lang.value),
     );
