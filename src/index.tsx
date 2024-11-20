@@ -23,6 +23,7 @@ import { match } from "pinyin-pro";
 import { getPromptActions } from "./getPromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
+import { recognizeText } from "./utils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -397,7 +398,10 @@ function PromptList({
                 <RaycastAction.CopyToClipboard
                   title="Copy Deeplink"
                   content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
-                    JSON.stringify({ target: `${IDENTIFIER_PREFIX}${prompt.identifier}` })
+                    JSON.stringify({ 
+                      target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
+                      activateOCR: "true"
+                    })
                   )}`}
                   icon={Icon.Link}
                 />
@@ -423,6 +427,7 @@ interface ExtendedArguments extends Arguments.Index {
   clipboardText?: string;
   selectionText?: string;
   target?: string;
+  activateOCR?: string;
 }
 
 export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArguments }>) {
@@ -430,7 +435,10 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     selectionText: initialSelectionText,
     clipboardText: initialClipboardText,
     target,
+    activateOCR,
   } = props.arguments;
+
+  const shouldActivateOCR = activateOCR === "true";
 
   const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
@@ -452,11 +460,25 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     };
 
     const fetchSelectedText = async (): Promise<string> => {
+      if (shouldActivateOCR) {
+        try {
+          const recognizedText = await recognizeText();
+          if (recognizedText === "Error: failed to capture image") {
+            return "";
+          }
+          return recognizedText;
+        } catch (error) {
+          console.error("OCR 失败:", error);
+          return "";
+        }
+      }
+      
       if (initialSelectionText && initialSelectionText.length > 0) {
         return initialSelectionText;
       }
+
+      // 原有的文件选择和文本选择逻辑
       try {
-        // First, check for selected Finder items
         try {
           const selectedItems = await getSelectedFinderItems();
           if (selectedItems.length > 0) {
@@ -479,16 +501,14 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
             return content;
           }
         } catch (finderError) {
-          // Continue execution if there's an error with Finder items
+          // 继续执行
         }
 
-        // If no files or folders are selected, or if there was an error, try to get selected text
         const text = await getSelectedText();
         if (text) {
           return text;
         }
 
-        // If no text or files are selected, return empty string
         return "";
       } catch (error) {
         console.error("Error in fetchSelectedText:", error);
@@ -529,7 +549,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     } else {
       fetchClipboardText().then(setClipboardText);
     }
-  }, [initialClipboardText, initialSelectionText, target]);
+  }, [initialClipboardText, initialSelectionText, target, shouldActivateOCR]);
 
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
   const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
