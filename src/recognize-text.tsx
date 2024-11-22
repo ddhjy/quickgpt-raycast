@@ -24,7 +24,7 @@ export default async function command() {
     if (recognizedText === "Error: failed to capture image") {
       return await showToast({
         style: Toast.Style.Failure,
-        title: "文本识别取消",
+        title: "取消",
       });
     }
 
@@ -32,13 +32,13 @@ export default async function command() {
     await open("raycast://extensions/ddhjy2012/quickgpt/index");
     await showToast({
       style: Toast.Style.Success,
-      title: "文本识别成功",
+      title: "成功",
     });
   } catch (e) {
     console.error(e);
     await showToast({
       style: Toast.Style.Failure,
-      title: "文本识别失败",
+      title: "失败",
     });
   }
 }
