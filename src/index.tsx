@@ -491,7 +491,6 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
         return initialSelectionText;
       }
 
-      // 原有的文件选择和文本选择逻辑
       try {
         try {
           const selectedItems = await getSelectedFinderItems();
@@ -525,7 +524,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
 
         return "";
       } catch (error) {
-        console.error("Error in fetchSelectedText:", error);
+        console.info("No text selected");
         return "";
       }
     };
