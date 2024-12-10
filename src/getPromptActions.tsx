@@ -231,6 +231,18 @@ export function getPromptActions(
       ),
     },
     {
+      name: "groq",
+      displayName: "Call Groq",
+      condition: true,
+      action: (
+        <Action.Push
+          title="Call Groq"
+          icon={Icon.AddPerson}
+          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="groq" />}
+        />
+      ),
+    },
+    {
       name: "openURL",
       displayName: "Open URL",
       condition: Boolean(preferences.openURL),
