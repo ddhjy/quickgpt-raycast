@@ -16,4 +16,4 @@ export class SambanovaProvider extends BaseAIProvider {
     const preferences = getPreferenceValues<Preferences>();
     return preferences.sambanovaApiKey;
   }
-} 
+}
