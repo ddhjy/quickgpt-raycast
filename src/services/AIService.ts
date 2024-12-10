@@ -9,15 +9,20 @@ export class AIService {
 
   private constructor() {
     this.providers = new Map();
+    
     // 注册提供商
     const cerebrasProvider = new CerebrasProvider();
     const sambanovaProvider = new SambanovaProvider();
+    
+    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name);
     
     this.providers.set(cerebrasProvider.name, cerebrasProvider);
     this.providers.set(sambanovaProvider.name, sambanovaProvider);
     
     // 默认使用 Cerebras
     this.currentProvider = cerebrasProvider;
+    
+    console.log('Available providers:', this.getProviderNames());
   }
 
   static getInstance(): AIService {
@@ -28,13 +33,17 @@ export class AIService {
   }
 
   getProvider(name: string): AIProvider | undefined {
-    return this.providers.get(name);
+    const normalizedName = name.toLowerCase();
+    console.log('Getting provider:', normalizedName, 'Available:', this.getProviderNames());
+    return this.providers.get(normalizedName);
   }
 
   setCurrentProvider(name: string) {
-    const provider = this.providers.get(name);
+    const normalizedName = name.toLowerCase();
+    console.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
+    const provider = this.providers.get(normalizedName);
     if (!provider) {
-      throw new Error(`Provider ${name} not found`);
+      throw new Error(`Provider ${name} not found. Available providers: ${this.getProviderNames().join(', ')}`);
     }
     this.currentProvider = provider;
   }
@@ -45,6 +54,10 @@ export class AIService {
 
   getAllProviders(): AIProvider[] {
     return Array.from(this.providers.values());
+  }
+
+  getProviderNames(): string[] {
+    return Array.from(this.providers.keys());
   }
 
   async chat(message: string, options?: ChatOptions): Promise<string> {

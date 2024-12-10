@@ -7,12 +7,13 @@ export abstract class BaseAIProvider implements AIProvider {
   abstract supportedModels: string[];
   abstract getApiKey(): string;
   protected abstract apiEndpoint: string;
+  defaultSystemPrompt = 'You are a helpful assistant';
 
-  protected createMessages(message: string): ChatMessage[] {
+  protected createMessages(message: string, systemPrompt?: string): ChatMessage[] {
     return [
       {
         role: 'system',
-        content: 'You are a helpful assistant'
+        content: systemPrompt || this.defaultSystemPrompt
       },
       {
         role: 'user',
@@ -29,7 +30,7 @@ export abstract class BaseAIProvider implements AIProvider {
         'Authorization': `Bearer ${this.getApiKey()}`
       },
       body: JSON.stringify({
-        messages: this.createMessages(message),
+        messages: this.createMessages(message, options?.systemPrompt),
         model: options?.model || this.defaultModel,
         stream: true,
         ...(options?.maxTokens && { max_completion_tokens: options.maxTokens }),
