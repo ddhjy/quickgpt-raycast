@@ -400,7 +400,7 @@ function PromptList({
                   content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
                     JSON.stringify({ 
                       target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
-                      activateOCR: "true"
+                      activateOCR: "false"
                     })
                   )}`}
                   icon={Icon.Link}
