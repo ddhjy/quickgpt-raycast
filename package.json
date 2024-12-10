@@ -217,6 +217,20 @@
       "type": "textfield",
       "required": false,
       "label": "Custom Words List"
+    },
+    {
+      "name": "cerebrasApiKey",
+      "type": "password",
+      "required": true,
+      "title": "Cerebras API Key",
+      "description": "Your Cerebras API key"
+    },
+    {
+      "name": "sambanovaApiKey",
+      "type": "password",
+      "required": true,
+      "title": "SambaNova API Key",
+      "description": "Your SambaNova API key"
     }
   ],
   "dependencies": {

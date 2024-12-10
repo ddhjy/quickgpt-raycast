@@ -1,5 +1,6 @@
 import { AIProvider, ChatOptions } from "./types";
 import { CerebrasProvider } from "./providers/cerebras";
+import { SambanovaProvider } from "./providers/sambanova";
 
 export class AIService {
   private static instance: AIService;
@@ -10,7 +11,10 @@ export class AIService {
     this.providers = new Map();
     // 注册提供商
     const cerebrasProvider = new CerebrasProvider();
+    const sambanovaProvider = new SambanovaProvider();
+    
     this.providers.set(cerebrasProvider.name, cerebrasProvider);
+    this.providers.set(sambanovaProvider.name, sambanovaProvider);
     
     // 默认使用 Cerebras
     this.currentProvider = cerebrasProvider;
