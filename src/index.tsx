@@ -452,16 +452,6 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   // 将 actions 字符串转换回数组
   const allowedActions = actions?.split(',').filter(Boolean);
 
-  // 添加参数解析日志
-  console.log('Deeplink arguments:', {
-    target,
-    activateOCR,
-    actions,
-    parsedActions: allowedActions,
-    initialSelectionText,
-    initialClipboardText
-  });
-
   const shouldActivateOCR = activateOCR === "true";
 
   const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
@@ -579,27 +569,11 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
 
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
   
-  // 添加 quickPrompt 解析日志
-  console.log('Quick prompt resolved:', {
-    identifier: quickPrompt?.identifier,
-    title: quickPrompt?.title,
-    hasSubprompts: !!quickPrompt?.subprompts,
-    actions: quickPrompt?.actions,
-    allowedActions
-  });
-
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
       ? [quickPrompt]
       : [...pinnedPrompts, ...promptManager.getRootPrompts()];
-
-  // 添加可用 prompts 日志
-  console.log('Available prompts:', availablePrompts.map(p => ({
-    identifier: p.identifier,
-    title: p.title,
-    actions: p.actions
-  })));
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
