@@ -36,9 +36,11 @@ interface PromptProps {
 interface ChatViewProps {
   getFormattedDescription: () => string;
   options?: ChatOptions;
+  providerName?: string;
+  systemPrompt?: string;
 }
 
-function ChatView({ getFormattedDescription, options }: ChatViewProps) {
+function ChatView({ getFormattedDescription, options, providerName, systemPrompt }: ChatViewProps) {
   const [response, setResponse] = useState<string>();
   const [duration, setDuration] = useState<string>();
 
@@ -50,7 +52,14 @@ function ChatView({ getFormattedDescription, options }: ChatViewProps) {
         const toast = await showToast(Toast.Style.Animated, "Thinking...");
         
         const aiService = AIService.getInstance();
-        const result = await aiService.chat(description, options);
+        if (providerName) {
+          aiService.setCurrentProvider(providerName);
+        }
+        
+        const result = await aiService.chat(description, {
+          ...options,
+          systemPrompt: systemPrompt || options?.systemPrompt
+        });
         
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
@@ -65,7 +74,7 @@ function ChatView({ getFormattedDescription, options }: ChatViewProps) {
       }
     }
     fetchResponse();
-  }, [getFormattedDescription, options]);
+  }, [getFormattedDescription, options, providerName, systemPrompt]);
 
   return (
     <ResultView 
@@ -177,7 +186,19 @@ export function getPromptActions(
         <Action.Push
           title="Call Cerebras"
           icon={Icon.AddPerson}
-          target={<ChatView getFormattedDescription={getFormattedDescription} />}
+          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="cerebras" />}
+        />
+      ),
+    },
+    {
+      name: "sambanova",
+      displayName: "Call Sambanova",
+      condition: true,
+      action: (
+        <Action.Push
+          title="Call Sambanova"
+          icon={Icon.AddPerson}
+          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="sambanova" />}
         />
       ),
     },

@@ -8,6 +8,7 @@ export interface ChatOptions {
   maxTokens?: number;
   topP?: number;
   model?: string;
+  systemPrompt?: string;
 }
 
 export interface AIProvider {
@@ -15,4 +16,5 @@ export interface AIProvider {
   name: string;
   defaultModel: string;
   supportedModels: string[];
+  defaultSystemPrompt?: string;
 } 
