@@ -12,8 +12,9 @@ import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import path from "path";
 import lastActionStore from "./lastActionStore";
-import { chat } from "./cerebras";
 import { ResultView } from "./components/ResultView";
+import { AIService } from "./services/AIService";
+import { ChatOptions } from "./services/types";
 
 interface Preferences {
   openURL?: string;
@@ -30,6 +31,49 @@ interface ActionItem {
 
 interface PromptProps {
   filePath?: string;
+}
+
+interface ChatViewProps {
+  getFormattedDescription: () => string;
+  options?: ChatOptions;
+}
+
+function ChatView({ getFormattedDescription, options }: ChatViewProps) {
+  const [response, setResponse] = useState<string>();
+  const [duration, setDuration] = useState<string>();
+
+  useEffect(() => {
+    async function fetchResponse() {
+      try {
+        const description = getFormattedDescription();
+        const startTime = Date.now();
+        const toast = await showToast(Toast.Style.Animated, "Thinking...");
+        
+        const aiService = AIService.getInstance();
+        const result = await aiService.chat(description, options);
+        
+        const endTime = Date.now();
+        const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
+        setDuration(durationSeconds);
+        setResponse(result);
+        
+        toast.style = Toast.Style.Success;
+        toast.title = `Done (${durationSeconds}s)`;
+      } catch (error) {
+        console.error(error);
+        await showToast(Toast.Style.Failure, "Error", String(error));
+      }
+    }
+    fetchResponse();
+  }, [getFormattedDescription, options]);
+
+  return (
+    <ResultView 
+      response={response || ''}
+      duration={duration || ''}
+      isLoading={!response}
+    />
+  );
 }
 
 export function getPromptActions(
@@ -133,7 +177,7 @@ export function getPromptActions(
         <Action.Push
           title="Call Cerebras"
           icon={Icon.AddPerson}
-          target={<CerebrasView getFormattedDescription={getFormattedDescription} />}
+          target={<ChatView getFormattedDescription={getFormattedDescription} />}
         />
       ),
     },
@@ -255,39 +299,5 @@ export function getPromptActions(
         });
       })}
     </>
-  );
-}
-
-function CerebrasView({ getFormattedDescription }: { getFormattedDescription: () => string }) {
-  const [response, setResponse] = useState<string>();
-  const [duration, setDuration] = useState<string>();
-
-  useEffect(() => {
-    async function fetchResponse() {
-      try {
-        const description = getFormattedDescription();
-        const startTime = Date.now();
-        const toast = await showToast(Toast.Style.Animated, "Thinking...");
-        const result = await chat(description);
-        const endTime = Date.now();
-        setDuration(((endTime - startTime) / 1000).toFixed(1));
-        setResponse(result);
-        
-        toast.style = Toast.Style.Success;
-        toast.title = `Done (${duration}s)`;
-      } catch (error) {
-        console.error(error);
-        await showToast(Toast.Style.Failure, "Error", String(error));
-      }
-    }
-    fetchResponse();
-  }, []);
-
-  return (
-    <ResultView 
-      response={response || ''}
-      duration={duration || ''}
-      isLoading={!response}
-    />
   );
 }
