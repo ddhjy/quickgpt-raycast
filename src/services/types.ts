@@ -9,6 +9,7 @@ export interface ChatOptions {
   topP?: number;
   model?: string;
   systemPrompt?: string;
+  onStream?: (text: string) => void;
 }
 
 export interface AIProvider {

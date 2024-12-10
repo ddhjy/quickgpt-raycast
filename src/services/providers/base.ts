@@ -59,7 +59,10 @@ export abstract class BaseAIProvider implements AIProvider {
             try {
               const parsed = JSON.parse(data);
               const content = parsed.choices[0]?.delta?.content || '';
-              result += content;
+              if (content) {
+                result += content;
+                options?.onStream?.(content);
+              }
             } catch (e) {
               console.error('解析数据块失败:', e);
             }

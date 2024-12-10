@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Action,
   Clipboard,
@@ -41,46 +41,74 @@ interface ChatViewProps {
 }
 
 function ChatView({ getFormattedDescription, options, providerName, systemPrompt }: ChatViewProps) {
-  const [response, setResponse] = useState<string>();
+  const [response, setResponse] = useState<string>('');
   const [duration, setDuration] = useState<string>();
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const appendResponse = useCallback((text: string) => {
+    setResponse(prev => prev + text);
+  }, []);
 
   useEffect(() => {
+    let startTime: number;
+    let toast: Toast;
+
     async function fetchResponse() {
       try {
         const description = getFormattedDescription();
-        const startTime = Date.now();
-        const toast = await showToast(Toast.Style.Animated, "Thinking...");
+        startTime = Date.now();
+        setIsStreaming(true);
+        setResponse('');
+        
+        toast = await showToast(Toast.Style.Animated, "Thinking...");
         
         const aiService = AIService.getInstance();
         if (providerName) {
           aiService.setCurrentProvider(providerName);
         }
-        
-        const result = await aiService.chat(description, {
-          ...options,
-          systemPrompt: systemPrompt || options?.systemPrompt
-        });
+
+        // 使用流式回调
+        await aiService.chat(
+          description, 
+          {
+            ...options,
+            systemPrompt: systemPrompt || options?.systemPrompt,
+            onStream: (text: string) => {
+              appendResponse(text);
+              const currentDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+              setDuration(currentDuration);
+            }
+          }
+        );
         
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
         setDuration(durationSeconds);
-        setResponse(result);
+        setIsStreaming(false);
         
         toast.style = Toast.Style.Success;
         toast.title = `Done (${durationSeconds}s)`;
       } catch (error) {
         console.error(error);
+        setIsStreaming(false);
         await showToast(Toast.Style.Failure, "Error", String(error));
       }
     }
+
     fetchResponse();
-  }, [getFormattedDescription, options, providerName, systemPrompt]);
+
+    return () => {
+      if (toast) {
+        toast.hide();
+      }
+    };
+  }, [getFormattedDescription, options, providerName, systemPrompt, appendResponse]);
 
   return (
     <ResultView 
-      response={response || ''}
+      response={response}
       duration={duration || ''}
-      isLoading={!response}
+      isLoading={isStreaming}
     />
   );
 }
