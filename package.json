@@ -83,7 +83,7 @@
     },
     {
       "name": "scriptsDirectory",
-      "title": "Action: Scripts Directory", 
+      "title": "Action: Scripts Directory",
       "required": false,
       "description": "存放 AppleScript 脚本的目录。目录下所有的 .applescript 和 .scpt 文件都会被加载为可执行脚本。",
       "type": "directory"
@@ -240,6 +240,7 @@
     "@types/jest": "^29.5.13",
     "@types/md5": "^2.3.4",
     "@types/node": "20.8.10",
+    "@types/node-fetch": "^2.6.12",
     "@types/react": "18.3.3",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
