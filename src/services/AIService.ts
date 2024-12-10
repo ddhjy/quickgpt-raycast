@@ -1,6 +1,7 @@
 import { AIProvider, ChatOptions } from "./types";
 import { CerebrasProvider } from "./providers/cerebras";
 import { SambanovaProvider } from "./providers/sambanova";
+import { GroqProvider } from "./providers/groq";
 
 export class AIService {
   private static instance: AIService;
@@ -13,11 +14,13 @@ export class AIService {
     // 注册提供商
     const cerebrasProvider = new CerebrasProvider();
     const sambanovaProvider = new SambanovaProvider();
+    const groqProvider = new GroqProvider();
     
-    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name);
+    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name, groqProvider.name);
     
     this.providers.set(cerebrasProvider.name, cerebrasProvider);
     this.providers.set(sambanovaProvider.name, sambanovaProvider);
+    this.providers.set(groqProvider.name, groqProvider);
     
     // 默认使用 Cerebras
     this.currentProvider = cerebrasProvider;
