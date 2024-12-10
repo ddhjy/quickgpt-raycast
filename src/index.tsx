@@ -244,6 +244,7 @@ interface PromptListProps {
   selectionText: string;
   currentApp: string;
   browserContent: string;
+  allowedActions?: string[];
 }
 
 function PromptList({
@@ -253,6 +254,7 @@ function PromptList({
   selectionText,
   currentApp,
   browserContent,
+  allowedActions,
 }: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
@@ -277,6 +279,7 @@ function PromptList({
         selectionText={selectionText}
         currentApp={currentApp}
         browserContent={browserContent}
+        allowedActions={allowedActions}
       />
     );
   }
@@ -356,6 +359,7 @@ function PromptList({
                       selectionText={selectionText}
                       currentApp={currentApp}
                       browserContent={browserContent}
+                      allowedActions={allowedActions}
                     />
                   }
                 />
@@ -373,7 +377,11 @@ function PromptList({
                       }
                     />
                   ) : (
-                    getPromptActions(getFormattedContent, prompt.actions, prompt)
+                    getPromptActions(
+                      getFormattedContent, 
+                      allowedActions || prompt.actions,
+                      prompt
+                    )
                   )}
                 </>
               )}
@@ -400,7 +408,8 @@ function PromptList({
                   content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
                     JSON.stringify({ 
                       target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
-                      activateOCR: "false"
+                      activateOCR: "false",
+                      actions: prompt.actions?.join(',')
                     })
                   )}`}
                   icon={Icon.Link}
@@ -428,6 +437,7 @@ interface ExtendedArguments extends Arguments.Index {
   selectionText?: string;
   target?: string;
   activateOCR?: string;
+  actions?: string;
 }
 
 export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArguments }>) {
@@ -436,7 +446,21 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     clipboardText: initialClipboardText,
     target,
     activateOCR,
+    actions,
   } = props.arguments;
+
+  // 将 actions 字符串转换回数组
+  const allowedActions = actions?.split(',').filter(Boolean);
+
+  // 添加参数解析日志
+  console.log('Deeplink arguments:', {
+    target,
+    activateOCR,
+    actions,
+    parsedActions: allowedActions,
+    initialSelectionText,
+    initialClipboardText
+  });
 
   const shouldActivateOCR = activateOCR === "true";
 
@@ -554,11 +578,28 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   });
 
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
+  
+  // 添加 quickPrompt 解析日志
+  console.log('Quick prompt resolved:', {
+    identifier: quickPrompt?.identifier,
+    title: quickPrompt?.title,
+    hasSubprompts: !!quickPrompt?.subprompts,
+    actions: quickPrompt?.actions,
+    allowedActions
+  });
+
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
       ? [quickPrompt]
       : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+
+  // 添加可用 prompts 日志
+  console.log('Available prompts:', availablePrompts.map(p => ({
+    identifier: p.identifier,
+    title: p.title,
+    actions: p.actions
+  })));
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
@@ -576,6 +617,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       selectionText={effectiveSelectionText}
       currentApp={currentApp}
       browserContent={browserContent}
+      allowedActions={allowedActions}
     />
   );
 }
