@@ -231,6 +231,13 @@
       "required": true,
       "title": "SambaNova API Key",
       "description": "Your SambaNova API key"
+    },
+    {
+      "name": "groqApiKey",
+      "type": "password",
+      "required": true,
+      "title": "Groq API Key",
+      "description": "Your Groq API key"
     }
   ],
   "dependencies": {
