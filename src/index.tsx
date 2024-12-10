@@ -531,24 +531,20 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
       }
     };
 
-    if (!target || target.length === 0) {
-      const timer = setTimeout(async () => {
-        const [fetchedClipboardText, fetchedSelectedText, frontmostApp, fetchedBrowserContent] = await Promise.all([
-          fetchClipboardText(),
-          fetchSelectedText(),
-          fetchFrontmostApp(),
-          fetchBrowserContent(),
-        ]);
-        setClipboardText(fetchedClipboardText);
-        setSelectionText(fetchedSelectedText);
-        setCurrentApp(frontmostApp);
-        setBrowserContent(fetchedBrowserContent);
-      }, 10);
+    const timer = setTimeout(async () => {
+      const [fetchedClipboardText, fetchedSelectedText, frontmostApp, fetchedBrowserContent] = await Promise.all([
+        fetchClipboardText(),
+        fetchSelectedText(),
+        fetchFrontmostApp(),
+        fetchBrowserContent(),
+      ]);
+      setClipboardText(fetchedClipboardText);
+      setSelectionText(fetchedSelectedText);
+      setCurrentApp(frontmostApp);
+      setBrowserContent(fetchedBrowserContent);
+    }, 10);
 
-      return () => clearTimeout(timer);
-    } else {
-      fetchClipboardText().then(setClipboardText);
-    }
+    return () => clearTimeout(timer);
   }, [initialClipboardText, initialSelectionText, target, shouldActivateOCR]);
 
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
