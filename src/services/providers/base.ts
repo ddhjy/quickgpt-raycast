@@ -1,4 +1,4 @@
-import { AIProvider, ChatOptions, ChatMessage } from "../types";
+import { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "../types";
 import fetch from "node-fetch";
 
 export abstract class BaseAIProvider implements AIProvider {
@@ -22,7 +22,8 @@ export abstract class BaseAIProvider implements AIProvider {
     ];
   }
 
-  async chat(message: string, options?: ChatOptions): Promise<string> {
+  async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
+    const model = options?.model || this.defaultModel;
     const response = await fetch(this.apiEndpoint, {
       method: 'POST',
       headers: {
@@ -31,7 +32,7 @@ export abstract class BaseAIProvider implements AIProvider {
       },
       body: JSON.stringify({
         messages: this.createMessages(message, options?.systemPrompt),
-        model: options?.model || this.defaultModel,
+        model: model,
         stream: true,
         ...(options?.maxTokens && { max_completion_tokens: options.maxTokens }),
         ...(options?.temperature && { temperature: options.temperature }),
@@ -74,6 +75,9 @@ export abstract class BaseAIProvider implements AIProvider {
       throw error;
     }
 
-    return result;
+    return {
+      content: result,
+      model: model
+    };
   }
 } 

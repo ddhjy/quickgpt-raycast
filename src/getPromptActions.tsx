@@ -44,6 +44,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   const [response, setResponse] = useState<string>('');
   const [duration, setDuration] = useState<string>();
   const [isStreaming, setIsStreaming] = useState(false);
+  const [model, setModel] = useState<string>();
 
   const appendResponse = useCallback((text: string) => {
     setResponse(prev => prev + text);
@@ -68,7 +69,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
         }
 
         // 使用流式回调
-        await aiService.chat(
+        const result = await aiService.chat(
           description, 
           {
             ...options,
@@ -80,6 +81,9 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
             }
           }
         );
+        
+        // 设置模型信息
+        setModel(result.model);
         
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
@@ -109,6 +113,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
       response={response}
       duration={duration || ''}
       isLoading={isStreaming}
+      model={model}
     />
   );
 }

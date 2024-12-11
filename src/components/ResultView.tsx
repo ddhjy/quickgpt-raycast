@@ -5,9 +5,10 @@ interface ResultViewProps {
   response: string;
   duration: string;
   isLoading: boolean;
+  model?: string;
 }
 
-export function ResultView({response, duration }: ResultViewProps) {
+export function ResultView({response, duration, model }: ResultViewProps) {
   const [isLoading] = useState(false);
 
   const markdown = `
@@ -90,6 +91,7 @@ ${response}
       actions={<ActionPanel>{actions}</ActionPanel>}
       metadata={
         <Detail.Metadata>
+          {model && <Detail.Metadata.Label title="Model" text={model} />}
           <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
           <Detail.Metadata.Separator />
           <Detail.Metadata.Label title="Response Length" text={`${response.length} chars`} />
