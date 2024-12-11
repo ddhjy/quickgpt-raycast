@@ -44,40 +44,56 @@ export abstract class BaseAIProvider implements AIProvider {
       throw new Error(`API请求失败: ${response.statusText}`);
     }
 
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
     let result = '';
-    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
 
-    try {
-      for await (const chunk of response.body) {
-        const text = decoder.decode(new Uint8Array(chunk as Buffer));
-        const lines = text.split('\n').filter(line => line.trim());
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content || '';
-              if (content) {
-                result += content;
-                options?.onStream?.(content);
+    return new Promise((resolve, reject) => {
+      response.body.on('readable', () => {
+        let chunk;
+        while (null !== (chunk = response.body.read())) {
+          const text = chunk.toString();
+          buffer += text;
+          
+          let newlineIndex;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            
+            if (!line) continue;
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices[0]?.delta?.content || '';
+                if (content) {
+                  result += content;
+                  options?.onStream?.(content);
+                }
+              } catch (e) {
+                console.error('解析数据块失败:', e, line);
               }
-            } catch (e) {
-              console.error('解析数据块失败:', e);
             }
           }
         }
-      }
-    } catch (error) {
-      console.error('读取流数据时出错:', error);
-      throw error;
-    }
+      });
 
-    return {
-      content: result,
-      model: model
-    };
+      response.body.on('end', () => {
+        resolve({
+          content: result,
+          model: model
+        });
+      });
+
+      response.body.on('error', (error) => {
+        console.error('读取流数据时出错:', error);
+        reject(error);
+      });
+    });
   }
 } 
