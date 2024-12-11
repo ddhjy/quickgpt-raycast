@@ -1,4 +1,4 @@
-import { AIProvider, ChatOptions } from "./types";
+import { AIProvider, ChatOptions, ChatResponse } from "./types";
 import { CerebrasProvider } from "./providers/cerebras";
 import { SambanovaProvider } from "./providers/sambanova";
 import { GroqProvider } from "./providers/groq";
@@ -63,7 +63,7 @@ export class AIService {
     return Array.from(this.providers.keys());
   }
 
-  async chat(message: string, options?: ChatOptions): Promise<string> {
+  async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
     return this.currentProvider.chat(message, options);
   }
 } 

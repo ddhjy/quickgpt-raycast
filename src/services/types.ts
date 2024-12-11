@@ -3,6 +3,11 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ChatResponse {
+  content: string;
+  model: string;
+}
+
 export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
@@ -13,7 +18,7 @@ export interface ChatOptions {
 }
 
 export interface AIProvider {
-  chat(message: string, options?: ChatOptions): Promise<string>;
+  chat(message: string, options?: ChatOptions): Promise<ChatResponse>;
   name: string;
   defaultModel: string;
   supportedModels: string[];
