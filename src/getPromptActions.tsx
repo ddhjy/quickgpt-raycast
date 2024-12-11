@@ -47,12 +47,23 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   const [model, setModel] = useState<string>();
   const startTimeRef = useRef<number>(0);
   const contentRef = useRef<string>('');
+  
+  // 用于节流更新
+  const updatingRef = useRef<boolean>(false);
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const appendResponse = useCallback((text: string) => {
-    contentRef.current += text;
-    setResponse(contentRef.current);
-    const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
-    setDuration(currentDuration);
+  const scheduleUpdate = useCallback(() => {
+    if (!updatingRef.current) {
+      // 标记正在更新，稍后清除
+      updatingRef.current = true;
+      updateTimerRef.current = setTimeout(() => {
+        // 定时更新状态
+        setResponse(contentRef.current);
+        const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
+        setDuration(currentDuration);
+        updatingRef.current = false;
+      }, 500); // 每100ms更新一次UI，可根据需要进行调节
+    }
   }, []);
 
   useEffect(() => {
@@ -74,7 +85,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
           aiService.setCurrentProvider(providerName);
         }
 
-        // 使用流式回调
+        // 使用流式回调，但不在回调中直接setState
         const result = await aiService.chat(
           description, 
           {
@@ -82,7 +93,10 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
             systemPrompt: systemPrompt || options?.systemPrompt,
             onStream: (text: string) => {
               if (!isMounted) return;
-              appendResponse(text);
+              // 仅将新数据追加到contentRef
+              contentRef.current += text;
+              // 使用批次更新，减少频繁UI更新
+              scheduleUpdate();
             }
           }
         );
@@ -97,6 +111,9 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
         setDuration(durationSeconds);
         setIsStreaming(false);
         
+        // 确保流结束后有一次最终更新（有些流可能在timer空隙未更新完整）
+        setResponse(contentRef.current);
+
         if (toast) {
           toast.style = Toast.Style.Success;
           toast.title = `Done (${durationSeconds}s)`;
@@ -116,8 +133,11 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
       if (toast) {
         toast.hide();
       }
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+      }
     };
-  }, [getFormattedDescription, options, providerName, systemPrompt, appendResponse]);
+  }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]);
 
   return (
     <ResultView 
@@ -129,6 +149,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   );
 }
 
+// 下面的getPromptActions函数保持不变，只需保留ChatView的优化即可
 export function getPromptActions(
   getFormattedDescription: () => string,
   actions?: string[],
@@ -336,7 +357,6 @@ export function getPromptActions(
     },
   ];
 
-  // Filter and sort actions
   const filteredActions = actionItems.filter(
     (option) => option.condition && option.action
   );
