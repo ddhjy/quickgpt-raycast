@@ -46,9 +46,13 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   const [isStreaming, setIsStreaming] = useState(false);
   const [model, setModel] = useState<string>();
   const startTimeRef = useRef<number>(0);
+  const contentRef = useRef<string>('');
 
   const appendResponse = useCallback((text: string) => {
-    setResponse(prev => prev + text);
+    contentRef.current += text;
+    setResponse(contentRef.current);
+    const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
+    setDuration(currentDuration);
   }, []);
 
   useEffect(() => {
@@ -61,6 +65,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
         startTimeRef.current = Date.now();
         setIsStreaming(true);
         setResponse('');
+        contentRef.current = '';
         
         toast = await showToast(Toast.Style.Animated, "Thinking...");
         
@@ -78,8 +83,6 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
             onStream: (text: string) => {
               if (!isMounted) return;
               appendResponse(text);
-              const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
-              setDuration(currentDuration);
             }
           }
         );
