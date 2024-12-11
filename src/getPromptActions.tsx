@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Action,
   Clipboard,
@@ -45,19 +45,20 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   const [duration, setDuration] = useState<string>();
   const [isStreaming, setIsStreaming] = useState(false);
   const [model, setModel] = useState<string>();
+  const startTimeRef = useRef<number>(0);
 
   const appendResponse = useCallback((text: string) => {
     setResponse(prev => prev + text);
   }, []);
 
   useEffect(() => {
-    let startTime: number;
     let toast: Toast;
+    let isMounted = true;
 
     async function fetchResponse() {
       try {
         const description = getFormattedDescription();
-        startTime = Date.now();
+        startTimeRef.current = Date.now();
         setIsStreaming(true);
         setResponse('');
         
@@ -75,24 +76,30 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
             ...options,
             systemPrompt: systemPrompt || options?.systemPrompt,
             onStream: (text: string) => {
+              if (!isMounted) return;
               appendResponse(text);
-              const currentDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+              const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
               setDuration(currentDuration);
             }
           }
         );
         
+        if (!isMounted) return;
+
         // 设置模型信息
         setModel(result.model);
         
         const endTime = Date.now();
-        const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
+        const durationSeconds = ((endTime - startTimeRef.current) / 1000).toFixed(1);
         setDuration(durationSeconds);
         setIsStreaming(false);
         
-        toast.style = Toast.Style.Success;
-        toast.title = `Done (${durationSeconds}s)`;
+        if (toast) {
+          toast.style = Toast.Style.Success;
+          toast.title = `Done (${durationSeconds}s)`;
+        }
       } catch (error) {
+        if (!isMounted) return;
         console.error(error);
         setIsStreaming(false);
         await showToast(Toast.Style.Failure, "Error", String(error));
@@ -102,6 +109,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
     fetchResponse();
 
     return () => {
+      isMounted = false;
       if (toast) {
         toast.hide();
       }
