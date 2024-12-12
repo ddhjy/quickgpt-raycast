@@ -14,6 +14,7 @@ export class GroqProvider extends BaseAIProvider {
     'gemma-7b-it'
   ];
   protected apiEndpoint = 'https://api.groq.com/openai/v1';
+  protected provider = 'openai-compatible' as const;
   defaultSystemPrompt = 'You are a helpful AI assistant powered by Groq LLaMA. You aim to provide accurate and helpful responses.';
   
   getApiKey(): string {

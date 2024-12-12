@@ -1,12 +1,15 @@
 import { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "../types";
 import { TokenJS } from 'token.js';
 
+type Provider = "groq" | "openai" | "ai21" | "anthropic" | "gemini" | "cohere" | "bedrock" | "mistral" | "perplexity" | "openrouter" | "openai-compatible";
+
 export abstract class BaseAIProvider implements AIProvider {
   abstract name: string;
   abstract defaultModel: string;
   abstract supportedModels: string[];
   abstract getApiKey(): string;
   protected abstract apiEndpoint: string;
+  protected abstract provider: Provider;
   defaultSystemPrompt = 'You are a helpful assistant';
   protected tokenjs!: TokenJS;
 
@@ -38,7 +41,7 @@ export abstract class BaseAIProvider implements AIProvider {
     const model = options?.model || this.defaultModel;
     try {
       const completion = await this.tokenjs.chat.completions.create({
-        provider: "openai-compatible",
+        provider: this.provider,
         model: model,
         messages: this.createMessages(message, options?.systemPrompt),
         stream: true,
