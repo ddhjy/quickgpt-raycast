@@ -2,6 +2,7 @@ import { AIProvider, ChatOptions, ChatResponse } from "./types";
 import { CerebrasProvider } from "./providers/cerebras";
 import { SambanovaProvider } from "./providers/sambanova";
 import { GroqProvider } from "./providers/groq";
+import { GeminiProvider } from "./providers/gemini";
 
 export class AIService {
   private static instance: AIService;
@@ -15,12 +16,14 @@ export class AIService {
     const cerebrasProvider = new CerebrasProvider();
     const sambanovaProvider = new SambanovaProvider();
     const groqProvider = new GroqProvider();
+    const geminiProvider = new GeminiProvider();
     
-    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name, groqProvider.name);
+    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name, groqProvider.name, geminiProvider.name);
     
     this.providers.set(cerebrasProvider.name, cerebrasProvider);
     this.providers.set(sambanovaProvider.name, sambanovaProvider);
     this.providers.set(groqProvider.name, groqProvider);
+    this.providers.set(geminiProvider.name, geminiProvider);
     
     // 默认使用 Cerebras
     this.currentProvider = cerebrasProvider;

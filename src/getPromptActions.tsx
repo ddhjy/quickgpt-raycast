@@ -280,6 +280,18 @@ export function getPromptActions(
       ),
     },
     {
+      name: "gemini",
+      displayName: "Call Gemini",
+      condition: true,
+      action: (
+        <Action.Push
+          title="Call Gemini"
+          icon={Icon.AddPerson}
+          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="gemini" />}
+        />
+      ),
+    },
+    {
       name: "openURL",
       displayName: "Open URL",
       condition: Boolean(preferences.openURL),
