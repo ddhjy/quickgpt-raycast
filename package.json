@@ -238,6 +238,13 @@
       "required": true,
       "title": "Groq API Key",
       "description": "Your Groq API key"
+    },
+    {
+      "name": "geminiApiKey",
+      "title": "Gemini API Key",
+      "description": "Your Gemini API key",
+      "type": "password",
+      "required": false
     }
   ],
   "dependencies": {
