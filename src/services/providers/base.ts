@@ -10,14 +10,11 @@ export abstract class BaseAIProvider implements AIProvider {
   defaultSystemPrompt = 'You are a helpful assistant';
   protected tokenjs!: TokenJS;
 
-  constructor() {
-    this.initializeTokenJS();
-  }
-
   protected initializeTokenJS() {
+    const apiKey = this.getApiKey();
     this.tokenjs = new TokenJS({
       baseURL: this.apiEndpoint,
-      apiKey: this.getApiKey()
+      apiKey: apiKey
     });
   }
 
@@ -38,9 +35,7 @@ export abstract class BaseAIProvider implements AIProvider {
     if (!this.tokenjs) {
       this.initializeTokenJS();
     }
-
     const model = options?.model || this.defaultModel;
-
     try {
       const completion = await this.tokenjs.chat.completions.create({
         provider: "openai-compatible",
@@ -65,7 +60,11 @@ export abstract class BaseAIProvider implements AIProvider {
         model: model
       };
     } catch (error) {
-      console.error('API请求失败:', error);
+      console.error('API请求失败:', {
+        error,
+        endpoint: this.apiEndpoint,
+        model: model
+      });
       throw error;
     }
   }
