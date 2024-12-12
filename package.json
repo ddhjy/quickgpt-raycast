@@ -252,7 +252,8 @@
     "lru-cache": "^11.0.1",
     "md5": "^2.3.0",
     "pinyin-pro": "^3.16.3",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "token.js": "^0.4.7"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.8",

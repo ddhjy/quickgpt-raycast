@@ -9,7 +9,7 @@ export class CerebrasProvider extends BaseAIProvider {
   name = 'cerebras';
   defaultModel = 'llama3.1-70b';
   supportedModels = ['llama3.1-70b'];
-  protected apiEndpoint = 'https://api.cerebras.ai/v1/chat/completions';
+  protected apiEndpoint = 'https://api.cerebras.ai/v1';
   defaultSystemPrompt = 'You are a helpful AI assistant powered by Cerebras. You aim to provide accurate and helpful responses.';
   
   getApiKey(): string {

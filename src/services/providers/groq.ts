@@ -13,7 +13,7 @@ export class GroqProvider extends BaseAIProvider {
     'mixtral-8x7b-32768',
     'gemma-7b-it'
   ];
-  protected apiEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  protected apiEndpoint = 'https://api.groq.com/openai/v1';
   defaultSystemPrompt = 'You are a helpful AI assistant powered by Groq LLaMA. You aim to provide accurate and helpful responses.';
   
   getApiKey(): string {
