@@ -280,7 +280,7 @@ export function getPromptActions(
       ),
     },
     {
-      name: "gemini",
+      name: "gemini1",
       displayName: "Call Gemini",
       condition: true,
       action: (
