@@ -240,7 +240,7 @@
       "description": "Your Groq API key"
     },
     {
-      "name": "geminiApiKey",
+      "name": "geminiApiKey1",
       "title": "Gemini API Key",
       "description": "Your Gemini API key",
       "type": "password",
