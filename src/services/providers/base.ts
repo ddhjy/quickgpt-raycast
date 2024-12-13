@@ -16,10 +16,10 @@ export abstract class BaseAIProvider implements AIProvider {
   protected abstract apiEndpoint: string;
   protected abstract provider: Provider;
   protected tokenjs!: TokenJS;
-  
+
   abstract defaultModel: string;
   abstract supportedModels: string[];
-  
+
   abstract getApiKey(): string;
 
   protected initializeTokenJS(): void {
@@ -27,7 +27,7 @@ export abstract class BaseAIProvider implements AIProvider {
     const apiKey = this.getApiKey();
     console.log('API Endpoint:', this.apiEndpoint);
     console.log('API Key 长度:', apiKey?.length || 0);
-    
+
     try {
       this.tokenjs = new TokenJS({
         baseURL: this.apiEndpoint,
@@ -45,7 +45,7 @@ export abstract class BaseAIProvider implements AIProvider {
       systemPrompt: systemPrompt || "默认系统提示",
       messageLength: message?.length || 0
     });
-    
+
     return [
       {
         role: 'system',
@@ -98,7 +98,7 @@ export abstract class BaseAIProvider implements AIProvider {
       console.log('请求成功,开始处理流式响应');
       let result = '';
       let chunkCount = 0;
-      
+
       for await (const part of completion as AsyncIterable<CompletionPart>) {
         const content = part.choices[0]?.delta?.content || '';
         if (content) {

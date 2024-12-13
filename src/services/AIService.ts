@@ -3,6 +3,7 @@ import { ConfigurableProvider } from "./providers/configurable";
 import type { Provider } from "./providers/base";
 import * as fs from "fs";
 import * as path from "path";
+import { environment } from "@raycast/api";
 
 interface ProviderConfig {
   apiKey: string;
@@ -34,25 +35,34 @@ export class AIService {
     this.providers = new Map();
     this.config = this.loadConfig();
 
+    if (!this.config.providers || Object.keys(this.config.providers).length === 0) {
+      throw new Error('No providers found in config');
+    }
+
     for (const [providerName, providerConfig] of Object.entries(this.config.providers)) {
-      const provider = new ConfigurableProvider(
-        providerName,
-        providerConfig.apiEndpoint,
-        providerConfig.provider,
-        providerConfig.model,
-        [providerConfig.model]
-      );
-      this.providers.set(providerName, provider);
+      try {
+        const provider = new ConfigurableProvider(
+          providerName,
+          providerConfig.apiEndpoint,
+          providerConfig.provider,
+          providerConfig.model,
+          [providerConfig.model]
+        );
+        this.providers.set(providerName, provider);
+        console.log(`Provider ${providerName} initialized successfully`);
+      } catch (error) {
+        console.error(`Failed to initialize provider ${providerName}:`, error);
+      }
+    }
+
+    if (this.providers.size === 0) {
+      throw new Error('No providers could be initialized');
     }
 
     const activeProvider = this.getProvider(this.config.activeProvider);
     if (!activeProvider) {
       console.warn(`Active provider ${this.config.activeProvider} not found, using first available provider`);
-      const firstProvider = this.providers.values().next().value;
-      if (!firstProvider) {
-        throw new Error('No providers available');
-      }
-      this.currentProvider = firstProvider;
+      this.currentProvider = this.providers.values().next().value;
     } else {
       this.currentProvider = activeProvider;
     }
@@ -63,64 +73,34 @@ export class AIService {
 
   private loadConfig(): Config {
     try {
-      // 尝试从项目根目录加载配置
-      const projectConfigPath = path.join(__dirname, "../../config.json");
-      if (fs.existsSync(projectConfigPath)) {
-        console.log('Loading config from project root:', projectConfigPath);
-        const configData = fs.readFileSync(projectConfigPath, "utf-8");
-        return JSON.parse(configData) as Config;
+      const configPath = path.join(environment.assetsPath, "config.json");
+      if (fs.existsSync(configPath)) {
+        console.log('Loading config from:', configPath);
+        const configData = fs.readFileSync(configPath, "utf-8");
+        const config = JSON.parse(configData) as Config;
+        if (this.validateConfig(config)) {
+          return config;
+        }
       }
-
-      // 尝试从 src 目录加载配置
-      const srcConfigPath = path.join(__dirname, "../config.json");
-      if (fs.existsSync(srcConfigPath)) {
-        console.log('Loading config from src directory:', srcConfigPath);
-        const configData = fs.readFileSync(srcConfigPath, "utf-8");
-        return JSON.parse(configData) as Config;
-      }
-
-      console.warn("Config file not found, using default settings");
-      return this.getDefaultConfig();
+      
+      throw new Error("No valid config file found");
     } catch (error) {
-      console.error("Failed to load config.json, using default settings.", error);
-      return this.getDefaultConfig();
+      console.error("Failed to load config.json", error);
+      throw error;
     }
   }
 
-  private getDefaultConfig(): Config {
-    return {
-      activeProvider: "cerebras",
-      providers: {
-        cerebras: {
-          apiKey: "",
-          model: "llama3.1-70b",
-          defaultSystemPrompt: "You are a helpful AI assistant powered by Cerebras.",
-          apiEndpoint: 'https://api.cerebras.ai/v1',
-          provider: 'openai-compatible'
-        },
-        sambanova: {
-          apiKey: "",
-          model: "Qwen2.5-Coder-32B-Instruct",
-          defaultSystemPrompt: "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
-          apiEndpoint: 'https://api.sambanova.ai/v1',
-          provider: 'openai-compatible'
-        },
-        groq: {
-          apiKey: "",
-          model: "llama-3.3-70b-versatile",
-          defaultSystemPrompt: "You are a helpful AI assistant powered by Groq LLaMA.",
-          apiEndpoint: 'https://api.groq.com/openai/v1',
-          provider: 'openai-compatible'
-        },
-        gemini: {
-          apiKey: "",
-          model: "gemini-1.5-pro",
-          defaultSystemPrompt: "You are a helpful AI assistant powered by Google Gemini.",
-          apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-          provider: 'gemini'
-        }
-      }
-    };
+  private validateConfig(config: unknown): config is Config {
+    if (!config || typeof config !== 'object') {
+      return false;
+    }
+
+    const typedConfig = config as Config;
+    if (!typedConfig.activeProvider || !typedConfig.providers || typeof typedConfig.providers !== 'object') {
+      return false;
+    }
+
+    return true;
   }
 
   static getInstance(): AIService {
