@@ -1,19 +1,28 @@
-import { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "../types";
 import { TokenJS } from 'token.js';
+import type { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "../types";
 
-type Provider = "groq" | "openai" | "ai21" | "anthropic" | "gemini" | "cohere" | "bedrock" | "mistral" | "perplexity" | "openrouter" | "openai-compatible";
+export type Provider = "groq" | "openai" | "ai21" | "anthropic" | "gemini" | "cohere" | "bedrock" | "mistral" | "perplexity" | "openrouter" | "openai-compatible";
+
+interface CompletionPart {
+  choices: Array<{
+    delta: {
+      content?: string;
+    };
+  }>;
+}
 
 export abstract class BaseAIProvider implements AIProvider {
   abstract name: string;
-  abstract defaultModel: string;
-  abstract supportedModels: string[];
-  abstract getApiKey(): string;
   protected abstract apiEndpoint: string;
   protected abstract provider: Provider;
-  defaultSystemPrompt = 'You are a helpful assistant';
   protected tokenjs!: TokenJS;
+  
+  abstract defaultModel: string;
+  abstract supportedModels: string[];
+  
+  abstract getApiKey(): string;
 
-  protected initializeTokenJS() {
+  protected initializeTokenJS(): void {
     const apiKey = this.getApiKey();
     this.tokenjs = new TokenJS({
       baseURL: this.apiEndpoint,
@@ -25,7 +34,7 @@ export abstract class BaseAIProvider implements AIProvider {
     return [
       {
         role: 'system',
-        content: systemPrompt || this.defaultSystemPrompt
+        content: systemPrompt || "You are a helpful assistant"
       },
       {
         role: 'user',
@@ -38,12 +47,15 @@ export abstract class BaseAIProvider implements AIProvider {
     if (!this.tokenjs) {
       this.initializeTokenJS();
     }
+
     const model = options?.model || this.defaultModel;
+    const systemPrompt = options?.systemPrompt;
+
     try {
       const completion = await this.tokenjs.chat.completions.create({
         provider: this.provider,
         model: model,
-        messages: this.createMessages(message, options?.systemPrompt),
+        messages: this.createMessages(message, systemPrompt),
         stream: true,
         max_tokens: options?.maxTokens,
         temperature: options?.temperature,
@@ -51,7 +63,7 @@ export abstract class BaseAIProvider implements AIProvider {
       });
 
       let result = '';
-      for await (const part of completion) {
+      for await (const part of completion as AsyncIterable<CompletionPart>) {
         const content = part.choices[0]?.delta?.content || '';
         if (content) {
           result += content;

@@ -1,0 +1,53 @@
+{
+  "activeProvider": "groq",
+  "providers": {
+    "cerebras": {
+      "apiKey": "",
+      "model": "llama3.1-70b",
+      "defaultSystemPrompt": "You are a helpful AI assistant powered by Cerebras.",
+      "apiEndpoint": "https://api.cerebras.ai/v1",
+      "provider": "openai-compatible",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000,
+        "topP": 0.95
+      }
+    },
+    "sambanova": {
+      "apiKey": "",
+      "model": "Qwen2.5-Coder-32B-Instruct",
+      "defaultSystemPrompt": "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
+      "apiEndpoint": "https://api.sambanova.ai/v1",
+      "provider": "openai-compatible",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000,
+        "topP": 0.95
+      }
+    },
+    "groq": {
+      "apiKey": "",
+      "model": "llama-3.3-70b-versatile",
+      "defaultSystemPrompt": "You are a helpful AI assistant powered by Groq LLaMA.",
+      "apiEndpoint": "https://api.groq.com/openai/v1",
+      "provider": "openai-compatible",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000,
+        "topP": 0.95
+      }
+    },
+    "gemini": {
+      "apiKey": "",
+      "model": "gemini-1.5-pro",
+      "defaultSystemPrompt": "You are a helpful AI assistant powered by Google Gemini.",
+      "apiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
+      "provider": "gemini",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000,
+        "topP": 0.95
+      }
+    }
+  }
+}
