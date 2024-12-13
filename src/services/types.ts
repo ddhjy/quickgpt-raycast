@@ -6,6 +6,7 @@ export interface ChatMessage {
 export interface ChatResponse {
   content: string;
   model: string;
+  provider?: string;
 }
 
 export interface ChatOptions {
@@ -18,9 +19,10 @@ export interface ChatOptions {
 }
 
 export interface AIProvider {
+  readonly name: string;
+  readonly defaultModel: string;
+  readonly supportedModels: string[];
+  
   chat(message: string, options?: ChatOptions): Promise<ChatResponse>;
-  name: string;
-  defaultModel: string;
-  supportedModels: string[];
-  defaultSystemPrompt?: string;
-} 
+  getApiKey(): string;
+}

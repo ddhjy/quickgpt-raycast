@@ -47,9 +47,15 @@ export class AIService {
 
     const activeProvider = this.getProvider(this.config.activeProvider);
     if (!activeProvider) {
-      throw new Error(`Active provider ${this.config.activeProvider} not found in config`);
+      console.warn(`Active provider ${this.config.activeProvider} not found, using first available provider`);
+      const firstProvider = this.providers.values().next().value;
+      if (!firstProvider) {
+        throw new Error('No providers available');
+      }
+      this.currentProvider = firstProvider;
+    } else {
+      this.currentProvider = activeProvider;
     }
-    this.currentProvider = activeProvider;
 
     console.log('Available providers:', this.getProviderNames());
     console.log('Current provider:', this.currentProvider.name);
@@ -57,45 +63,64 @@ export class AIService {
 
   private loadConfig(): Config {
     try {
-      const configPath = path.join(__dirname, "../config.json");
-      const configData = fs.readFileSync(configPath, "utf-8");
-      return JSON.parse(configData) as Config;
+      // 尝试从项目根目录加载配置
+      const projectConfigPath = path.join(__dirname, "../../config.json");
+      if (fs.existsSync(projectConfigPath)) {
+        console.log('Loading config from project root:', projectConfigPath);
+        const configData = fs.readFileSync(projectConfigPath, "utf-8");
+        return JSON.parse(configData) as Config;
+      }
+
+      // 尝试从 src 目录加载配置
+      const srcConfigPath = path.join(__dirname, "../config.json");
+      if (fs.existsSync(srcConfigPath)) {
+        console.log('Loading config from src directory:', srcConfigPath);
+        const configData = fs.readFileSync(srcConfigPath, "utf-8");
+        return JSON.parse(configData) as Config;
+      }
+
+      console.warn("Config file not found, using default settings");
+      return this.getDefaultConfig();
     } catch (error) {
       console.error("Failed to load config.json, using default settings.", error);
-      return {
-        activeProvider: "cerebras",
-        providers: {
-          cerebras: {
-            apiKey: "",
-            model: "llama3.1-70b",
-            defaultSystemPrompt: "You are a helpful AI assistant powered by Cerebras.",
-            apiEndpoint: 'https://api.cerebras.ai/v1',
-            provider: 'openai-compatible'
-          },
-          sambanova: {
-            apiKey: "",
-            model: "Qwen2.5-Coder-32B-Instruct",
-            defaultSystemPrompt: "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
-            apiEndpoint: 'https://api.sambanova.ai/v1',
-            provider: 'openai-compatible'
-          },
-          groq: {
-            apiKey: "",
-            model: "llama-3.3-70b-versatile",
-            defaultSystemPrompt: "You are a helpful AI assistant powered by Groq LLaMA.",
-            apiEndpoint: 'https://api.groq.com/openai/v1',
-            provider: 'openai-compatible'
-          },
-          gemini: {
-            apiKey: "",
-            model: "gemini-1.5-pro",
-            defaultSystemPrompt: "You are a helpful AI assistant powered by Google Gemini.",
-            apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-            provider: 'gemini'
-          }
-        },
-      };
+      return this.getDefaultConfig();
     }
+  }
+
+  private getDefaultConfig(): Config {
+    return {
+      activeProvider: "cerebras",
+      providers: {
+        cerebras: {
+          apiKey: "",
+          model: "llama3.1-70b",
+          defaultSystemPrompt: "You are a helpful AI assistant powered by Cerebras.",
+          apiEndpoint: 'https://api.cerebras.ai/v1',
+          provider: 'openai-compatible'
+        },
+        sambanova: {
+          apiKey: "",
+          model: "Qwen2.5-Coder-32B-Instruct",
+          defaultSystemPrompt: "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
+          apiEndpoint: 'https://api.sambanova.ai/v1',
+          provider: 'openai-compatible'
+        },
+        groq: {
+          apiKey: "",
+          model: "llama-3.3-70b-versatile",
+          defaultSystemPrompt: "You are a helpful AI assistant powered by Groq LLaMA.",
+          apiEndpoint: 'https://api.groq.com/openai/v1',
+          provider: 'openai-compatible'
+        },
+        gemini: {
+          apiKey: "",
+          model: "gemini-1.5-pro",
+          defaultSystemPrompt: "You are a helpful AI assistant powered by Google Gemini.",
+          apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
+          provider: 'gemini'
+        }
+      }
+    };
   }
 
   static getInstance(): AIService {
