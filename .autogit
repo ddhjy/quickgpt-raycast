@@ -1,2 +1,2 @@
-- commit message 不要说修改具体文件，说修改了什么功能
-- 描述 为什么 做这些更改，而不仅仅是 做了什么
+- Commit message should not mention specific file modifications, but rather the functionality that was modified
+- Describe why these changes were made, rather than just what was done
