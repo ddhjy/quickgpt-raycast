@@ -1,34 +1,101 @@
-import { AIProvider, ChatOptions, ChatResponse } from "./types";
-import { CerebrasProvider } from "./providers/cerebras";
-import { SambanovaProvider } from "./providers/sambanova";
-import { GroqProvider } from "./providers/groq";
-import { GeminiProvider } from "./providers/gemini";
+import type { AIProvider, ChatOptions, ChatResponse } from "./types";
+import { ConfigurableProvider } from "./providers/configurable";
+import type { Provider } from "./providers/base";
+import * as fs from "fs";
+import * as path from "path";
+
+interface ProviderConfig {
+  apiKey: string;
+  model: string;
+  defaultSystemPrompt: string;
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+  };
+  apiEndpoint: string;
+  provider: Provider;
+}
+
+interface Config {
+  activeProvider: string;
+  providers: {
+    [providerName: string]: ProviderConfig;
+  };
+}
 
 export class AIService {
   private static instance: AIService;
   private providers: Map<string, AIProvider>;
   private currentProvider: AIProvider;
+  private config: Config;
 
   private constructor() {
     this.providers = new Map();
-    
-    // 注册提供商
-    const cerebrasProvider = new CerebrasProvider();
-    const sambanovaProvider = new SambanovaProvider();
-    const groqProvider = new GroqProvider();
-    const geminiProvider = new GeminiProvider();
-    
-    console.log('Registering providers:', cerebrasProvider.name, sambanovaProvider.name, groqProvider.name, geminiProvider.name);
-    
-    this.providers.set(cerebrasProvider.name, cerebrasProvider);
-    this.providers.set(sambanovaProvider.name, sambanovaProvider);
-    this.providers.set(groqProvider.name, groqProvider);
-    this.providers.set(geminiProvider.name, geminiProvider);
-    
-    // 默认使用 Cerebras
-    this.currentProvider = cerebrasProvider;
-    
+    this.config = this.loadConfig();
+
+    for (const [providerName, providerConfig] of Object.entries(this.config.providers)) {
+      const provider = new ConfigurableProvider(
+        providerName,
+        providerConfig.apiEndpoint,
+        providerConfig.provider,
+        providerConfig.model,
+        [providerConfig.model]
+      );
+      this.providers.set(providerName, provider);
+    }
+
+    const activeProvider = this.getProvider(this.config.activeProvider);
+    if (!activeProvider) {
+      throw new Error(`Active provider ${this.config.activeProvider} not found in config`);
+    }
+    this.currentProvider = activeProvider;
+
     console.log('Available providers:', this.getProviderNames());
+    console.log('Current provider:', this.currentProvider.name);
+  }
+
+  private loadConfig(): Config {
+    try {
+      const configPath = path.join(__dirname, "../config.json");
+      const configData = fs.readFileSync(configPath, "utf-8");
+      return JSON.parse(configData) as Config;
+    } catch (error) {
+      console.error("Failed to load config.json, using default settings.", error);
+      return {
+        activeProvider: "cerebras",
+        providers: {
+          cerebras: {
+            apiKey: "",
+            model: "llama3.1-70b",
+            defaultSystemPrompt: "You are a helpful AI assistant powered by Cerebras.",
+            apiEndpoint: 'https://api.cerebras.ai/v1',
+            provider: 'openai-compatible'
+          },
+          sambanova: {
+            apiKey: "",
+            model: "Qwen2.5-Coder-32B-Instruct",
+            defaultSystemPrompt: "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
+            apiEndpoint: 'https://api.sambanova.ai/v1',
+            provider: 'openai-compatible'
+          },
+          groq: {
+            apiKey: "",
+            model: "llama-3.3-70b-versatile",
+            defaultSystemPrompt: "You are a helpful AI assistant powered by Groq LLaMA.",
+            apiEndpoint: 'https://api.groq.com/openai/v1',
+            provider: 'openai-compatible'
+          },
+          gemini: {
+            apiKey: "",
+            model: "gemini-1.5-pro",
+            defaultSystemPrompt: "You are a helpful AI assistant powered by Google Gemini.",
+            apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
+            provider: 'gemini'
+          }
+        },
+      };
+    }
   }
 
   static getInstance(): AIService {
@@ -44,7 +111,7 @@ export class AIService {
     return this.providers.get(normalizedName);
   }
 
-  setCurrentProvider(name: string) {
+  setCurrentProvider(name: string): void {
     const normalizedName = name.toLowerCase();
     console.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
     const provider = this.providers.get(normalizedName);
@@ -67,6 +134,17 @@ export class AIService {
   }
 
   async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
-    return this.currentProvider.chat(message, options);
+    const providerConfig = this.config.providers[this.currentProvider.name];
+    if (!providerConfig) {
+      throw new Error(`Configuration not found for provider ${this.currentProvider.name}`);
+    }
+
+    const chatOptions: ChatOptions = {
+      ...options,
+      ...providerConfig.options,
+      model: options?.model || providerConfig.model,
+      systemPrompt: options?.systemPrompt || providerConfig.defaultSystemPrompt
+    };
+    return this.currentProvider.chat(message, chatOptions);
   }
-} 
+}
