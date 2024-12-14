@@ -46,7 +46,8 @@ export class AIService {
           providerConfig.apiEndpoint,
           providerConfig.provider,
           providerConfig.model,
-          [providerConfig.model]
+          [providerConfig.model],
+          providerConfig.apiKey
         );
         this.providers.set(providerName, provider);
         console.log(`Provider ${providerName} initialized successfully`);
@@ -144,12 +145,36 @@ export class AIService {
       throw new Error(`Configuration not found for provider ${this.currentProvider.name}`);
     }
 
+    console.log('Chat request:', {
+      provider: this.currentProvider.name,
+      message: message.substring(0, 100) + '...',
+      options: {
+        ...options,
+        systemPrompt: options?.systemPrompt ? '(set)' : '(not set)'
+      }
+    });
+
     const chatOptions: ChatOptions = {
       ...options,
       ...providerConfig.options,
       model: options?.model || providerConfig.model,
       systemPrompt: options?.systemPrompt || providerConfig.defaultSystemPrompt
     };
-    return this.currentProvider.chat(message, chatOptions);
+
+    try {
+      const response = await this.currentProvider.chat(message, chatOptions);
+      console.log('Chat response received:', {
+        success: true,
+        responseLength: response.content.length
+      });
+      return response;
+    } catch (error) {
+      console.error('Chat error:', {
+        provider: this.currentProvider.name,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
   }
 }
