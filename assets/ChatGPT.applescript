@@ -3,7 +3,7 @@
 on run {query}
     tell application "ChatGPT"
         activate
-        open location "https://chatgpt.com/?&model=gpt-4o&q="
+        open location "https://chatgpt.com/?hints=xxx&q="
     end tell
     delay 0.3
     pressKeyCommand("v")
