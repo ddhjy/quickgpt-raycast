@@ -243,54 +243,22 @@ export function getPromptActions(
       ),
     },
     ...scriptActions,
-    {
-      name: "cerebras",
-      displayName: "Call Cerebras",
-      condition: true,
-      action: (
-        <Action.Push
-          title="Call Cerebras"
-          icon={Icon.AddPerson}
-          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="cerebras" />}
-        />
-      ),
-    },
-    {
-      name: "sambanova",
-      displayName: "Call Sambanova",
-      condition: true,
-      action: (
-        <Action.Push
-          title="Call Sambanova"
-          icon={Icon.AddPerson}
-          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="sambanova" />}
-        />
-      ),
-    },
-    {
-      name: "groq",
-      displayName: "Call Groq",
-      condition: true,
-      action: (
-        <Action.Push
-          title="Call Groq"
-          icon={Icon.AddPerson}
-          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="groq" />}
-        />
-      ),
-    },
-    {
-      name: "gemini1",
-      displayName: "Call Gemini",
-      condition: true,
-      action: (
-        <Action.Push
-          title="Call Gemini"
-          icon={Icon.AddPerson}
-          target={<ChatView getFormattedDescription={getFormattedDescription} providerName="gemini" />}
-        />
-      ),
-    },
+    // 动态生成AI服务的actions
+    ...(() => {
+      const aiService = AIService.getInstance();
+      return aiService.getProviderNames().map(providerName => ({
+        name: providerName,
+        displayName: `Call ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}`,
+        condition: true,
+        action: (
+          <Action.Push
+            title={`Call ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}`}
+            icon={Icon.AddPerson}
+            target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
+          />
+        ),
+      }));
+    })(),
     {
       name: "openURL",
       displayName: "Open URL",
