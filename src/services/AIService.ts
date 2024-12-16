@@ -2,8 +2,7 @@ import type { AIProvider, ChatOptions, ChatResponse } from "./types";
 import { ConfigurableProvider } from "./providers/configurable";
 import type { Provider } from "./providers/base";
 import * as fs from "fs";
-import * as path from "path";
-import { environment, getPreferenceValues } from "@raycast/api";
+import { getPreferenceValues } from "@raycast/api";
 
 interface ProviderConfig {
   apiKey: string;
@@ -32,7 +31,7 @@ interface Preferences {
 export class AIService {
   private static instance: AIService;
   private providers: Map<string, AIProvider>;
-  private currentProvider: AIProvider;
+  private currentProvider!: AIProvider;
   private config: Config;
 
   private constructor() {
@@ -124,13 +123,26 @@ export class AIService {
   getProvider(name: string): AIProvider | undefined {
     const normalizedName = name.toLowerCase();
     console.log('Getting provider:', normalizedName, 'Available:', this.getProviderNames());
-    return this.providers.get(normalizedName);
+    for (const [key, provider] of this.providers.entries()) {
+      if (key.toLowerCase() === normalizedName) {
+        return provider;
+      }
+    }
+    return undefined;
   }
 
   setCurrentProvider(name: string): void {
     const normalizedName = name.toLowerCase();
     console.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
-    const provider = this.providers.get(normalizedName);
+    let provider: AIProvider | undefined;
+    
+    for (const [key, p] of this.providers.entries()) {
+      if (key.toLowerCase() === normalizedName) {
+        provider = p;
+        break;
+      }
+    }
+    
     if (!provider) {
       throw new Error(`Provider ${name} not found. Available providers: ${this.getProviderNames().join(', ')}`);
     }
