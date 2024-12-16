@@ -210,6 +210,13 @@
       "type": "textfield",
       "required": false,
       "label": "Custom Words List"
+    },
+    {
+      "name": "aiConfigPath",
+      "title": "API Provider",
+      "description": "The API provider to use for AI services",
+      "type": "file",
+      "required": false
     }
   ],
   "dependencies": {
