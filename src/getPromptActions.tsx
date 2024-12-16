@@ -246,18 +246,21 @@ export function getPromptActions(
     // 动态生成AI服务的actions
     ...(() => {
       const aiService = AIService.getInstance();
-      return aiService.getProviderNames().map(providerName => ({
-        name: providerName,
-        displayName: `Call ${providerName}`,
-        condition: true,
-        action: (
-          <Action.Push
-            title={`Call ${providerName}`}
-            icon={Icon.AddPerson}
-            target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
-          />
-        ),
-      }));
+      return aiService.getProviderNames().map(providerName => {
+        const displayName = `Call ${providerName}`;
+        return {
+          name: providerName.toLowerCase(),
+          displayName,
+          condition: true,
+          action: (
+            <Action.Push
+              title={displayName}
+              icon={Icon.AddPerson}
+              target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
+            />
+          ),
+        };
+      });
     })(),
     {
       name: "openURL",
