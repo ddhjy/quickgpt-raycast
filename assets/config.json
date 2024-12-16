@@ -15,7 +15,7 @@
     },
     "sambanova": {
       "apiKey": "f9f3ab9b-59af-42ab-a546-b4cdbd2ad308",
-      "model": "Qwen2.5-Coder-32B-Instruct",
+      "model": "QwQ-32B-Preview",
       "defaultSystemPrompt": "You are a helpful AI assistant powered by SambaNova Meta-Llama.",
       "apiEndpoint": "https://api.sambanova.ai/v1",
       "provider": "openai-compatible",
