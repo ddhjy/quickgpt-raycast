@@ -3,7 +3,7 @@ import { ConfigurableProvider } from "./providers/configurable";
 import type { Provider } from "./providers/base";
 import * as fs from "fs";
 import * as path from "path";
-import { environment } from "@raycast/api";
+import { environment, getPreferenceValues } from "@raycast/api";
 
 interface ProviderConfig {
   apiKey: string;
@@ -25,6 +25,10 @@ interface Config {
   };
 }
 
+interface Preferences {
+  aiConfigPath?: string;
+}
+
 export class AIService {
   private static instance: AIService;
   private providers: Map<string, AIProvider>;
@@ -35,49 +39,55 @@ export class AIService {
     this.providers = new Map();
     this.config = this.loadConfig();
 
-    if (!this.config.providers || Object.keys(this.config.providers).length === 0) {
-      throw new Error('No providers found in config');
-    }
-
-    for (const [providerName, providerConfig] of Object.entries(this.config.providers)) {
-      try {
-        const provider = new ConfigurableProvider(
-          providerName,
-          providerConfig.apiEndpoint,
-          providerConfig.provider,
-          providerConfig.model,
-          [providerConfig.model],
-          providerConfig.apiKey
-        );
-        this.providers.set(providerName, provider);
-        console.log(`Provider ${providerName} initialized successfully`);
-      } catch (error) {
-        console.error(`Failed to initialize provider ${providerName}:`, error);
+    if (this.config.providers && Object.keys(this.config.providers).length > 0) {
+      for (const [providerName, providerConfig] of Object.entries(this.config.providers)) {
+        try {
+          const provider = new ConfigurableProvider(
+            providerName,
+            providerConfig.apiEndpoint,
+            providerConfig.provider,
+            providerConfig.model,
+            [providerConfig.model],
+            providerConfig.apiKey
+          );
+          this.providers.set(providerName, provider);
+          console.log(`Provider ${providerName} initialized successfully`);
+        } catch (error) {
+          console.error(`Failed to initialize provider ${providerName}:`, error);
+        }
       }
     }
 
-    if (this.providers.size === 0) {
-      throw new Error('No providers could be initialized');
-    }
+    if (this.providers.size > 0) {
+      const activeProvider = this.getProvider(this.config.activeProvider);
+      if (!activeProvider) {
+        console.warn(`Active provider ${this.config.activeProvider} not found, using first available provider`);
+        this.currentProvider = this.providers.values().next().value;
+      } else {
+        this.currentProvider = activeProvider;
+      }
 
-    const activeProvider = this.getProvider(this.config.activeProvider);
-    if (!activeProvider) {
-      console.warn(`Active provider ${this.config.activeProvider} not found, using first available provider`);
-      this.currentProvider = this.providers.values().next().value;
+      console.log('Available providers:', this.getProviderNames());
+      console.log('Current provider:', this.currentProvider.name);
     } else {
-      this.currentProvider = activeProvider;
+      console.log('No providers configured');
     }
-
-    console.log('Available providers:', this.getProviderNames());
-    console.log('Current provider:', this.currentProvider.name);
   }
 
   private loadConfig(): Config {
     try {
-      const configPath = path.join(environment.assetsPath, "config.json");
-      if (fs.existsSync(configPath)) {
-        console.log('Loading config from:', configPath);
-        const configData = fs.readFileSync(configPath, "utf-8");
+      const preferences = getPreferenceValues<Preferences>();
+      
+      if (!preferences.aiConfigPath) {
+        return {
+          activeProvider: "",
+          providers: {}
+        };
+      }
+      
+      if (fs.existsSync(preferences.aiConfigPath)) {
+        console.log('Loading config from:', preferences.aiConfigPath);
+        const configData = fs.readFileSync(preferences.aiConfigPath, "utf-8");
         const config = JSON.parse(configData) as Config;
         if (this.validateConfig(config)) {
           return config;
