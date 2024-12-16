@@ -248,11 +248,11 @@ export function getPromptActions(
       const aiService = AIService.getInstance();
       return aiService.getProviderNames().map(providerName => ({
         name: providerName,
-        displayName: `Call ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}`,
+        displayName: `Call ${providerName}`,
         condition: true,
         action: (
           <Action.Push
-            title={`Call ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}`}
+            title={`Call ${providerName}`}
             icon={Icon.AddPerson}
             target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
           />
