@@ -89,13 +89,6 @@
       "type": "directory"
     },
     {
-      "name": "cerebrasApiKey",
-      "title": "Cerebras API Key",
-      "description": "您的 Cerebras API 密钥",
-      "type": "password",
-      "required": false
-    },
-    {
       "name": "primaryLanguage",
       "title": "Primary Language",
       "description": "Primary language for text recognition",
@@ -219,31 +212,10 @@
       "label": "Custom Words List"
     },
     {
-      "name": "cerebrasApiKey",
-      "type": "password",
-      "required": true,
-      "title": "Cerebras API Key",
-      "description": "Your Cerebras API key"
-    },
-    {
-      "name": "sambanovaApiKey",
-      "type": "password",
-      "required": true,
-      "title": "SambaNova API Key",
-      "description": "Your SambaNova API key"
-    },
-    {
-      "name": "groqApiKey",
-      "type": "password",
-      "required": true,
-      "title": "Groq API Key",
-      "description": "Your Groq API key"
-    },
-    {
-      "name": "geminiApiKey",
-      "title": "Gemini API Key",
-      "description": "Your Gemini API key",
-      "type": "password",
+      "name": "aiConfigPath",
+      "title": "API Provider",
+      "description": "The API provider to use for AI services",
+      "type": "file",
       "required": false
     }
   ],
