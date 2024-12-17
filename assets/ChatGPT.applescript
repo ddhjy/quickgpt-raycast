@@ -6,9 +6,9 @@ on run {query}
     end tell
     delay 0.2
     pressKeyCommand("n")
-    delay 0.3
+    delay 0.5
     pressKeyCommand("v")
-    delay 0.1
+    delay 0.5
     pressKeyReturn()
 end run
 
