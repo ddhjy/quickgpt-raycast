@@ -6,9 +6,12 @@ interface ResultViewProps {
   duration: string;
   isLoading: boolean;
   model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
 }
 
-export function ResultView({response, duration, model }: ResultViewProps) {
+export function ResultView({ response, duration, model, temperature = 0.7, maxTokens = 4096, topP = 0.95 }: ResultViewProps) {
   const [isLoading] = useState(false);
 
   const markdown = `
@@ -91,9 +94,16 @@ ${response}
       actions={<ActionPanel>{actions}</ActionPanel>}
       metadata={
         <Detail.Metadata>
-          {model && <Detail.Metadata.Label title="Model" text={model} />}
-          <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
+          {model && (
+            <>
+              <Detail.Metadata.Label title="Model" text={model} />
+            </>
+          )}
+          <Detail.Metadata.Label title="Temperature" text={temperature.toString()} />
+          <Detail.Metadata.Label title="Max Tokens" text={maxTokens.toString()} />
+          <Detail.Metadata.Label title="Top P" text={topP.toString()} />
           <Detail.Metadata.Separator />
+          <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
           <Detail.Metadata.Label title="Response Length" text={`${response.length} chars`} />
         </Detail.Metadata>
       }
