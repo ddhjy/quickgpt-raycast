@@ -14,209 +14,190 @@
       "name": "index",
       "title": "Prompt Lab",
       "description": "运行quickgpt工具，该工具用于为 chatgpt 提供提示词。需要一个视图，并接受三个可选参数：剪贴板文本、选择文本和动作。",
-      "mode": "view"
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "disableDefaultPrompts",
+          "title": "Default Prompts",
+          "required": false,
+          "label": "Turn Off Default Prompts",
+          "description": "Turn Off default prompts",
+          "type": "checkbox"
+        },
+        {
+          "name": "customPromptsDirectory",
+          "title": "Custom Prompts",
+          "required": false,
+          "description": "使用自定义提示词目录",
+          "type": "directory"
+        },
+        {
+          "name": "customPromptsDirectory2",
+          "title": "Custom Prompts 2",
+          "required": false,
+          "description": "使用第二个自定义提示词目录",
+          "type": "directory"
+        },
+        {
+          "name": "customPromptsDirectory3",
+          "title": "Custom Prompts 3",
+          "required": false,
+          "description": "使用第三个自定义提示词目录",
+          "type": "directory"
+        },
+        {
+          "name": "primaryAction",
+          "title": "Actions",
+          "required": false,
+          "description": "设置优先执行的操作,多个操作用逗号分隔。例如: ChatGPT, Copy, Paste, Cerebras",
+          "type": "textfield"
+        },
+        {
+          "name": "aiConfigPath",
+          "title": "API Provider",
+          "description": "The API provider to use for AI services",
+          "type": "file",
+          "required": false
+        },
+        {
+          "name": "scriptsDirectory",
+          "title": "Scripts Directory",
+          "required": false,
+          "description": "存放 AppleScript 脚本的目录。目录下所有的 .applescript 和 .scpt 文件都会被加载为可执行脚本。",
+          "type": "directory"
+        }
+      ]
     },
     {
       "name": "recognize-text",
       "title": "Recognize Text",
       "description": "Detect all text from the captured screen area",
-      "mode": "no-view"
-    }
-  ],
-  "preferences": [
-    {
-      "name": "disableDefaultPrompts",
-      "title": "Prompts: Default Prompts",
-      "required": false,
-      "label": "Turn Off Default Prompts",
-      "description": "Turn Off default prompts",
-      "type": "checkbox"
-    },
-    {
-      "name": "customPromptsDirectory",
-      "title": "Prompts: Custom Prompts Directory 1",
-      "required": false,
-      "description": "使用自定义提示词目录",
-      "type": "directory"
-    },
-    {
-      "name": "customPromptsDirectory2",
-      "title": "Prompts: Custom Prompts Directory 2",
-      "required": false,
-      "description": "使用第二个自定义提示词目录",
-      "type": "directory"
-    },
-    {
-      "name": "customPromptsDirectory3",
-      "title": "Prompts: Custom Prompts Directory 3",
-      "required": false,
-      "description": "使用第三个自定义提示词目录",
-      "type": "directory"
-    },
-    {
-      "name": "customPrompts",
-      "title": "Prompts: Custom Prompts 1",
-      "required": false,
-      "description": "Use custom prompts",
-      "type": "file"
-    },
-    {
-      "name": "customPrompts2",
-      "title": "Prompts: Custom Prompts 2",
-      "required": false,
-      "description": "Use second custom prompts file",
-      "type": "file"
-    },
-    {
-      "name": "customPrompts3",
-      "title": "Prompts: Custom Prompts 3",
-      "required": false,
-      "description": "Use third custom prompts file",
-      "type": "file"
-    },
-    {
-      "name": "primaryAction",
-      "title": "Action: Actions",
-      "required": false,
-      "description": "设置要执行的操作,多个操作用逗号分隔。支持的操作: ChatGPT, Copy, Paste, Cerebras",
-      "type": "textfield"
-    },
-    {
-      "name": "aiConfigPath",
-      "title": "API Provider",
-      "description": "The API provider to use for AI services",
-      "type": "file",
-      "required": false
-    },
-    {
-      "name": "scriptsDirectory",
-      "title": "Action: Scripts Directory",
-      "required": false,
-      "description": "存放 AppleScript 脚本的目录。目录下所有的 .applescript 和 .scpt 文件都会被加载为可执行脚本。",
-      "type": "directory"
-    },
-    {
-      "name": "primaryLanguage",
-      "title": "Primary Language",
-      "description": "Primary language for text recognition",
-      "type": "dropdown",
-      "required": true,
-      "data": [
+      "mode": "no-view",
+      "preferences": [
         {
-          "title": "🇺🇸 English (US)",
-          "value": "en-US"
+          "name": "primaryLanguage",
+          "title": "Primary Language",
+          "description": "Primary language for text recognition",
+          "type": "dropdown",
+          "required": true,
+          "data": [
+            {
+              "title": "🇺🇸 English (US)",
+              "value": "en-US"
+            },
+            {
+              "title": "🇫🇷 French (France)",
+              "value": "fr-FR"
+            },
+            {
+              "title": "🇮🇹 Italian (Italy)",
+              "value": "it-IT"
+            },
+            {
+              "title": "🇩🇪 German (Germany)",
+              "value": "de-DE"
+            },
+            {
+              "title": "🇪🇸 Spanish (Spain)",
+              "value": "es-ES"
+            },
+            {
+              "title": "🇧🇷 Portuguese (Brazil)",
+              "value": "pt-BR"
+            },
+            {
+              "title": "🇨🇳 Chinese (Simplified)",
+              "value": "zh-Hans"
+            },
+            {
+              "title": "🇹🇼 Chinese (Traditional)",
+              "value": "zh-Hant"
+            },
+            {
+              "title": "🇨🇳 Cantonese (Simplified)",
+              "value": "yue-Hans"
+            },
+            {
+              "title": "🇭🇰 Cantonese (Traditional)",
+              "value": "yue-Hant"
+            },
+            {
+              "title": "🇰🇷 Korean (South Korea)",
+              "value": "ko-KR"
+            },
+            {
+              "title": "🇯🇵 Japanese (Japan)",
+              "value": "ja-JP"
+            },
+            {
+              "title": "🇷🇺 Russian (Russia)",
+              "value": "ru-RU"
+            },
+            {
+              "title": "🇺🇦 Ukrainian (Ukraine)",
+              "value": "uk-UA"
+            },
+            {
+              "title": "🇹🇭 Thai (Thailand)",
+              "value": "th-TH"
+            },
+            {
+              "title": "🇻🇳 Vietnamese (Vietnam)",
+              "value": "vi-VT"
+            }
+          ]
         },
         {
-          "title": "🇫🇷 French (France)",
-          "value": "fr-FR"
+          "name": "ocrMode",
+          "title": "Recognition Level",
+          "description": "Affects performance and accuracy of the text recognition",
+          "type": "dropdown",
+          "required": true,
+          "data": [
+            {
+              "title": "Accurate",
+              "value": "accurate"
+            },
+            {
+              "title": "Fast",
+              "value": "fast"
+            }
+          ]
         },
         {
-          "title": "🇮🇹 Italian (Italy)",
-          "value": "it-IT"
+          "name": "languageCorrection",
+          "title": "Options",
+          "description": "Disabling this property returns the raw recognition results, which provides performance benefits but less accurate results",
+          "type": "checkbox",
+          "required": true,
+          "label": "Use language correction",
+          "default": true
         },
         {
-          "title": "🇩🇪 German (Germany)",
-          "value": "de-DE"
+          "name": "ignoreLineBreaks",
+          "description": "Ignores Line Breaks",
+          "type": "checkbox",
+          "required": false,
+          "label": "Ignore line breaks",
+          "default": false
         },
         {
-          "title": "🇪🇸 Spanish (Spain)",
-          "value": "es-ES"
+          "name": "keepImage",
+          "description": "Keep the image in the clipboard after text recognition",
+          "type": "checkbox",
+          "required": true,
+          "label": "Keep image in clipboard",
+          "default": false
         },
         {
-          "title": "🇧🇷 Portuguese (Brazil)",
-          "value": "pt-BR"
-        },
-        {
-          "title": "🇨🇳 Chinese (Simplified)",
-          "value": "zh-Hans"
-        },
-        {
-          "title": "🇹🇼 Chinese (Traditional)",
-          "value": "zh-Hant"
-        },
-        {
-          "title": "🇨🇳 Cantonese (Simplified)",
-          "value": "yue-Hans"
-        },
-        {
-          "title": "🇭🇰 Cantonese (Traditional)",
-          "value": "yue-Hant"
-        },
-        {
-          "title": "🇰🇷 Korean (South Korea)",
-          "value": "ko-KR"
-        },
-        {
-          "title": "🇯🇵 Japanese (Japan)",
-          "value": "ja-JP"
-        },
-        {
-          "title": "🇷🇺 Russian (Russia)",
-          "value": "ru-RU"
-        },
-        {
-          "title": "🇺🇦 Ukrainian (Ukraine)",
-          "value": "uk-UA"
-        },
-        {
-          "title": "🇹🇭 Thai (Thailand)",
-          "value": "th-TH"
-        },
-        {
-          "title": "🇻🇳 Vietnamese (Vietnam)",
-          "value": "vi-VT"
+          "name": "customWordsList",
+          "title": "Custom Words List",
+          "description": "You can improve text recognition by providing a list of words that are special to your text",
+          "type": "textfield",
+          "required": false,
+          "label": "Custom Words List"
         }
       ]
-    },
-    {
-      "name": "ocrMode",
-      "title": "Recognition Level",
-      "description": "Affects performance and accuracy of the text recognition",
-      "type": "dropdown",
-      "required": true,
-      "data": [
-        {
-          "title": "Accurate",
-          "value": "accurate"
-        },
-        {
-          "title": "Fast",
-          "value": "fast"
-        }
-      ]
-    },
-    {
-      "name": "languageCorrection",
-      "title": "Options",
-      "description": "Disabling this property returns the raw recognition results, which provides performance benefits but less accurate results",
-      "type": "checkbox",
-      "required": true,
-      "label": "Use language correction",
-      "default": true
-    },
-    {
-      "name": "ignoreLineBreaks",
-      "description": "Ignores Line Breaks",
-      "type": "checkbox",
-      "required": false,
-      "label": "Ignore line breaks",
-      "default": false
-    },
-    {
-      "name": "keepImage",
-      "description": "Keep the image in the clipboard after text recognition",
-      "type": "checkbox",
-      "required": true,
-      "label": "Keep image in clipboard",
-      "default": false
-    },
-    {
-      "name": "customWordsList",
-      "title": "Custom Words List",
-      "description": "You can improve text recognition by providing a list of words that are special to your text",
-      "type": "textfield",
-      "required": false,
-      "label": "Custom Words List"
     }
   ],
   "dependencies": {
