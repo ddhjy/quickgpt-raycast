@@ -11,7 +11,14 @@ interface ResultViewProps {
   topP?: number;
 }
 
-export function ResultView({ response, duration, model, temperature = 0.7, maxTokens = 4096, topP = 0.95 }: ResultViewProps) {
+export function ResultView({
+  response,
+  duration,
+  model,
+  temperature = 0.7,
+  maxTokens = 4096,
+  topP = 0.95,
+}: ResultViewProps) {
   const [isLoading] = useState(false);
 
   const markdown = `
@@ -28,26 +35,13 @@ ${response}
   const getLongestCodeBlock = (text: string) => {
     const matches = text.match(/```[\s\S]*?```/g);
     if (!matches) return "";
-    const longest = matches.reduce((max, current) =>
-      current.length > max.length ? current : max
-    );
+    const longest = matches.reduce((max, current) => (current.length > max.length ? current : max));
     return longest.replace(/```.*\n|```$/g, "").trim();
   };
 
   const hasCodeBlock = getLastCodeBlock(response).length > 0;
 
   const actions = [
-    <Action
-      key="copy"
-      title="Copy"
-      shortcut={{ modifiers: ["cmd"], key: "c" }}
-      icon={Icon.Clipboard}
-      onAction={async () => {
-        await Clipboard.copy(response);
-        await showHUD("已复制到剪贴板");
-        closeMainWindow();
-      }}
-    />,
     <Action
       key="paste"
       title="Paste"
@@ -59,19 +53,30 @@ ${response}
         closeMainWindow();
       }}
     />,
+    <Action
+      key="copy"
+      title="Copy"
+      shortcut={{ modifiers: ["cmd"], key: "c" }}
+      icon={Icon.Clipboard}
+      onAction={async () => {
+        await Clipboard.copy(response);
+        await showHUD("已复制到剪贴板");
+        closeMainWindow();
+      }}
+    />,
   ];
 
   if (hasCodeBlock) {
     actions.unshift(
       <Action
-        key="copyCode"
-        title="Copy Code Block"
+        key="pasteLongestCode"
+        title="Paste Longest Code Block"
         icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd"], key: "'" }}
+        shortcut={{ modifiers: ["cmd"], key: ";" }}
         onAction={async () => {
-          const lastCodeBlock = getLastCodeBlock(response);
-          await Clipboard.copy(lastCodeBlock);
-          await showHUD("已复制代码块到剪贴板");
+          const longestCodeBlock = getLongestCodeBlock(response);
+          await Clipboard.paste(longestCodeBlock);
+          await showHUD("已粘贴最长代码块");
           closeMainWindow();
         }}
       />,
@@ -79,7 +84,7 @@ ${response}
         key="copyLongestCode"
         title="Copy Longest Code Block"
         icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd", "shift"], key: "'" }}
+        shortcut={{ modifiers: ["cmd"], key: "'" }}
         onAction={async () => {
           const longestCodeBlock = getLongestCodeBlock(response);
           await Clipboard.copy(longestCodeBlock);
@@ -91,7 +96,7 @@ ${response}
         key="pasteCode"
         title="Paste Code Block"
         icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd"], key: ";" }}
+        shortcut={{ modifiers: ["cmd", "shift"], key: ";" }}
         onAction={async () => {
           const lastCodeBlock = getLastCodeBlock(response);
           await Clipboard.paste(lastCodeBlock);
@@ -100,17 +105,17 @@ ${response}
         }}
       />,
       <Action
-        key="pasteLongestCode"
-        title="Paste Longest Code Block"
+        key="copyCode"
+        title="Copy Code Block"
         icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd", "shift"], key: ";" }}
+        shortcut={{ modifiers: ["cmd", "shift"], key: "'" }}
         onAction={async () => {
-          const longestCodeBlock = getLongestCodeBlock(response);
-          await Clipboard.paste(longestCodeBlock);
-          await showHUD("已粘贴最长代码块");
+          const lastCodeBlock = getLastCodeBlock(response);
+          await Clipboard.copy(lastCodeBlock);
+          await showHUD("已复制代码块到剪贴板");
           closeMainWindow();
         }}
-      />
+      />,
     );
   }
 
