@@ -39,7 +39,19 @@ ${response}
     return longest.replace(/```.*\n|```$/g, "").trim();
   };
 
+  const getAllCodeBlocks = (text: string) => {
+    const matches = text.match(/```[\s\S]*?```/g);
+    if (!matches) return [];
+    return matches.map(block => block.replace(/```.*\n|```$/g, "").trim());
+  };
+
   const hasCodeBlock = getLastCodeBlock(response).length > 0;
+
+  const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
+    const firstLine = block.split('\n').find(line => line.trim().length > 0) || '';
+    const summary = firstLine.trim();
+    return summary.length > maxLength ? summary.slice(0, maxLength) + '...' : summary;
+  };
 
   const actions = [
     <Action
@@ -67,55 +79,53 @@ ${response}
   ];
 
   if (hasCodeBlock) {
+    const codeBlocks = getAllCodeBlocks(response);
+
+    // 对于普通代码块，只提供复制功能
+    codeBlocks.forEach((block) => {
+      const summary = getCodeBlockSummary(block);
+      actions.unshift(
+        <Action
+          key={`copyCode${summary}`}
+          title={`Copy: ${summary}`}
+          icon={Icon.Code}
+          onAction={async () => {
+            await Clipboard.copy(block);
+            await showHUD(`已复制代码块: ${summary}`);
+            closeMainWindow();
+          }}
+        />
+      );
+    });
+
+    // 使用摘要显示最长代码块的操作
+    const longestCodeBlock = getLongestCodeBlock(response);
+    const longestBlockSummary = getCodeBlockSummary(longestCodeBlock);
+
     actions.unshift(
       <Action
         key="pasteLongestCode"
-        title="Paste Longest Code Block"
+        title={`Paste: ${longestBlockSummary}`}
         icon={Icon.Code}
         shortcut={{ modifiers: ["cmd"], key: ";" }}
         onAction={async () => {
-          const longestCodeBlock = getLongestCodeBlock(response);
+          await Clipboard.copy(longestCodeBlock);
           await Clipboard.paste(longestCodeBlock);
-          await showHUD("已粘贴最长代码块");
+          await showHUD(`已复制并粘贴代码块: ${longestBlockSummary}`);
           closeMainWindow();
         }}
       />,
       <Action
         key="copyLongestCode"
-        title="Copy Longest Code Block"
+        title={`Copy: ${longestBlockSummary}`}
         icon={Icon.Code}
         shortcut={{ modifiers: ["cmd"], key: "'" }}
         onAction={async () => {
-          const longestCodeBlock = getLongestCodeBlock(response);
           await Clipboard.copy(longestCodeBlock);
-          await showHUD("已复制最长代码块到剪贴板");
+          await showHUD(`已复制代码块: ${longestBlockSummary}`);
           closeMainWindow();
         }}
-      />,
-      <Action
-        key="pasteCode"
-        title="Paste Code Block"
-        icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd", "shift"], key: ";" }}
-        onAction={async () => {
-          const lastCodeBlock = getLastCodeBlock(response);
-          await Clipboard.paste(lastCodeBlock);
-          await showHUD("已粘贴代码块");
-          closeMainWindow();
-        }}
-      />,
-      <Action
-        key="copyCode"
-        title="Copy Code Block"
-        icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd", "shift"], key: "'" }}
-        onAction={async () => {
-          const lastCodeBlock = getLastCodeBlock(response);
-          await Clipboard.copy(lastCodeBlock);
-          await showHUD("已复制代码块到剪贴板");
-          closeMainWindow();
-        }}
-      />,
+      />
     );
   }
 
