@@ -102,7 +102,7 @@ export function ResultView({
         />
       );
 
-      const codeActions = codeBlocks.map((block, index) => {
+      const codeActions = codeBlocks.length > 1 ? codeBlocks.map((block, index) => {
         const summary = getCodeBlockSummary(block);
         const uniqueKey = `copyCode-${index}-${summary}`;
         return (
@@ -117,7 +117,7 @@ export function ResultView({
             }}
           />
         );
-      });
+      }) : [];
 
       const otherActions = [
         <Action
