@@ -5,17 +5,19 @@ import MarkdownIt from "markdown-it";
 // 初始化 Markdown 解析器
 const md = new MarkdownIt();
 
-// 提取代码块的辅助函数
-const extractCodeBlocks = (text: string): string[] => {
+// 提取代码块的辅助函数，限制最大代码块数量
+const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
   const tokens = md.parse(text, {});
   const codeBlocks: string[] = [];
+  let count = 0;
 
-  tokens.forEach((token) => {
+  for (const token of tokens) {
     if (token.type === 'fence' && token.tag === 'code') {
-      // 仅提取代码内容，不包括语言标识符
       codeBlocks.push(token.content.trim());
+      count += 1;
+      if (count >= maxBlocks) break; // 达到上限后停止
     }
-  });
+  }
 
   return codeBlocks;
 };
@@ -51,8 +53,8 @@ export function ResultView({
   topP = 0.95,
   isLoading,
 }: ResultViewProps) {
-  // 使用 useMemo 缓存代码块的提取结果
-  const codeBlocks = useMemo(() => extractCodeBlocks(response), [response]);
+  // 使用 useMemo 缓存代码块的提取结果，限制最大代码块数量
+  const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]); // 例如限制为10个
   const hasCodeBlock = codeBlocks.length > 0;
 
   const longestCodeBlock = useMemo(() => getLongestCodeBlock(codeBlocks), [codeBlocks]);
@@ -85,18 +87,20 @@ export function ResultView({
     ];
 
     if (hasCodeBlock) {
-      const pasteLongestAction = <Action
-        key="pasteLongestCode"
-        title={`Paste Longest: ${longestBlockSummary}`}
-        icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd"], key: ";" }}
-        onAction={async () => {
-          await Clipboard.copy(longestCodeBlock);
-          await Clipboard.paste(longestCodeBlock);
-          await showHUD(`已粘贴: ${longestBlockSummary}`);
-          closeMainWindow();
-        }}
-      />;
+      const pasteLongestAction = (
+        <Action
+          key="pasteLongestCode"
+          title={`Paste Longest: ${longestBlockSummary}`}
+          icon={Icon.Code}
+          shortcut={{ modifiers: ["cmd"], key: ";" }}
+          onAction={async () => {
+            await Clipboard.copy(longestCodeBlock);
+            await Clipboard.paste(longestCodeBlock);
+            await showHUD(`已粘贴: ${longestBlockSummary}`);
+            closeMainWindow();
+          }}
+        />
+      );
 
       const codeActions = codeBlocks.map((block, index) => {
         const summary = getCodeBlockSummary(block);
@@ -104,7 +108,7 @@ export function ResultView({
         return (
           <Action
             key={uniqueKey}
-            title={`Copy Code #${index + 1}: ${summary}`}
+            title={`Copy #${index + 1}: ${summary}`}
             icon={Icon.Code}
             onAction={async () => {
               await Clipboard.copy(block);
@@ -129,7 +133,7 @@ export function ResultView({
         />,
       ];
 
-      return [pasteLongestAction, ...baseActions, ...otherActions, ...codeActions.reverse()];
+      return [pasteLongestAction, ...baseActions, ...otherActions, ...codeActions];
     }
 
     return baseActions;
