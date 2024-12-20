@@ -1,4 +1,4 @@
-import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD } from "@raycast/api";
+import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD, KeyEquivalent } from "@raycast/api";
 import React, { useMemo } from "react";
 import MarkdownIt from "markdown-it";
 
@@ -118,6 +118,7 @@ export function ResultView({
             key={uniqueKey}
             title={`Copy #${index + 1}: ${summary}`}
             icon={Icon.Code}
+            shortcut={{ modifiers: ["cmd"], key: String(index + 1) as KeyEquivalent }}
             onAction={async () => {
               await Clipboard.copy(block);
               await showHUD(`复制: ${summary}`);
@@ -125,7 +126,7 @@ export function ResultView({
             }}
           />
         );
-      }) : [];
+      }).slice(0, 9) : [];
 
       const otherActions = [
         <Action
