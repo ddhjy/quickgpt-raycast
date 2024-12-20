@@ -1,5 +1,36 @@
 import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD } from "@raycast/api";
-import { useState } from "react";
+import React, { useMemo } from "react";
+import MarkdownIt from "markdown-it";
+
+// 初始化 Markdown 解析器
+const md = new MarkdownIt();
+
+// 提取代码块的辅助函数
+const extractCodeBlocks = (text: string): string[] => {
+  const tokens = md.parse(text, {});
+  const codeBlocks: string[] = [];
+
+  tokens.forEach((token) => {
+    if (token.type === 'fence' && token.tag === 'code') {
+      // 仅提取代码内容，不包括语言标识符
+      codeBlocks.push(token.content.trim());
+    }
+  });
+
+  return codeBlocks;
+};
+
+// 获取最长的代码块
+const getLongestCodeBlock = (blocks: string[]): string => {
+  return blocks.reduce((max, current) => (current.length > max.length ? current : max), "");
+};
+
+// 获取代码块摘要
+const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
+  const firstLine = block.split('\n').find(line => line.trim().length > 0) || '';
+  const summary = firstLine.trim();
+  return summary.length > maxLength ? `${summary.slice(0, maxLength)}...` : summary;
+};
 
 interface ResultViewProps {
   response: string;
@@ -18,95 +49,45 @@ export function ResultView({
   temperature = 0.7,
   maxTokens = 4096,
   topP = 0.95,
+  isLoading,
 }: ResultViewProps) {
-  const [isLoading] = useState(false);
+  // 使用 useMemo 缓存代码块的提取结果
+  const codeBlocks = useMemo(() => extractCodeBlocks(response), [response]);
+  const hasCodeBlock = codeBlocks.length > 0;
 
-  const markdown = `
-${response}
-`;
+  const longestCodeBlock = useMemo(() => getLongestCodeBlock(codeBlocks), [codeBlocks]);
+  const longestBlockSummary = useMemo(() => getCodeBlockSummary(longestCodeBlock), [longestCodeBlock]);
 
-  const getLastCodeBlock = (text: string) => {
-    const matches = text.match(/```[\s\S]*?```/g);
-    if (!matches) return "";
-    const lastBlock = matches[matches.length - 1];
-    return lastBlock.replace(/```.*\n|```$/g, "").trim();
-  };
-
-  const getLongestCodeBlock = (text: string) => {
-    const matches = text.match(/```[\s\S]*?```/g);
-    if (!matches) return "";
-    const longest = matches.reduce((max, current) => (current.length > max.length ? current : max));
-    return longest.replace(/```.*\n|```$/g, "").trim();
-  };
-
-  const getAllCodeBlocks = (text: string) => {
-    const matches = text.match(/```[\s\S]*?```/g);
-    if (!matches) return [];
-    return matches.map(block => block.replace(/```.*\n|```$/g, "").trim());
-  };
-
-  const hasCodeBlock = getLastCodeBlock(response).length > 0;
-
-  const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
-    const firstLine = block.split('\n').find(line => line.trim().length > 0) || '';
-    const summary = firstLine.trim();
-    return summary.length > maxLength ? summary.slice(0, maxLength) + '...' : summary;
-  };
-
-  const actions = [
-    <Action
-      key="paste"
-      title="Paste"
-      shortcut={{ modifiers: ["cmd"], key: "v" }}
-      icon={Icon.Document}
-      onAction={async () => {
-        await Clipboard.paste(response);
-        await showHUD("已粘贴");
-        closeMainWindow();
-      }}
-    />,
-    <Action
-      key="copy"
-      title="Copy"
-      shortcut={{ modifiers: ["cmd"], key: "c" }}
-      icon={Icon.Clipboard}
-      onAction={async () => {
-        await Clipboard.copy(response);
-        await showHUD("已复制");
-        closeMainWindow();
-      }}
-    />,
-  ];
-
-  if (hasCodeBlock) {
-    const codeBlocks = getAllCodeBlocks(response);
-
-    // 对于普通代码块，只提供复制功能
-    codeBlocks.reverse().forEach((block, index) => {
-      const summary = getCodeBlockSummary(block);
-      const realIndex = codeBlocks.length - index;
-      actions.unshift(
-        <Action
-          key={`copyCode${summary}`}
-          title={`Copy #${realIndex}: ${summary}`}
-          icon={Icon.Code}
-          onAction={async () => {
-            await Clipboard.copy(block);
-            await showHUD(`复制: ${summary}`);
-            closeMainWindow();
-          }}
-        />
-      );
-    });
-
-    // 使用摘要显示最长代码块的操作
-    const longestCodeBlock = getLongestCodeBlock(response);
-    const longestBlockSummary = getCodeBlockSummary(longestCodeBlock);
-
-    actions.unshift(
+  const actions = useMemo(() => {
+    const baseActions = [
       <Action
+        key="paste"
+        title="Paste"
+        shortcut={{ modifiers: ["cmd"], key: "v" }}
+        icon={Icon.Document}
+        onAction={async () => {
+          await Clipboard.paste(response);
+          await showHUD("已粘贴");
+          closeMainWindow();
+        }}
+      />,
+      <Action
+        key="copy"
+        title="Copy"
+        shortcut={{ modifiers: ["cmd"], key: "c" }}
+        icon={Icon.Clipboard}
+        onAction={async () => {
+          await Clipboard.copy(response);
+          await showHUD("已复制");
+          closeMainWindow();
+        }}
+      />,
+    ];
+
+    if (hasCodeBlock) {
+      const pasteLongestAction = <Action
         key="pasteLongestCode"
-        title={`Paste: ${longestBlockSummary}`}
+        title={`Paste Longest: ${longestBlockSummary}`}
         icon={Icon.Code}
         shortcut={{ modifiers: ["cmd"], key: ";" }}
         onAction={async () => {
@@ -115,41 +96,63 @@ ${response}
           await showHUD(`已粘贴: ${longestBlockSummary}`);
           closeMainWindow();
         }}
-      />,
-      <Action
-        key="copyLongestCode"
-        title={`Copy: ${longestBlockSummary}`}
-        icon={Icon.Code}
-        shortcut={{ modifiers: ["cmd"], key: "'" }}
-        onAction={async () => {
-          await Clipboard.copy(longestCodeBlock);
-          await showHUD(`已复制: ${longestBlockSummary}`);
-          closeMainWindow();
-        }}
-      />
-    );
-  }
+      />;
+
+      const codeActions = codeBlocks.map((block, index) => {
+        const summary = getCodeBlockSummary(block);
+        const uniqueKey = `copyCode-${index}-${summary}`;
+        return (
+          <Action
+            key={uniqueKey}
+            title={`Copy Code #${index + 1}: ${summary}`}
+            icon={Icon.Code}
+            onAction={async () => {
+              await Clipboard.copy(block);
+              await showHUD(`复制: ${summary}`);
+              closeMainWindow();
+            }}
+          />
+        );
+      });
+
+      const otherActions = [
+        <Action
+          key="copyLongestCode"
+          title={`Copy Longest: ${longestBlockSummary}`}
+          icon={Icon.Code}
+          shortcut={{ modifiers: ["cmd"], key: "'" }}
+          onAction={async () => {
+            await Clipboard.copy(longestCodeBlock);
+            await showHUD(`已复制: ${longestBlockSummary}`);
+            closeMainWindow();
+          }}
+        />,
+      ];
+
+      return [pasteLongestAction, ...baseActions, ...otherActions, ...codeActions.reverse()];
+    }
+
+    return baseActions;
+  }, [hasCodeBlock, codeBlocks, longestCodeBlock, longestBlockSummary, response]);
+
+  const metadata = useMemo(() => (
+    <Detail.Metadata>
+      {model && <Detail.Metadata.Label title="Model" text={model} />}
+      <Detail.Metadata.Label title="Temperature" text={temperature.toFixed(2)} />
+      <Detail.Metadata.Label title="Max Tokens" text={maxTokens.toString()} />
+      <Detail.Metadata.Label title="Top P" text={topP.toFixed(2)} />
+      <Detail.Metadata.Separator />
+      <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
+      <Detail.Metadata.Label title="Response Length" text={`${response.length} chars`} />
+    </Detail.Metadata>
+  ), [model, temperature, maxTokens, topP, duration, response.length]);
 
   return (
     <Detail
-      markdown={markdown}
+      markdown={response}
       isLoading={isLoading}
       actions={<ActionPanel>{actions}</ActionPanel>}
-      metadata={
-        <Detail.Metadata>
-          {model && (
-            <>
-              <Detail.Metadata.Label title="Model" text={model} />
-            </>
-          )}
-          <Detail.Metadata.Label title="Temperature" text={temperature.toString()} />
-          <Detail.Metadata.Label title="Max Tokens" text={maxTokens.toString()} />
-          <Detail.Metadata.Label title="Top P" text={topP.toString()} />
-          <Detail.Metadata.Separator />
-          <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
-          <Detail.Metadata.Label title="Response Length" text={`${response.length} chars`} />
-        </Detail.Metadata>
-      }
+      metadata={metadata}
     />
   );
 }
