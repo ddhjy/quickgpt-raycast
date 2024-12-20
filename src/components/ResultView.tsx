@@ -61,7 +61,7 @@ ${response}
       icon={Icon.Document}
       onAction={async () => {
         await Clipboard.paste(response);
-        await showHUD("已粘贴内容");
+        await showHUD("已粘贴");
         closeMainWindow();
       }}
     />,
@@ -72,7 +72,7 @@ ${response}
       icon={Icon.Clipboard}
       onAction={async () => {
         await Clipboard.copy(response);
-        await showHUD("已复制到剪贴板");
+        await showHUD("已复制");
         closeMainWindow();
       }}
     />,
@@ -82,16 +82,17 @@ ${response}
     const codeBlocks = getAllCodeBlocks(response);
 
     // 对于普通代码块，只提供复制功能
-    codeBlocks.forEach((block) => {
+    codeBlocks.reverse().forEach((block, index) => {
       const summary = getCodeBlockSummary(block);
+      const realIndex = codeBlocks.length - index;
       actions.unshift(
         <Action
           key={`copyCode${summary}`}
-          title={`Copy: ${summary}`}
+          title={`Copy #${realIndex}: ${summary}`}
           icon={Icon.Code}
           onAction={async () => {
             await Clipboard.copy(block);
-            await showHUD(`已复制代码块: ${summary}`);
+            await showHUD(`复制: ${summary}`);
             closeMainWindow();
           }}
         />
@@ -111,7 +112,7 @@ ${response}
         onAction={async () => {
           await Clipboard.copy(longestCodeBlock);
           await Clipboard.paste(longestCodeBlock);
-          await showHUD(`已复制并粘贴代码块: ${longestBlockSummary}`);
+          await showHUD(`已粘贴: ${longestBlockSummary}`);
           closeMainWindow();
         }}
       />,
@@ -122,7 +123,7 @@ ${response}
         shortcut={{ modifiers: ["cmd"], key: "'" }}
         onAction={async () => {
           await Clipboard.copy(longestCodeBlock);
-          await showHUD(`已复制代码块: ${longestBlockSummary}`);
+          await showHUD(`已复制: ${longestBlockSummary}`);
           closeMainWindow();
         }}
       />
