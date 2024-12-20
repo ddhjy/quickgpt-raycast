@@ -149,13 +149,13 @@ export function ResultView({
 
   const metadata = useMemo(() => (
     <Detail.Metadata>
-      {model && <Detail.Metadata.Label title="Model" text={model} />}
-      <Detail.Metadata.Label title="Temperature" text={temperature.toFixed(2)} />
-      <Detail.Metadata.Label title="Max Tokens" text={maxTokens.toString()} />
-      <Detail.Metadata.Label title="Top P" text={topP.toFixed(2)} />
+      {<Detail.Metadata.Label title="Model" text={model || "-"} />}
+      <Detail.Metadata.Label title="Temperature" text={temperature?.toFixed(2) || "-"} />
+      <Detail.Metadata.Label title="Max Tokens" text={maxTokens?.toString() || "-"} />
+      <Detail.Metadata.Label title="Top P" text={topP?.toFixed(2) || "-"} />
       <Detail.Metadata.Separator />
-      <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
-      <Detail.Metadata.Label title="Response Tokens" text={`${countTokens(response)} tokens`} />
+      <Detail.Metadata.Label title="Duration(s)" text={duration ? `${duration}` : "-"} />
+      <Detail.Metadata.Label title="Response Tokens" text={response ? `${countTokens(response)}` : "-"} />
     </Detail.Metadata>
   ), [model, temperature, maxTokens, topP, duration, response]);
 
