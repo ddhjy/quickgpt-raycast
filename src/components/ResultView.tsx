@@ -69,6 +69,11 @@ export function ResultView({
   const longestBlockSummary = useMemo(() => getCodeBlockSummary(longestCodeBlock), [longestCodeBlock]);
 
   const actions = useMemo(() => {
+    // 如果正在加载，返回空数组
+    if (isLoading) {
+      return [];
+    }
+
     const baseActions = [
       <Action
         key="paste"
@@ -146,7 +151,7 @@ export function ResultView({
     }
 
     return baseActions;
-  }, [hasCodeBlock, codeBlocks, longestCodeBlock, longestBlockSummary, response]);
+  }, [hasCodeBlock, codeBlocks, longestCodeBlock, longestBlockSummary, response, isLoading]);
 
   const metadata = useMemo(() => (
     <Detail.Metadata>
