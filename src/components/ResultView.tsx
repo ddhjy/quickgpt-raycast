@@ -1,9 +1,22 @@
 import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD } from "@raycast/api";
 import React, { useMemo } from "react";
 import MarkdownIt from "markdown-it";
+import { getEncoding } from "js-tiktoken";
 
 // 初始化 Markdown 解析器
 const md = new MarkdownIt();
+
+// 修改 token 计算函数
+const countTokens = (text: string): number => {
+  try {
+    const encoder = getEncoding("cl100k_base");
+    const tokens = encoder.encode(text);
+    return tokens.length;
+  } catch (error) {
+    console.error('Token counting error:', error);
+    return 0;
+  }
+};
 
 // 提取代码块的辅助函数，限制最大代码块数量
 const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
@@ -147,9 +160,9 @@ export function ResultView({
       <Detail.Metadata.Label title="Top P" text={topP.toFixed(2)} />
       <Detail.Metadata.Separator />
       <Detail.Metadata.Label title="Duration" text={`${duration}s`} />
-      <Detail.Metadata.Label title="Response Length" text={`${response.length} chars`} />
+      <Detail.Metadata.Label title="Response Tokens" text={`${countTokens(response)} tokens`} />
     </Detail.Metadata>
-  ), [model, temperature, maxTokens, topP, duration, response.length]);
+  ), [model, temperature, maxTokens, topP, duration, response]);
 
   return (
     <Detail
