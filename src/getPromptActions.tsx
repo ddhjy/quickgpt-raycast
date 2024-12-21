@@ -191,7 +191,7 @@ export function getPromptActions(
           condition: true,
           action: (
             <Action
-              title={`Run ${scriptName}`}
+              title={`${scriptName}`}
               icon={Icon.Terminal}
               onAction={async () => {
                 const description = getFormattedDescription();
@@ -247,7 +247,7 @@ export function getPromptActions(
     ...(() => {
       const aiService = AIService.getInstance();
       return aiService.getProviderNames().map(providerName => {
-        const displayName = `Call ${providerName}`;
+        const displayName = `${providerName}`;
         return {
           name: providerName.toLowerCase(),
           displayName,
@@ -255,7 +255,7 @@ export function getPromptActions(
           action: (
             <Action.Push
               title={displayName}
-              icon={Icon.AddPerson}
+              icon={Icon.Network}
               target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
             />
           ),
