@@ -18,7 +18,6 @@ interface ProviderConfig {
 }
 
 interface Config {
-  activeProvider: string;
   providers: {
     [providerName: string]: ProviderConfig;
   };
@@ -33,6 +32,7 @@ export class AIService {
   private providers: Map<string, AIProvider>;
   private currentProvider!: AIProvider;
   private config: Config;
+  private debug: boolean = false;
 
   private constructor() {
     this.providers = new Map();
@@ -50,26 +50,19 @@ export class AIService {
             providerConfig.apiKey
           );
           this.providers.set(providerName, provider);
-          console.log(`Provider ${providerName} initialized successfully`);
+          this.log(`Provider ${providerName} initialized successfully`);
         } catch (error) {
-          console.error(`Failed to initialize provider ${providerName}:`, error);
+          this.log(`Failed to initialize provider ${providerName}:`, error);
         }
       }
     }
 
     if (this.providers.size > 0) {
-      const activeProvider = this.getProvider(this.config.activeProvider);
-      if (!activeProvider) {
-        console.warn(`Active provider ${this.config.activeProvider} not found, using first available provider`);
-        this.currentProvider = this.providers.values().next().value;
-      } else {
-        this.currentProvider = activeProvider;
-      }
-
-      console.log('Available providers:', this.getProviderNames());
-      console.log('Current provider:', this.currentProvider.name);
+      this.currentProvider = this.providers.values().next().value;
+      this.log('Available providers:', this.getProviderNames());
+      this.log('Current provider:', this.currentProvider.name);
     } else {
-      console.log('No providers configured');
+      this.log('No providers configured');
     }
   }
 
@@ -79,13 +72,12 @@ export class AIService {
 
       if (!preferences.aiConfigPath) {
         return {
-          activeProvider: "",
           providers: {}
         };
       }
 
       if (fs.existsSync(preferences.aiConfigPath)) {
-        console.log('Loading config from:', preferences.aiConfigPath);
+        this.log('Loading config from:', preferences.aiConfigPath);
         const configData = fs.readFileSync(preferences.aiConfigPath, "utf-8");
         const config = JSON.parse(configData) as Config;
         if (this.validateConfig(config)) {
@@ -95,7 +87,7 @@ export class AIService {
 
       throw new Error("No valid config file found");
     } catch (error) {
-      console.error("Failed to load config.json", error);
+      this.log("Failed to load config.json", error);
       throw error;
     }
   }
@@ -106,7 +98,7 @@ export class AIService {
     }
 
     const typedConfig = config as Config;
-    if (!typedConfig.activeProvider || !typedConfig.providers || typeof typedConfig.providers !== 'object') {
+    if (!typedConfig.providers || typeof typedConfig.providers !== 'object') {
       return false;
     }
 
@@ -122,7 +114,7 @@ export class AIService {
 
   getProvider(name: string): AIProvider | undefined {
     const normalizedName = name.toLowerCase();
-    console.log('Getting provider:', normalizedName, 'Available:', this.getProviderNames());
+    this.log('Getting provider:', normalizedName, 'Available:', this.getProviderNames());
     for (const [key, provider] of this.providers.entries()) {
       if (key.toLowerCase() === normalizedName) {
         return provider;
@@ -133,7 +125,7 @@ export class AIService {
 
   setCurrentProvider(name: string): void {
     const normalizedName = name.toLowerCase();
-    console.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
+    this.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
     let provider: AIProvider | undefined;
 
     for (const [key, p] of this.providers.entries()) {
@@ -167,7 +159,7 @@ export class AIService {
       throw new Error(`Configuration not found for provider ${this.currentProvider.name}`);
     }
 
-    console.log('Chat request:', {
+    this.log('Chat request:', {
       provider: this.currentProvider.name,
       message: message.substring(0, 100) + '...',
       options: {
@@ -185,7 +177,7 @@ export class AIService {
 
     try {
       const response = await this.currentProvider.chat(message, chatOptions);
-      console.log('Chat response received:', {
+      this.log('Chat response received:', {
         success: true,
         responseLength: response.content.length
       });
@@ -198,5 +190,15 @@ export class AIService {
       });
       throw error;
     }
+  }
+
+  private log(...args: unknown[]): void {
+    if (this.debug) {
+      console.log(...args);
+    }
+  }
+
+  public setDebug(enabled: boolean): void {
+    this.debug = enabled;
   }
 }
