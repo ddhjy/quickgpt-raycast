@@ -23,7 +23,7 @@ import { match } from "pinyin-pro";
 import { getPromptActions } from "./getPromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
-import { recognizeText } from "./utils";
+import { recognizeText } from "./ocr/utils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -298,7 +298,7 @@ function PromptList({
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .map((prompt, index) => {
       const title = contentFormat(prompt.title || "", replacements);
-      const formattedTitle = searchMode && prompt.path 
+      const formattedTitle = searchMode && prompt.path
         ? `${contentFormat(prompt.path, replacements).replace(title, '')}${title}`.trim()
         : title;
 
@@ -325,24 +325,24 @@ function PromptList({
             prompt.pinned
               ? { tag: { value: "PIN", color: Color.SecondaryText } }
               : {},
-            ...getPlaceholderIcons(prompt.content, replacements).map((accessory, i, arr) => 
-              i === arr.length - 1 
-                ? { 
-                    ...accessory, 
-                    tooltip: prompt.content ?? prompt.subprompts
-                      ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
-                      .join("\n")
-                  }
-                : accessory
-            ),
-            // 如果没有任何占位符图标，则显示一个带有 tooltip 的文件夹/段落图标
-            ...(getPlaceholderIcons(prompt.content, replacements).length === 0 
-              ? [{
-                  icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+            ...getPlaceholderIcons(prompt.content, replacements).map((accessory, i, arr) =>
+              i === arr.length - 1
+                ? {
+                  ...accessory,
                   tooltip: prompt.content ?? prompt.subprompts
                     ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
                     .join("\n")
-                }]
+                }
+                : accessory
+            ),
+            // 如果没有任何占位符图标，则显示一个带有 tooltip 的文件夹/段落图标
+            ...(getPlaceholderIcons(prompt.content, replacements).length === 0
+              ? [{
+                icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+                tooltip: prompt.content ?? prompt.subprompts
+                  ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
+                  .join("\n")
+              }]
               : [])
           ]}
           actions={
@@ -378,7 +378,7 @@ function PromptList({
                     />
                   ) : (
                     getPromptActions(
-                      getFormattedContent, 
+                      getFormattedContent,
                       allowedActions || prompt.actions,
                       prompt
                     )
@@ -406,7 +406,7 @@ function PromptList({
                 <RaycastAction.CopyToClipboard
                   title="Copy Deeplink"
                   content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
-                    JSON.stringify({ 
+                    JSON.stringify({
                       target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
                       activateOCR: "false",
                       actions: prompt.actions?.join(',')
@@ -486,7 +486,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
           return "";
         }
       }
-      
+
       if (initialSelectionText && initialSelectionText.length > 0) {
         return initialSelectionText;
       }
@@ -499,7 +499,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
             for (const item of selectedItems) {
               const itemPath = item.path;
               const stats = await fsPromises.stat(itemPath);
-              
+
               if (stats.isFile()) {
                 if (!isBinaryOrMediaFile(itemPath)) {
                   const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
@@ -567,7 +567,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
   });
 
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
-  
+
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
