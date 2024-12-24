@@ -405,7 +405,7 @@ function PromptList({
                 />
                 <RaycastAction.CopyToClipboard
                   title="Copy Deeplink"
-                  content={`raycast://extensions/ddhjy2012/quickgpt/index?arguments=${encodeURIComponent(
+                  content={`raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments=${encodeURIComponent(
                     JSON.stringify({
                       target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
                       activateOCR: "false",
