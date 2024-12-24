@@ -1,4 +1,4 @@
-import { recognizeText as recognizeTextSwift } from "swift:../swift";
+import { recognizeText as recognizeTextSwift } from "swift:../../swift";
 import { getUserSelectedLanguages, usePreferences } from "./hooks";
 
 export const recognizeText = async (isFullScreen = false) => {
