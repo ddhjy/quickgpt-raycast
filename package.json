@@ -11,7 +11,7 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
+      "name": "prompt-lab",
       "title": "Prompt Lab",
       "description": "运行quickgpt工具，该工具用于为 chatgpt 提供提示词。需要一个视图，并接受三个可选参数：剪贴板文本、选择文本和动作。",
       "mode": "view",

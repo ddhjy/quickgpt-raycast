@@ -1,5 +1,5 @@
 import { Clipboard, closeMainWindow, open, showToast, Toast } from "@raycast/api";
-import { recognizeText } from "./utils";
+import { recognizeText } from "./ocr/utils";
 
 export default async function command() {
   await closeMainWindow();
