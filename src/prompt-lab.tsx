@@ -432,7 +432,7 @@ function PromptList({
   );
 }
 
-interface ExtendedArguments extends Arguments.Index {
+interface ExtendedArguments {
   clipboardText?: string;
   selectionText?: string;
   target?: string;
