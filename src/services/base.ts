@@ -1,5 +1,5 @@
 import { TokenJS } from 'token.js';
-import type { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "../types";
+import type { AIProvider, ChatOptions, ChatMessage, ChatResponse } from "./types";
 
 export type Provider = "groq" | "openai" | "ai21" | "anthropic" | "gemini" | "cohere" | "bedrock" | "mistral" | "perplexity" | "openrouter" | "openai-compatible";
 

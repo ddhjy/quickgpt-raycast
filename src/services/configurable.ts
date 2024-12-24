@@ -9,7 +9,7 @@ export class ConfigurableProvider extends BaseAIProvider {
   private readonly apiKey: string;
 
   constructor(
-    name: string, 
+    name: string,
     apiEndpoint: string,
     provider: Provider,
     defaultModel: string,

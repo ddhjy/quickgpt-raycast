@@ -1,6 +1,6 @@
 import type { AIProvider, ChatOptions, ChatResponse } from "./types";
-import { ConfigurableProvider } from "./providers/configurable";
-import type { Provider } from "./providers/base";
+import { ConfigurableProvider } from "./configurable";
+import type { Provider } from "./base";
 import * as fs from "fs";
 import { getPreferenceValues } from "@raycast/api";
 
@@ -76,14 +76,14 @@ export class AIService {
   private loadConfig(): Config {
     try {
       const preferences = getPreferenceValues<Preferences>();
-      
+
       if (!preferences.aiConfigPath) {
         return {
           activeProvider: "",
           providers: {}
         };
       }
-      
+
       if (fs.existsSync(preferences.aiConfigPath)) {
         console.log('Loading config from:', preferences.aiConfigPath);
         const configData = fs.readFileSync(preferences.aiConfigPath, "utf-8");
@@ -92,7 +92,7 @@ export class AIService {
           return config;
         }
       }
-      
+
       throw new Error("No valid config file found");
     } catch (error) {
       console.error("Failed to load config.json", error);
@@ -135,14 +135,14 @@ export class AIService {
     const normalizedName = name.toLowerCase();
     console.log('Setting provider:', normalizedName, 'Available:', this.getProviderNames());
     let provider: AIProvider | undefined;
-    
+
     for (const [key, p] of this.providers.entries()) {
       if (key.toLowerCase() === normalizedName) {
         provider = p;
         break;
       }
     }
-    
+
     if (!provider) {
       throw new Error(`Provider ${name} not found. Available providers: ${this.getProviderNames().join(', ')}`);
     }
