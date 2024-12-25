@@ -176,22 +176,30 @@ export function getPromptActions(
   if (preferences.scriptsDirectory) {
     try {
       const scriptsDir = preferences.scriptsDirectory;
-      const scripts = fs
-        .readdirSync(scriptsDir)
-        .filter(
-          (file) => file.endsWith(".applescript") || file.endsWith(".scpt")
-        )
-        .map((file) => path.join(scriptsDir, file));
+      // 添加内置的 ChatGPT.applescript
+      const defaultScripts = [{
+        path: path.join(__dirname, "assets/ChatGPT.applescript"),
+        name: "ChatGPT"
+      }];
 
-      scripts.forEach((script) => {
-        const scriptName = path.basename(script, path.extname(script));
+      // 获取用户自定义脚本
+      const userScripts = fs
+        .readdirSync(scriptsDir)
+        .filter(file => file.endsWith(".applescript") || file.endsWith(".scpt"))
+        .map(file => ({
+          path: path.join(scriptsDir, file),
+          name: path.basename(file, path.extname(file))
+        }));
+
+      // 合并所有脚本
+      [...defaultScripts, ...userScripts].forEach(({ path: scriptPath, name: scriptName }) => {
         scriptActions.push({
           name: `script_${scriptName}`,
           displayName: scriptName,
           condition: true,
           action: (
             <Action
-              title={`${scriptName}`}
+              title={scriptName}
               icon={Icon.Terminal}
               onAction={async () => {
                 const description = getFormattedDescription();
@@ -199,8 +207,8 @@ export function getPromptActions(
 
                 try {
                   closeMainWindow();
-                  const scriptContent = fs.readFileSync(script, "utf8");
-                  await runAppleScript(scriptContent);
+                  const scriptContent = fs.readFileSync(scriptPath, "utf8");
+                  await runAppleScript(scriptContent, scriptName === "ChatGPT" ? [description] : []);
                 } catch (error) {
                   console.error(`Failed to execute script: ${error}`);
                   await showToast(Toast.Style.Failure, "Error", String(error));
@@ -216,34 +224,7 @@ export function getPromptActions(
   }
 
   const actionItems: ActionItem[] = [
-    {
-      name: "chatgpt",
-      displayName: "ChatGPT",
-      condition: true,
-      action: (
-        <Action
-          // eslint-disable-next-line @raycast/prefer-title-case
-          title="ChatGPT"
-          icon={Icon.Message}
-          onAction={async () => {
-            const description = getFormattedDescription();
-            await Clipboard.copy(description);
-
-            try {
-              closeMainWindow();
-              const scriptPath = path.join(__dirname, "assets/ChatGPT.applescript");
-              const scriptContent = fs.readFileSync(scriptPath, "utf8");
-              await runAppleScript(scriptContent, [description]);
-            } catch (error) {
-              console.error(`Failed to execute ChatGPT script: ${error}`);
-              await showToast(Toast.Style.Failure, "Error", String(error));
-            }
-          }}
-        />
-      ),
-    },
     ...scriptActions,
-    // 动态生成AI服务的actions
     ...(() => {
       const aiService = AIService.getInstance();
       return aiService.getProviderNames().map(providerName => {
