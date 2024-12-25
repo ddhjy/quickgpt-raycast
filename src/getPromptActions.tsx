@@ -47,7 +47,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   const [model, setModel] = useState<string>();
   const startTimeRef = useRef<number>(0);
   const contentRef = useRef<string>('');
-  
+
   // 用于节流更新
   const updatingRef = useRef<boolean>(false);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,7 +62,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
         const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
         setDuration(currentDuration);
         updatingRef.current = false;
-      }, 500); // 每100ms更新一次UI，可根据需要进行调节
+      }, 500); // 每500ms更新一次UI，可根据需要进行调节
     }
   }, []);
 
@@ -77,9 +77,9 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
         setIsStreaming(true);
         setResponse('');
         contentRef.current = '';
-        
+
         toast = await showToast(Toast.Style.Animated, "Thinking...");
-        
+
         const aiService = AIService.getInstance();
         if (providerName) {
           aiService.setCurrentProvider(providerName);
@@ -87,7 +87,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
 
         // 使用流式回调，但不在回调中直接setState
         const result = await aiService.chat(
-          description, 
+          description,
           {
             ...options,
             systemPrompt: systemPrompt || options?.systemPrompt,
@@ -100,17 +100,17 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
             }
           }
         );
-        
+
         if (!isMounted) return;
 
         // 设置模型信息
         setModel(result.model);
-        
+
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTimeRef.current) / 1000).toFixed(1);
         setDuration(durationSeconds);
         setIsStreaming(false);
-        
+
         // 确保流结束后有一次最终更新（有些流可能在timer空隙未更新完整）
         setResponse(contentRef.current);
 
@@ -140,7 +140,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]);
 
   return (
-    <ResultView 
+    <ResultView
       response={response}
       duration={duration || ''}
       isLoading={isStreaming}
@@ -228,7 +228,7 @@ export function getPromptActions(
           onAction={async () => {
             const description = getFormattedDescription();
             await Clipboard.copy(description);
-            
+
             try {
               closeMainWindow();
               const scriptPath = path.join(__dirname, "assets/ChatGPT.applescript");
@@ -322,7 +322,7 @@ export function getPromptActions(
                 await showToast(Toast.Style.Failure, "Error", "File path not found");
                 return;
               }
-              
+
               closeMainWindow();
               await runAppleScript(`
                 tell application "Visual Studio Code"
@@ -347,19 +347,27 @@ export function getPromptActions(
   filteredActions.sort((a, b) => {
     const lastSelectedAction = lastActionStore.getLastAction();
     const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
-    
+
     const indexA = finalActions.indexOf(stripRunPrefix(a.displayName));
     const indexB = finalActions.indexOf(stripRunPrefix(b.displayName));
-    
+
     if (indexA !== -1 && indexB !== -1) {
       return indexA - indexB;
     }
-    
+
     if (indexA !== -1) return -1;
     if (indexB !== -1) return 1;
-    
-    if (a.name === lastSelectedAction) return -1;
-    if (b.name === lastSelectedAction) return 1;
+
+    // 检查 action 是否有快捷键
+    const hasShortcutA = Boolean(a.action.props.shortcut);
+    const hasShortcutB = Boolean(b.action.props.shortcut);
+
+    // 如果两个 action 都没有快捷键，才考虑 lastSelectedAction
+    if (!hasShortcutA && !hasShortcutB) {
+      if (a.name === lastSelectedAction) return -1;
+      if (b.name === lastSelectedAction) return 1;
+    }
+
     return 0;
   });
 
