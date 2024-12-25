@@ -147,7 +147,12 @@ export function ResultView({
         />,
       ];
 
-      return [pasteLongestAction, ...baseActions, ...otherActions, ...codeActions];
+      return [
+        ...otherActions,
+        pasteLongestAction,
+        ...baseActions,
+        ...codeActions
+      ];
     }
 
     return baseActions;
