@@ -27,9 +27,9 @@ export default async function command() {
         title: "取消",
       });
     }
-
-    await Clipboard.copy(recognizedText);
-    await open("raycast://extensions/ddhjy2012/quickgpt/index");
+    
+    await Clipboard.copy(recognizedText)
+    await open("raycast://extensions/ddhjy2012/quickgpt/prompt-lab")
     await showToast({
       style: Toast.Style.Success,
       title: "成功",
