@@ -130,17 +130,21 @@ class PromptManager {
     return prompt;
   }
 
-  private processPrompts(prompts: PromptProps[], parentPath: string = ''): PromptProps[] {
+  private processPrompts(prompts: PromptProps[], parentPath: string = '', parentActions?: string[]): PromptProps[] {
     return prompts.map(prompt => {
       prompt = this.processPrompt(prompt);
-      
+
       const currentPath = parentPath ? `${parentPath} / ${prompt.title}` : prompt.title;
       prompt.path = currentPath;
-      
-      if (prompt.subprompts) {
-        prompt.subprompts = this.processPrompts(prompt.subprompts, currentPath);
+
+      if (!prompt.actions && parentActions) {
+        prompt.actions = parentActions;
       }
-      
+
+      if (prompt.subprompts) {
+        prompt.subprompts = this.processPrompts(prompt.subprompts, currentPath, prompt.actions || parentActions);
+      }
+
       return prompt;
     });
   }
@@ -150,19 +154,19 @@ class PromptManager {
       const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
       const emojis = prompt.title.match(emojiRegex) || [];
       const emojiStr = emojis.join('');
-      
+
       const placeholderRegex = /{{([^}]+)}}/g;
       const placeholders = prompt.content?.match(placeholderRegex) || [];
       const placeholderStr = placeholders
         .map(p => p.replace(/[{}]/g, ''))
         .join('-');
-      
+
       const baseStr = [
         emojiStr,
         prompt.title.replace(emojiRegex, '').trim(),
         placeholderStr
       ].filter(Boolean).join('-');
-      
+
       prompt.identifier = md5(baseStr).substring(0, 8);
     }
 
