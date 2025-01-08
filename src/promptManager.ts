@@ -130,7 +130,7 @@ class PromptManager {
     return prompt;
   }
 
-  private processPrompts(prompts: PromptProps[], parentPath: string = '', parentActions?: string[]): PromptProps[] {
+  private processPrompts(prompts: PromptProps[], parentPath: string = '', parentActions?: string[], parentPrefixCMD?: string): PromptProps[] {
     return prompts.map(prompt => {
       prompt = this.processPrompt(prompt);
 
@@ -141,8 +141,17 @@ class PromptManager {
         prompt.actions = parentActions;
       }
 
+      if (!prompt.prefixCMD && parentPrefixCMD) {
+        prompt.prefixCMD = parentPrefixCMD;
+      }
+
       if (prompt.subprompts) {
-        prompt.subprompts = this.processPrompts(prompt.subprompts, currentPath, prompt.actions || parentActions);
+        prompt.subprompts = this.processPrompts(
+          prompt.subprompts,
+          currentPath,
+          prompt.actions || parentActions,
+          prompt.prefixCMD || parentPrefixCMD
+        );
       }
 
       return prompt;
