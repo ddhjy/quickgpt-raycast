@@ -360,7 +360,7 @@ function PromptList({
                   onAction={async () => {
                     if (preferences.customPromptsDirectory) {
                       await showToast({ title: "Opening custom prompts directory..." });
-                      await runAppleScript(`tell application "Finder" to open POSIX file "${preferences.customPromptsDirectory}"`);
+                      await runAppleScript(`do shell script "open -a Cursor '${preferences.customPromptsDirectory}'"`);
                       await closeMainWindow();
                     } else {
                       await showToast({
