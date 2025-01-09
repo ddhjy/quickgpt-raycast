@@ -358,11 +358,10 @@ function PromptList({
             <ActionPanel>
               {prompt.identifier === "open-custom-prompts-dir" ? (
                 <Action
-                  title="Open Directory"
+                  title="Open"
                   icon={Icon.Folder}
                   onAction={async () => {
                     if (preferences.customPromptsDirectory) {
-                      await showToast({ title: "Opening custom prompts directory..." });
                       await runAppleScript(`do shell script "open -a Cursor '${preferences.customPromptsDirectory}'"`);
                       await closeMainWindow();
                     } else {
@@ -376,11 +375,10 @@ function PromptList({
                 />
               ) : prompt.identifier === "open-scripts-dir" ? (
                 <Action
-                  title="Open Directory"
+                  title="Open"
                   icon={Icon.Folder}
                   onAction={async () => {
                     if (preferences.scriptsDirectory) {
-                      await showToast({ title: "Opening scripts directory..." });
                       await runAppleScript(`do shell script "open -a Cursor '${preferences.scriptsDirectory}'"`);
                       await closeMainWindow();
                     } else {
