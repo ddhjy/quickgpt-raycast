@@ -263,7 +263,10 @@ function PromptList({
 }: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
-  const preferences = getPreferenceValues<{ customPromptsDirectory?: string }>();
+  const preferences = getPreferenceValues<{
+    customPromptsDirectory?: string;
+    scriptsDirectory?: string;
+  }>();
 
   // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
@@ -366,6 +369,24 @@ function PromptList({
                       await showToast({
                         title: "Error",
                         message: "Custom prompts directory not configured",
+                        style: Toast.Style.Failure
+                      });
+                    }
+                  }}
+                />
+              ) : prompt.identifier === "open-scripts-dir" ? (
+                <Action
+                  title="Open Directory"
+                  icon={Icon.Folder}
+                  onAction={async () => {
+                    if (preferences.scriptsDirectory) {
+                      await showToast({ title: "Opening scripts directory..." });
+                      await runAppleScript(`do shell script "open -a Cursor '${preferences.scriptsDirectory}'"`);
+                      await closeMainWindow();
+                    } else {
+                      await showToast({
+                        title: "Error",
+                        message: "Scripts directory not configured",
                         style: Toast.Style.Failure
                       });
                     }
@@ -609,6 +630,12 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
               icon: "📁",
               identifier: "open-custom-prompts-dir",
               actions: ["open-custom-prompts-dir"]
+            },
+            {
+              title: "Open Scripts Directory",
+              icon: "📁",
+              identifier: "open-scripts-dir",
+              actions: ["open-scripts-dir"]
             }
           ]
         }
