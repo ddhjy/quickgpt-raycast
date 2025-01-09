@@ -13,8 +13,13 @@ import {
   Form,
   getFrontmostApplication,
   BrowserExtension,
-  getSelectedFinderItems
+  getSelectedFinderItems,
+  showToast,
+  getPreferenceValues,
+  closeMainWindow,
+  Toast
 } from "@raycast/api";
+import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
 import promptManager, { PromptProps } from "./promptManager";
 import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./contentFormat";
@@ -258,6 +263,7 @@ function PromptList({
 }: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [, forceUpdate] = useState(0);
+  const preferences = getPreferenceValues<{ customPromptsDirectory?: string }>();
 
   // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
@@ -336,7 +342,6 @@ function PromptList({
                 }
                 : accessory
             ),
-            // 如果没有任何占位符图标，则显示一个带有 tooltip 的文件夹/段落图标
             ...(getPlaceholderIcons(prompt.content, replacements).length === 0
               ? [{
                 icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
@@ -348,7 +353,25 @@ function PromptList({
           ]}
           actions={
             <ActionPanel>
-              {prompt.subprompts ? (
+              {prompt.identifier === "open-custom-prompts-dir" ? (
+                <Action
+                  title="Open Directory"
+                  icon={Icon.Folder}
+                  onAction={async () => {
+                    if (preferences.customPromptsDirectory) {
+                      await showToast({ title: "Opening custom prompts directory..." });
+                      await runAppleScript(`tell application "Finder" to open POSIX file "${preferences.customPromptsDirectory}"`);
+                      await closeMainWindow();
+                    } else {
+                      await showToast({
+                        title: "Error",
+                        message: "Custom prompts directory not configured",
+                        style: Toast.Style.Failure
+                      });
+                    }
+                  }}
+                />
+              ) : prompt.subprompts ? (
                 <RaycastAction.Push
                   title="Open"
                   icon={prompt.icon ?? DEFAULT_ICON}
@@ -573,7 +596,23 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     ? quickPrompt.subprompts
     : quickPrompt
       ? [quickPrompt]
-      : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+      : [
+        ...pinnedPrompts,
+        ...promptManager.getRootPrompts(),
+        {
+          title: "Settings",
+          icon: "⚙️",
+          identifier: "settings",
+          subprompts: [
+            {
+              title: "Open Custom Prompts Directory",
+              icon: "📁",
+              identifier: "open-custom-prompts-dir",
+              actions: ["open-custom-prompts-dir"]
+            }
+          ]
+        }
+      ];
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 

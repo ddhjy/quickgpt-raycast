@@ -233,6 +233,10 @@ class PromptManager {
     }
     return undefined;
   }
+
+  public reloadPrompts(): void {
+    this.loadAllPrompts();
+  }
 }
 
 const promptManager = new PromptManager();
