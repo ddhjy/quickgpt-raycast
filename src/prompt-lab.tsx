@@ -17,7 +17,8 @@ import {
   showToast,
   getPreferenceValues,
   closeMainWindow,
-  Toast
+  Toast,
+  openExtensionPreferences
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./pinsManager";
@@ -390,6 +391,15 @@ function PromptList({
                     }
                   }}
                 />
+              ) : prompt.identifier === "open-preferences" ? (
+                <Action
+                  title="Open"
+                  icon={Icon.Gear}
+                  onAction={() => {
+                    openExtensionPreferences();
+                    closeMainWindow();
+                  }}
+                />
               ) : prompt.subprompts ? (
                 <RaycastAction.Push
                   title="Open"
@@ -634,6 +644,12 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
               icon: "📁",
               identifier: "open-scripts-dir",
               actions: ["open-scripts-dir"]
+            },
+            {
+              title: "Open Extension Preferences",
+              icon: "🎛️",
+              identifier: "open-preferences",
+              actions: ["open-preferences"]
             }
           ]
         }
