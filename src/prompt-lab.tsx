@@ -658,6 +658,12 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
           identifier: "settings",
           subprompts: [
             {
+              title: "Open Extension Preferences",
+              icon: "🎛️",
+              identifier: "open-preferences",
+              actions: ["open-preferences"]
+            },
+            {
               title: "Open Custom Prompts Directory",
               icon: "📁",
               identifier: "open-custom-prompts-dir",
@@ -668,12 +674,6 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
               icon: "📁",
               identifier: "open-scripts-dir",
               actions: ["open-scripts-dir"]
-            },
-            {
-              title: "Open Extension Preferences",
-              icon: "🎛️",
-              identifier: "open-preferences",
-              actions: ["open-preferences"]
             }
           ]
         }
