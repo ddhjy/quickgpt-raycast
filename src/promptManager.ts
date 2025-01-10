@@ -65,7 +65,8 @@ class PromptManager {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
       const fileExtension = path.extname(filePath).toLowerCase();
-      const prompts = fileExtension === '.hjson' ? hjson.parse(data) : JSON.parse(data);
+      const parsed = fileExtension === '.hjson' ? hjson.parse(data) : JSON.parse(data);
+      const prompts = Array.isArray(parsed) ? parsed : [parsed];
       const baseDir = path.dirname(filePath);
       return prompts.map((prompt: PromptProps) => {
         const processedPrompt = this.resolvePromptContentSync(prompt, baseDir);
