@@ -144,7 +144,7 @@ function applyPrefixCommandsToContent(content: string, prefixCommands: string | 
  * @param identifier 目标标识符
  * @returns 快速示和清理后的选择文本
  */
-function getQuickPrompt(selectionText: string, identifier?: string): [PromptProps | undefined, string] {
+function getQuickPrompt(selectionText: string, identifier?: string, filePath?: string): [PromptProps | undefined, string] {
   let foundPrompt;
   let cleanedText = selectionText;
 
@@ -152,6 +152,9 @@ function getQuickPrompt(selectionText: string, identifier?: string): [PromptProp
     foundPrompt = promptManager.findPrompt(
       (prompt) => `${IDENTIFIER_PREFIX}${prompt.identifier}` === identifier
     );
+    if (foundPrompt && filePath) {
+      foundPrompt.filePath = filePath;
+    }
   } else {
     foundPrompt = promptManager.findPrompt(
       (prompt) =>
@@ -462,11 +465,30 @@ function PromptList({
                     JSON.stringify({
                       target: `${IDENTIFIER_PREFIX}${prompt.identifier}`,
                       activateOCR: "false",
-                      actions: prompt.actions?.join(',')
+                      actions: prompt.actions?.join(','),
+                      filePath: prompt.filePath
                     })
                   )}`}
                   icon={Icon.Link}
                 />
+                {prompt.filePath && (
+                  <Action
+                    title="Open Config File"
+                    icon={Icon.Folder}
+                    onAction={async () => {
+                      if (!prompt.filePath) return;
+                      await Clipboard.copy(prompt.title);
+                      const configDir = path.dirname(prompt.filePath);
+                      await runAppleScript(`do shell script "open -a Cursor '${configDir}'"`);
+                      await closeMainWindow();
+                      await showToast({
+                        title: "已复制提示词标题",
+                        message: prompt.title,
+                        style: Toast.Style.Success,
+                      });
+                    }}
+                  />
+                )}
               </>
             </ActionPanel>
           }
@@ -491,6 +513,7 @@ interface ExtendedArguments {
   target?: string;
   activateOCR?: string;
   actions?: string;
+  filePath?: string;
 }
 
 export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArguments }>) {
@@ -500,6 +523,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     target,
     activateOCR,
     actions,
+    filePath,
   } = props.arguments;
 
   // 将 actions 字符串转换回数组
@@ -619,7 +643,7 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     return prompt.pinned;
   });
 
-  const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target);
+  const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target, filePath);
 
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
