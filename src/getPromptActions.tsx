@@ -287,38 +287,6 @@ export function getPromptActions(
         />
       ),
     },
-    {
-      name: "editInVSCode",
-      displayName: "Edit in VSCode",
-      condition: Boolean(prompt?.filePath),
-      action: (
-        <Action
-          // eslint-disable-next-line @raycast/prefer-title-case
-          title="Edit in VSCode"
-          icon={Icon.Code}
-          shortcut={{ modifiers: ["cmd", "shift"], key: "e" }}
-          onAction={async () => {
-            try {
-              if (!prompt?.filePath) {
-                await showToast(Toast.Style.Failure, "Error", "File path not found");
-                return;
-              }
-
-              closeMainWindow();
-              await runAppleScript(`
-                tell application "Visual Studio Code"
-                  activate
-                  open POSIX file "${prompt.filePath}"
-                end tell
-              `);
-            } catch (error) {
-              console.error("Failed to open VSCode:", error);
-              await showToast(Toast.Style.Failure, "Error", String(error));
-            }
-          }}
-        />
-      ),
-    },
   ];
 
   const filteredActions = actionItems.filter(
