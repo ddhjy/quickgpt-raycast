@@ -188,7 +188,7 @@ function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
     <Form
       actions={
         <ActionPanel>
-          {getPromptActions(formattedContent, prompt.actions, prompt)}
+          {getPromptActions(formattedContent, prompt.actions)}
         </ActionPanel>
       }
     >
@@ -454,7 +454,6 @@ function PromptList({
                     getPromptActions(
                       getFormattedContent,
                       allowedActions || prompt.actions,
-                      prompt
                     )
                   )}
                 </>
