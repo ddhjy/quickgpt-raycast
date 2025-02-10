@@ -29,10 +29,6 @@ interface ActionItem {
   action: React.ReactElement;
 }
 
-interface PromptProps {
-  filePath?: string;
-}
-
 interface ChatViewProps {
   getFormattedDescription: () => string;
   options?: ChatOptions;
@@ -153,7 +149,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
 export function getPromptActions(
   getFormattedDescription: () => string,
   actions?: string[],
-  prompt?: PromptProps
+
 ) {
   const preferences = getPreferenceValues<Preferences>();
 
