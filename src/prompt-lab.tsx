@@ -491,8 +491,8 @@ function PromptList({
                 />
                 {prompt.filePath && (
                   <Action
-                    title="Open Config File"
-                    icon={Icon.Folder}
+                    title="Edit with Cursor"
+                    icon={Icon.Code}
                     onAction={async () => {
                       if (!prompt.filePath) return;
                       await Clipboard.copy(prompt.title);
@@ -500,7 +500,7 @@ function PromptList({
                       await runAppleScript(`do shell script "open -a Cursor '${configDir}'"`);
                       await closeMainWindow();
                       await showToast({
-                        title: "已复制提示词标题",
+                        title: "复制标题",
                         message: prompt.title,
                         style: Toast.Style.Success,
                       });
