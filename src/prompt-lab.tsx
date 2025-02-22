@@ -30,6 +30,9 @@ import { getPromptActions } from "./getPromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
 import { recognizeText } from "./ocr/utils";
+import { AIService } from "./services/AIService";
+import { AIProvider } from "./services/types";
+import lastActionStore from "./lastActionStore";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -273,6 +276,8 @@ function PromptList({
     customPromptsDirectory3?: string;
     scriptsDirectory?: string;
   }>();
+  const aiService = AIService.getInstance();
+  const [selectedAction, setSelectedAction] = useState<string>(() => lastActionStore.getLastAction() || "");
 
   // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
@@ -513,11 +518,92 @@ function PromptList({
       );
     });
 
+  // 获取可用脚本
+  const getAvailableScripts = () => {
+    const scripts: { name: string; path: string }[] = [];
+
+    // 添加内置的 ChatGPT.applescript
+    scripts.push({
+      path: path.join(__dirname, "assets/ChatGPT.applescript"),
+      name: "ChatGPT"
+    });
+
+    // 获取用户自定义脚本
+    if (preferences.scriptsDirectory) {
+      try {
+        const userScripts = fs
+          .readdirSync(preferences.scriptsDirectory)
+          .filter(file => file.endsWith(".applescript") || file.endsWith(".scpt"))
+          .map(file => ({
+            path: path.join(preferences.scriptsDirectory!, file),
+            name: path.basename(file, path.extname(file))
+          }));
+        scripts.push(...userScripts);
+      } catch (error) {
+        console.error("Failed to read scripts directory:", error);
+      }
+    }
+
+    return scripts;
+  };
+
   return (
     <List
       searchBarPlaceholder={searchMode ? "Search" : "Input"}
       onSearchTextChange={setSearchText}
       filtering={false}
+      searchBarAccessory={
+        searchMode ? (
+          <List.Dropdown
+            tooltip="选择首选操作"
+            value={selectedAction}
+            onChange={(newValue: string) => {
+              if (newValue === selectedAction) return;
+
+              // 当选择默认项（值为空）时，直接清空设置
+              if (newValue === "") {
+                setSelectedAction("");
+                lastActionStore.setLastAction("");
+                console.log("已清除首选操作");
+                showToast({
+                  style: Toast.Style.Success,
+                  title: "已清除首选操作",
+                });
+                return;
+              }
+
+              setSelectedAction(newValue);
+              lastActionStore.setLastAction(newValue);
+              console.log(`已设置首选操作: ${newValue}`);
+              showToast({
+                style: Toast.Style.Success,
+                title: "已设置首选操作",
+                message: newValue,
+              });
+            }}
+          >
+            <List.Dropdown.Item key="default" title="Default" value="" />
+            <List.Dropdown.Section title="Execute Scripts">
+              {getAvailableScripts().map((script) => (
+                <List.Dropdown.Item
+                  key={script.path}
+                  title={script.name}
+                  value={`script_${script.name}`}
+                />
+              ))}
+            </List.Dropdown.Section>
+            <List.Dropdown.Section title="AI Providers">
+              {aiService.getAllProviders().map((provider: AIProvider) => (
+                <List.Dropdown.Item
+                  key={provider.name}
+                  title={`${provider.name}`}
+                  value={`call ${provider.name.toLowerCase()}`}
+                />
+              ))}
+            </List.Dropdown.Section>
+          </List.Dropdown>
+        ) : null
+      }
     >
       {promptItems}
     </List>
