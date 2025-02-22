@@ -7,6 +7,7 @@ import {
   closeMainWindow,
   getPreferenceValues,
   showToast,
+  KeyEquivalent,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -145,14 +146,12 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   );
 }
 
-// 下面的getPromptActions函数保持不变，只需保留ChatView的优化即可
 export function getPromptActions(
   getFormattedDescription: () => string,
   actions?: string[],
 
 ) {
   const preferences = getPreferenceValues<Preferences>();
-
   const configuredActions =
     preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
   const finalActions = [...(actions || []), ...configuredActions];
@@ -289,9 +288,14 @@ export function getPromptActions(
     (option) => option.condition && option.action
   );
 
+
+  const lastSelectedAction = lastActionStore.getLastAction();
   filteredActions.sort((a, b) => {
-    const lastSelectedAction = lastActionStore.getLastAction();
     const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
+
+    // 优先处理最近选择的动作
+    if (a.name === lastSelectedAction && b.name !== lastSelectedAction) return -1;
+    if (b.name === lastSelectedAction && a.name !== lastSelectedAction) return 1;
 
     const indexA = finalActions.indexOf(stripRunPrefix(a.displayName));
     const indexB = finalActions.indexOf(stripRunPrefix(b.displayName));
@@ -313,14 +317,13 @@ export function getPromptActions(
       if (b.name === lastSelectedAction) return 1;
     }
 
-    return 0;
+    return a.displayName.localeCompare(b.displayName); // 添加字母顺序作为最终后备排序
   });
 
   return (
     <>
       {filteredActions.map((option, index) => {
         const handleAction = () => {
-          lastActionStore.setLastAction(option.name);
           if (option.action.props.onAction) {
             option.action.props.onAction();
           }

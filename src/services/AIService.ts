@@ -58,7 +58,11 @@ export class AIService {
     }
 
     if (this.providers.size > 0) {
-      this.currentProvider = this.providers.values().next().value;
+      const firstProvider = this.providers.values().next().value;
+      if (!firstProvider) {
+        throw new Error('No provider available');
+      }
+      this.currentProvider = firstProvider;
       this.log('Available providers:', this.getProviderNames());
       this.log('Current provider:', this.currentProvider.name);
     } else {
