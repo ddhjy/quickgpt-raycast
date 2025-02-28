@@ -7,15 +7,14 @@ import {
   closeMainWindow,
   getPreferenceValues,
   showToast,
-  KeyEquivalent,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
-import path from "path";
 import lastActionStore from "./lastActionStore";
 import { ResultView } from "./components/ResultView";
 import { AIService } from "./services/AIService";
 import { ChatOptions } from "./services/types";
+import { getAvailableScripts } from "./utils/scriptUtils";
 
 interface Preferences {
   openURL?: string;
@@ -156,32 +155,6 @@ export function getPromptActions(
     preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
   const finalActions = [...(actions || []), ...configuredActions];
 
-  // 递归扫描目录的函数
-  function scanDirectory(dir: string, relativePath = '', result: { path: string; name: string }[]) {
-    const items = fs.readdirSync(dir);
-
-    for (const item of items) {
-      // 忽略以 # 开头的文件和目录
-      if (item.startsWith('#')) continue;
-
-      const itemPath = path.join(dir, item);
-      const itemStat = fs.statSync(itemPath);
-
-      if (itemStat.isDirectory()) {
-        // 递归扫描子目录
-        scanDirectory(itemPath, path.join(relativePath, item), result);
-      } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
-        // 只使用文件名作为显示名称，不包含路径
-        const displayName = path.basename(item, path.extname(item));
-
-        result.push({
-          path: itemPath,
-          name: displayName
-        });
-      }
-    }
-  }
-
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
@@ -197,21 +170,11 @@ export function getPromptActions(
   const scriptActions: ActionItem[] = [];
   if (preferences.scriptsDirectory) {
     try {
-      const scriptsDir = preferences.scriptsDirectory;
-      // 添加内置的 ChatGPT.applescript
-      const defaultScripts = [{
-        path: path.join(__dirname, "assets/ChatGPT.applescript"),
-        name: "ChatGPT"
-      }];
+      // 使用工具函数获取所有可用脚本
+      const scripts = getAvailableScripts(preferences.scriptsDirectory, __dirname);
 
-      // 递归获取用户自定义脚本
-      const userScripts: { path: string; name: string }[] = [];
-
-      // 开始递归扫描
-      scanDirectory(scriptsDir, '', userScripts);
-
-      // 合并所有脚本
-      [...defaultScripts, ...userScripts].forEach(({ path: scriptPath, name: scriptName }) => {
+      // 为每个脚本创建 Action
+      scripts.forEach(({ path: scriptPath, name: scriptName }) => {
         scriptActions.push({
           name: `script_${scriptName}`,
           displayName: scriptName,

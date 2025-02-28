@@ -33,6 +33,7 @@ import { recognizeText } from "./ocr/utils";
 import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
 import lastActionStore from "./lastActionStore";
+import { getAvailableScripts } from "./utils/scriptUtils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -518,57 +519,9 @@ function PromptList({
       );
     });
 
-  // 递归扫描目录的函数
-  function scanDirectory(dir: string, relativePath = '', result: { path: string; name: string }[]) {
-    const items = fs.readdirSync(dir);
-
-    for (const item of items) {
-      // 忽略以 # 开头的文件和目录
-      if (item.startsWith('#')) continue;
-
-      const itemPath = path.join(dir, item);
-      const itemStat = fs.statSync(itemPath);
-
-      if (itemStat.isDirectory()) {
-        // 递归扫描子目录
-        scanDirectory(itemPath, path.join(relativePath, item), result);
-      } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
-        // 只使用文件名作为显示名称，不包含路径
-        const displayName = path.basename(item, path.extname(item));
-
-        result.push({
-          path: itemPath,
-          name: displayName
-        });
-      }
-    }
-  }
-
   // 获取可用脚本
-  const getAvailableScripts = () => {
-    const scripts: { name: string; path: string }[] = [];
-
-    // 添加内置的 ChatGPT.applescript
-    scripts.push({
-      path: path.join(__dirname, "assets/ChatGPT.applescript"),
-      name: "ChatGPT"
-    });
-
-    // 获取用户自定义脚本
-    if (preferences.scriptsDirectory) {
-      try {
-        const userScripts: { path: string; name: string }[] = [];
-
-        // 开始递归扫描
-        scanDirectory(preferences.scriptsDirectory, '', userScripts);
-
-        scripts.push(...userScripts);
-      } catch (error) {
-        console.error("Failed to read scripts directory:", error);
-      }
-    }
-
-    return scripts;
+  const getScripts = () => {
+    return getAvailableScripts(preferences.scriptsDirectory, __dirname);
   };
 
   return (
@@ -608,7 +561,7 @@ function PromptList({
           >
             <List.Dropdown.Item key="default" title="Default" value="" />
             <List.Dropdown.Section title="Execute Scripts">
-              {getAvailableScripts().map((script) => (
+              {getScripts().map((script) => (
                 <List.Dropdown.Item
                   key={script.path}
                   title={script.name}
