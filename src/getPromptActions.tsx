@@ -155,6 +155,33 @@ export function getPromptActions(
   const configuredActions =
     preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
   const finalActions = [...(actions || []), ...configuredActions];
+
+  // 递归扫描目录的函数
+  function scanDirectory(dir: string, relativePath = '', result: { path: string; name: string }[]) {
+    const items = fs.readdirSync(dir);
+
+    for (const item of items) {
+      // 忽略以 # 开头的文件和目录
+      if (item.startsWith('#')) continue;
+
+      const itemPath = path.join(dir, item);
+      const itemStat = fs.statSync(itemPath);
+
+      if (itemStat.isDirectory()) {
+        // 递归扫描子目录
+        scanDirectory(itemPath, path.join(relativePath, item), result);
+      } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
+        // 只使用文件名作为显示名称，不包含路径
+        const displayName = path.basename(item, path.extname(item));
+
+        result.push({
+          path: itemPath,
+          name: displayName
+        });
+      }
+    }
+  }
+
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,
@@ -177,14 +204,11 @@ export function getPromptActions(
         name: "ChatGPT"
       }];
 
-      // 获取用户自定义脚本
-      const userScripts = fs
-        .readdirSync(scriptsDir)
-        .filter(file => file.endsWith(".applescript") || file.endsWith(".scpt"))
-        .map(file => ({
-          path: path.join(scriptsDir, file),
-          name: path.basename(file, path.extname(file))
-        }));
+      // 递归获取用户自定义脚本
+      const userScripts: { path: string; name: string }[] = [];
+
+      // 开始递归扫描
+      scanDirectory(scriptsDir, '', userScripts);
 
       // 合并所有脚本
       [...defaultScripts, ...userScripts].forEach(({ path: scriptPath, name: scriptName }) => {
@@ -203,7 +227,7 @@ export function getPromptActions(
                 try {
                   closeMainWindow();
                   const scriptContent = fs.readFileSync(scriptPath, "utf8");
-                  await runAppleScript(scriptContent, scriptName === "ChatGPT" ? [description] : []);
+                  await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [description] : []);
                 } catch (error) {
                   console.error(`Failed to execute script: ${error}`);
                   await showToast(Toast.Style.Failure, "Error", String(error));

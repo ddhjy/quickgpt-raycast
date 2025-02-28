@@ -518,6 +518,32 @@ function PromptList({
       );
     });
 
+  // 递归扫描目录的函数
+  function scanDirectory(dir: string, relativePath = '', result: { path: string; name: string }[]) {
+    const items = fs.readdirSync(dir);
+
+    for (const item of items) {
+      // 忽略以 # 开头的文件和目录
+      if (item.startsWith('#')) continue;
+
+      const itemPath = path.join(dir, item);
+      const itemStat = fs.statSync(itemPath);
+
+      if (itemStat.isDirectory()) {
+        // 递归扫描子目录
+        scanDirectory(itemPath, path.join(relativePath, item), result);
+      } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
+        // 只使用文件名作为显示名称，不包含路径
+        const displayName = path.basename(item, path.extname(item));
+
+        result.push({
+          path: itemPath,
+          name: displayName
+        });
+      }
+    }
+  }
+
   // 获取可用脚本
   const getAvailableScripts = () => {
     const scripts: { name: string; path: string }[] = [];
@@ -531,13 +557,11 @@ function PromptList({
     // 获取用户自定义脚本
     if (preferences.scriptsDirectory) {
       try {
-        const userScripts = fs
-          .readdirSync(preferences.scriptsDirectory)
-          .filter(file => file.endsWith(".applescript") || file.endsWith(".scpt"))
-          .map(file => ({
-            path: path.join(preferences.scriptsDirectory!, file),
-            name: path.basename(file, path.extname(file))
-          }));
+        const userScripts: { path: string; name: string }[] = [];
+
+        // 开始递归扫描
+        scanDirectory(preferences.scriptsDirectory, '', userScripts);
+
         scripts.push(...userScripts);
       } catch (error) {
         console.error("Failed to read scripts directory:", error);
