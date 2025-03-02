@@ -55,7 +55,7 @@ class PromptManager {
   }
 
   private getPromptFilePaths(preferences: Preferences): string[] {
-    const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.pm.hjson")] : [];
+    const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.hjson")] : [];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
     const customPromptDirectories = [preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].filter(Boolean) as string[];
     return [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
