@@ -10,11 +10,11 @@ import {
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
-import lastActionStore from "./lastActionStore";
-import { ResultView } from "./components/ResultView";
-import { AIService } from "./services/AIService";
-import { ChatOptions } from "./services/types";
-import { getAvailableScripts } from "./utils/scriptUtils";
+import lastActionStore from "../stores/LastActionStore";
+import { ResultView } from "./ResultView";
+import { AIService } from "../services/AIService";
+import { ChatOptions } from "../services/types";
+import { getAvailableScripts } from "../utils/scriptUtils";
 
 interface Preferences {
   openURL?: string;
