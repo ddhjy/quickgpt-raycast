@@ -1,6 +1,6 @@
 import type { AIProvider, ChatOptions, ChatResponse } from "./types";
-import { ConfigurableProvider } from "./configurable";
-import type { Provider } from "./base";
+import { ConfigurableProvider } from "./ConfigurableAIProvider";
+import type { Provider } from "./BaseAIProvider";
 import * as fs from "fs";
 import { getPreferenceValues } from "@raycast/api";
 

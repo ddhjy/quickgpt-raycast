@@ -21,17 +21,17 @@ import {
   openExtensionPreferences
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
-import pinsManager from "./pinsManager";
-import promptManager, { PromptProps } from "./promptManager";
-import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./contentFormat";
+import pinsManager from "./managers/PinsManager";
+import promptManager, { PromptProps } from "./managers/PromptManager";
+import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./utils/contentFormat";
 import fs from "fs";
 import { match } from "pinyin-pro";
-import { getPromptActions } from "./getPromptActions";
+import { getPromptActions } from "./components/PromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
 import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
-import lastActionStore from "./lastActionStore";
+import lastActionStore from "./stores/LastActionStore";
 import { getAvailableScripts } from "./utils/scriptUtils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
