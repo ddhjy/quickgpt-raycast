@@ -1,0 +1,42 @@
+{
+title: Ask
+icon: 💡
+subprompts: [
+{
+  icon: 🖥️
+  title: "/"
+  prefixCMD: "none"
+  content: "{{i|s|c}}"
+
+}
+{
+  icon: 📎
+  title: "{{i}}"
+  content:
+  '''
+  {{i}}
+
+  {{s|c}}
+  '''
+}
+{
+  icon: ⭕️
+  title: 是什么
+  content:
+  '''
+  下列文本中，"{{i|c}}"是什么？
+
+  文本：
+  {{s}}
+  '''
+}
+{
+  icon: ⭕️
+  title: 是什么
+  content:
+  '''
+  {{i|s|c}} 是什么？
+  '''
+}
+]
+}
