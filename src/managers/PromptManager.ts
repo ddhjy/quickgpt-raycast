@@ -55,7 +55,7 @@ class PromptManager {
   }
 
   private getPromptFilePaths(preferences: Preferences): string[] {
-    const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.pm.json")] : [];
+    const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.pm.hjson")] : [];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
     const customPromptDirectories = [preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].filter(Boolean) as string[];
     return [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
@@ -64,8 +64,7 @@ class PromptManager {
   private loadPromptsFromFileSync(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
-      const fileExtension = path.extname(filePath).toLowerCase();
-      const parsed = fileExtension === '.hjson' ? hjson.parse(data) : JSON.parse(data);
+      const parsed = hjson.parse(data);
       const prompts = Array.isArray(parsed) ? parsed : [parsed];
       const baseDir = path.dirname(filePath);
       return prompts.map((prompt: PromptProps) => {
@@ -118,7 +117,7 @@ class PromptManager {
 
   private isPromptFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
-    return fileName.endsWith('.pm.json') || fileName.endsWith('.pm.hjson');
+    return fileName.endsWith('.hjson');
   }
 
   private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
