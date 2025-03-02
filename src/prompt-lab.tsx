@@ -26,7 +26,7 @@ import promptManager, { PromptProps } from "./managers/PromptManager";
 import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./utils/contentFormat";
 import fs from "fs";
 import { match } from "pinyin-pro";
-import { getPromptActions } from "./components/PromptActions";
+import { generatePromptActions } from "./components/PromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
 import { AIService } from "./services/AIService";
@@ -191,7 +191,7 @@ function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
     <Form
       actions={
         <ActionPanel>
-          {getPromptActions(formattedContent, prompt.actions)}
+          {generatePromptActions(formattedContent, prompt.actions)}
         </ActionPanel>
       }
     >
@@ -456,7 +456,7 @@ function PromptList({
                       }
                     />
                   ) : (
-                    getPromptActions(
+                    generatePromptActions(
                       getFormattedContent,
                       allowedActions || prompt.actions,
                     )
@@ -595,7 +595,7 @@ interface ExtendedArguments {
   filePath?: string;
 }
 
-export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArguments }>) {
+export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const {
     selectionText: initialSelectionText,
     clipboardText: initialClipboardText,
