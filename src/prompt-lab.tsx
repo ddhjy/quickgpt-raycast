@@ -33,6 +33,7 @@ import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
 import lastActionStore from "./stores/LastActionStore";
 import { getAvailableScripts } from "./utils/scriptUtils";
+import { isBinaryOrMediaFile, readDirectoryContents } from "./utils/fileSystemUtils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -47,66 +48,12 @@ const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
 
 const DEFAULT_PREFIX_COMMANDS = ["c"];
 
-const BINARY_MEDIA_EXTENSIONS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
-  '.mp3', '.wav', '.flac', '.mp4', '.avi', '.mkv',
-  '.exe', '.dll', '.bin', '.iso', '.zip', '.rar',
-  '.xcodeproj', '.xcworkspace', '.tiktoken'
-]);
-
-const IGNORED_PATTERNS = [
-  /^(node_modules|dist|build|coverage|tmp|logs|public|assets|vendor)$/,
-  /^\..+/,
-  /^(package-lock\.json|yarn\.lock)$/,
-  /^\.vscode$/,
-  /^\.idea$/,
-  /^\.env(\.local)?$/,
-  /^\.cache$/,
-  /^(bower_components|jspm_packages)$/,
-  /^\.DS_Store$/
-];
-
 const placeholderIcons: { [key: string]: Icon } = {
   input: Icon.TextInput,
   clipboard: Icon.Clipboard,
   selection: Icon.Text,
   currentApp: Icon.Window,
   browserContent: Icon.Globe
-};
-
-const isBinaryOrMediaFile = (fileName: string): boolean => {
-  const ext = path.extname(fileName).toLowerCase();
-  return BINARY_MEDIA_EXTENSIONS.has(ext);
-};
-
-const isIgnoredItem = (itemName: string): boolean => {
-  return IGNORED_PATTERNS.some(pattern => pattern.test(itemName));
-};
-
-const readDirectoryContents = async (dirPath: string, basePath: string = ''): Promise<string> => {
-  let content = "";
-  const items = await fsPromises.readdir(dirPath, { withFileTypes: true });
-
-  for (const item of items) {
-    const itemName = item.name;
-    const itemPath = path.join(dirPath, itemName);
-    const relativePath = path.join(basePath, itemName);
-
-    if (isIgnoredItem(itemName) || isBinaryOrMediaFile(itemName)) {
-      content += `File: ${relativePath} (content ignored)\n\n`;
-    } else if (item.isDirectory()) {
-      content += await readDirectoryContents(itemPath, relativePath);
-    } else {
-      try {
-        const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
-        content += `File: ${relativePath}\n${fileContent}\n\n`;
-      } catch {
-        content += `File: ${relativePath} (read failed)\n\n`;
-      }
-    }
-  }
-
-  return content;
 };
 
 /**
