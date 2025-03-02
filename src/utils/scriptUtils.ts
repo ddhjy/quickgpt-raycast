@@ -53,14 +53,10 @@ export function scanScriptsDirectory(dir: string, relativePath = '', result: Scr
  * @param assetsDir 内置脚本所在目录
  * @returns 所有可用脚本的数组
  */
-export function getAvailableScripts(scriptsDirectory: string | undefined, assetsDir: string): ScriptInfo[] {
+export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
     const scripts: ScriptInfo[] = [];
 
-    // 添加内置的 ChatGPT.applescript
-    scripts.push({
-        path: path.join(assetsDir, "assets/ChatGPT.applescript"),
-        name: "ChatGPT"
-    });
+
 
     // 获取用户自定义脚本
     if (scriptsDirectory) {
