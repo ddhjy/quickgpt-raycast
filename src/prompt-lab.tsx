@@ -29,7 +29,6 @@ import { match } from "pinyin-pro";
 import { getPromptActions } from "./getPromptActions";
 import path from "path";
 import fsPromises from "fs/promises";
-import { recognizeText } from "./ocr/utils";
 import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
 import lastActionStore from "./lastActionStore";
@@ -631,19 +630,6 @@ export default function MainCommand(props: LaunchProps<{ arguments: ExtendedArgu
     };
 
     const fetchSelectedText = async (): Promise<string> => {
-      if (shouldActivateOCR) {
-        try {
-          const recognizedText = await recognizeText();
-          if (recognizedText === "Error: failed to capture image") {
-            return "";
-          }
-          return recognizedText;
-        } catch (error) {
-          console.error("OCR 失败:", error);
-          return "";
-        }
-      }
-
       if (initialSelectionText && initialSelectionText.length > 0) {
         return initialSelectionText;
       }
