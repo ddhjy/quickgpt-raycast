@@ -52,7 +52,7 @@ interface ResultViewProps {
   topP?: number;
 }
 
-export function ResultView({
+export function ChatResultView({
   response,
   duration,
   model,

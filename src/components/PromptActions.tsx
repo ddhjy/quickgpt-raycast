@@ -11,7 +11,7 @@ import {
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import lastActionStore from "../stores/LastActionStore";
-import { ResultView } from "./ResultView";
+import { ChatResultView } from "./ResultView";
 import { AIService } from "../services/AIService";
 import { ChatOptions } from "../services/types";
 import { getAvailableScripts } from "../utils/scriptUtils";
@@ -36,7 +36,7 @@ interface ChatViewProps {
   systemPrompt?: string;
 }
 
-function ChatView({ getFormattedDescription, options, providerName, systemPrompt }: ChatViewProps) {
+function ChatResponseView({ getFormattedDescription, options, providerName, systemPrompt }: ChatViewProps) {
   const [response, setResponse] = useState<string>('');
   const [duration, setDuration] = useState<string>();
   const [isStreaming, setIsStreaming] = useState(false);
@@ -136,7 +136,7 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]);
 
   return (
-    <ResultView
+    <ChatResultView
       response={response}
       duration={duration || ''}
       isLoading={isStreaming}
@@ -145,10 +145,9 @@ function ChatView({ getFormattedDescription, options, providerName, systemPrompt
   );
 }
 
-export function getPromptActions(
+export function generatePromptActions(
   getFormattedDescription: () => string,
   actions?: string[],
-
 ) {
   const preferences = getPreferenceValues<Preferences>();
   const configuredActions =
@@ -219,7 +218,7 @@ export function getPromptActions(
             <Action.Push
               title={displayName}
               icon={Icon.Network}
-              target={<ChatView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
+              target={<ChatResponseView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
             />
           ),
         };
