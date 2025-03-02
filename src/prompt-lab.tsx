@@ -467,7 +467,7 @@ function PromptList({
 
   // 获取可用脚本
   const getScripts = () => {
-    return getAvailableScripts(preferences.scriptsDirectory, __dirname);
+    return getAvailableScripts(preferences.scriptsDirectory);
   };
 
   return (
