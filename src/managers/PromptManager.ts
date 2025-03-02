@@ -50,11 +50,11 @@ class PromptManager {
 
   constructor() {
     const preferences = getPreferenceValues<Preferences>();
-    this.promptFilePaths = this.buildPromptFilePaths(preferences);
+    this.promptFilePaths = this.getPromptFilePaths(preferences);
     this.loadAllPrompts();
   }
 
-  private buildPromptFilePaths(preferences: Preferences): string[] {
+  private getPromptFilePaths(preferences: Preferences): string[] {
     const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.pm.json")] : [];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
     const customPromptDirectories = [preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].filter(Boolean) as string[];
@@ -69,7 +69,7 @@ class PromptManager {
       const prompts = Array.isArray(parsed) ? parsed : [parsed];
       const baseDir = path.dirname(filePath);
       return prompts.map((prompt: PromptProps) => {
-        const processedPrompt = this.resolvePromptContentSync(prompt, baseDir);
+        const processedPrompt = this.loadPromptContentFromFileSync(prompt, baseDir);
         processedPrompt.filePath = filePath;
         return processedPrompt;
       });
@@ -121,12 +121,12 @@ class PromptManager {
     return fileName.endsWith('.pm.json') || fileName.endsWith('.pm.hjson');
   }
 
-  private resolvePromptContentSync(prompt: PromptProps, baseDir: string): PromptProps {
+  private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
     if (typeof prompt.content === 'string' && prompt.content.startsWith('/')) {
       prompt.content = loadContentFromFileSync(prompt.content, baseDir);
     }
     if (Array.isArray(prompt.subprompts)) {
-      prompt.subprompts = prompt.subprompts.map(subprompt => this.resolvePromptContentSync(subprompt, baseDir));
+      prompt.subprompts = prompt.subprompts.map(subprompt => this.loadPromptContentFromFileSync(subprompt, baseDir));
     }
     return prompt;
   }
