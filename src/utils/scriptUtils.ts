@@ -12,7 +12,7 @@ export interface ScriptInfo {
 /**
  * 递归扫描目录，获取所有脚本文件
  * @param dir 要扫描的目录
- * @param relativePath 相对路径（内部使用）
+ * @param relativePath 相对路径（内部使用）;
  * @param result 结果数组（内部使用）
  */
 export function scanScriptsDirectory(dir: string, relativePath = '', result: ScriptInfo[] = []): ScriptInfo[] {
