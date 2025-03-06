@@ -4,6 +4,7 @@ export type SpecificReplacements = {
   selection?: string;
   currentApp?: string;
   browserContent?: string;
+  now?: string;
 };
 
 type PlaceholderInfo = {
@@ -17,6 +18,7 @@ const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
   clipboard: { literal: "<剪贴板文本>", alias: "c" },
   currentApp: { literal: "<当前应用>" },
   browserContent: { literal: "<浏览器内容>" },
+  now: { literal: "<当前时间>", alias: "n" },
 };
 
 // Create alias to key mapping
@@ -36,6 +38,11 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
   const cleanedReplacements = Object.fromEntries(
     Object.entries(specificReplacements).filter(([, value]) => value !== '')
   ) as SpecificReplacements;
+
+  // 自动添加当前时间
+  if (!cleanedReplacements.now) {
+    cleanedReplacements.now = new Date().toLocaleString();
+  }
 
   const placeholderPattern = /{{([^}]+)}}/g;
 
