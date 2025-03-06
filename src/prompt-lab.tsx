@@ -635,12 +635,23 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     };
 
     const timer = setTimeout(async () => {
-      const [fetchedClipboardText, fetchedSelectedText, frontmostApp, fetchedBrowserContent] = await Promise.all([
+      // 先获取前台应用名称
+      const frontmostApp = await fetchFrontmostApp();
+
+      // 并行获取其他内容
+      const [fetchedClipboardText, fetchedSelectedText] = await Promise.all([
         fetchClipboardText(),
         fetchSelectedText(),
-        fetchFrontmostApp(),
-        fetchBrowserContent(),
       ]);
+
+      // 只有在前台应用是浏览器时才获取浏览器内容
+      let fetchedBrowserContent = "";
+      // 检查前台应用是否是浏览器（可能需要根据实际情况调整浏览器名称列表）
+      const browserNames = ["Safari", "Google Chrome", "Firefox", "Edge", "Arc"];
+      if (browserNames.some(browser => frontmostApp.includes(browser))) {
+        fetchedBrowserContent = await fetchBrowserContent();
+      }
+
       setClipboardText(fetchedClipboardText);
       setSelectionText(fetchedSelectedText);
       setCurrentApp(frontmostApp);
