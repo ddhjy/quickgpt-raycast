@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
+  getPreferenceValues,
   Action,
-  Clipboard,
   Icon,
+  Clipboard,
   Toast,
   closeMainWindow,
-  getPreferenceValues,
   showToast,
+  showHUD,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
-import lastActionStore from "../stores/LastActionStore";
+import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
 import { ChatResultView } from "./ResultView";
 import { AIService } from "../services/AIService";
 import { ChatOptions } from "../services/types";
 import { getAvailableScripts } from "../utils/scriptUtils";
+import { ChatView } from "./ChatView";
 
 interface Preferences {
   openURL?: string;
@@ -275,7 +277,7 @@ export function generatePromptActions(
   );
 
 
-  const lastSelectedAction = lastActionStore.getLastAction();
+  const lastSelectedAction = defaultActionPreferenceStore.getDefaultActionPreference();
   filteredActions.sort((a, b) => {
     const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
 
