@@ -18,7 +18,7 @@ import {
   getPreferenceValues,
   closeMainWindow,
   Toast,
-  openExtensionPreferences
+  openExtensionPreferences,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./managers/PinsManager";
@@ -31,7 +31,7 @@ import path from "path";
 import fsPromises from "fs/promises";
 import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
-import lastActionStore from "./stores/LastActionStore";
+import defaultActionPreferenceStore from "./stores/DefaultActionPreferenceStore";
 import { getAvailableScripts } from "./utils/scriptUtils";
 import { isBinaryOrMediaFile, readDirectoryContents } from "./utils/fileSystemUtils";
 
@@ -224,7 +224,7 @@ function PromptList({
     scriptsDirectory?: string;
   }>();
   const aiService = AIService.getInstance();
-  const [selectedAction, setSelectedAction] = useState<string>(() => lastActionStore.getLastAction() || "");
+  const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
 
   // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
@@ -486,7 +486,7 @@ function PromptList({
               // 当选择默认项（值为空）时，直接清空设置
               if (newValue === "") {
                 setSelectedAction("");
-                lastActionStore.setLastAction("");
+                defaultActionPreferenceStore.saveDefaultActionPreference("");
                 console.log("已清除首选操作");
                 showToast({
                   style: Toast.Style.Success,
@@ -496,7 +496,7 @@ function PromptList({
               }
 
               setSelectedAction(newValue);
-              lastActionStore.setLastAction(newValue);
+              defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
               console.log(`已设置首选操作: ${newValue}`);
               showToast({
                 style: Toast.Style.Success,
