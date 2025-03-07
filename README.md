@@ -15,22 +15,22 @@ QuickGPT 是一个专为 Raycast 设计的高效提示管理工具，旨在通�
 要安装 QuickGPT，请确保您已经安装了 [Raycast](https://www.raycast.com/)。然后按照以下步骤操作：
 
 1. **克隆仓库**
-    ```bash
-    git clone https://github.com/您的用户名/quickgpt.git
-    ```
+   ```bash
+   git clone https://github.com/ddhjy/quickgpt-raycast.git
+   ```
 2. **安装依赖**
-    ```bash
-    cd quickgpt
-    npm install
-    ```
+   ```bash
+   cd quickgpt
+   npm install
+   ```
 3. **构建项目**
-    ```bash
-    npm run dev
-    ```
+   ```bash
+   npm run dev
+   ```
 4. **在 Raycast 中添加扩展**
-    - 打开 Raycast
-    - 转到扩展面板
-    - 添加新的本地扩展，指向 `quickgpt` 项目目录
+   - 打开 Raycast
+   - 转到扩展面板
+   - 添加新的本地扩展，指向 `quickgpt` 项目目录
 
 ## 使用方法
 
@@ -42,17 +42,17 @@ QuickGPT 是一个专为 Raycast 设计的高效提示管理工具，旨在通�
 
 1. 打开 `assets/prompts.pm.json` 文件或您的自定义提示文件。
 2. 按照以下格式添加新的提示：
-    ```json
-    {
-      "identifier": "unique_id",
-      "title": "您的提示标题",
-      "content": "您的提示内容，例如：Hello {{input}}, your clipboard says {{clipboard}}",
-      "options": {
-        "input": ["选项1", "选项2"],
-        "clipboard": ["选项A", "选项B"]
-      }
-    }
-    ```
+   ```json
+   {
+     "identifier": "unique_id",
+     "title": "您的提示标题",
+     "content": "您的提示内容，例如：Hello {{input}}, your clipboard says {{clipboard}}",
+     "options": {
+       "input": ["选项1", "选项2"],
+       "clipboard": ["选项A", "选项B"]
+     }
+   }
+   ```
 3. 保存文件，QuickGPT 将自动加载新的提示。
 
 ### 快捷操作
@@ -186,7 +186,7 @@ export function getPromptActions(
 
 ---
 
-*本项目由 [您的名字](https://github.com/您的用户名) 维护。感谢您的支持！*
+_本项目由 [您的名字](https://github.com/您的用户名) 维护。感谢您的支持！_
 
 # 反馈
 
@@ -211,7 +211,9 @@ MIT
 # 版本记录
 
 ## [1.0.0] - 2023-10-01
+
 ### 添加
+
 - 初始发布 QuickGPT，具备基本的提示管理和快捷操作功能。
 
 ---
@@ -310,7 +312,7 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
 
 ---
 
-*本项目基于 MIT 许可发布。*
+_本项目基于 MIT 许可发布。_
 
 # 感谢
 
@@ -336,17 +338,17 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
 # 快速开始
 
 1. **安装依赖**
-    ```bash
-    npm install
-    ```
+   ```bash
+   npm install
+   ```
 2. **启动开发模式**
-    ```bash
-    npm run dev
-    ```
+   ```bash
+   npm run dev
+   ```
 3. **构建项目**
-    ```bash
-    npm run build
-    ```
+   ```bash
+   npm run build
+   ```
 
 # 参与讨论
 
@@ -368,7 +370,7 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
 
 ---
 
-*本 README 使用 Markdown 编写，支持丰富的格式和链接，帮助您更好地了解和使用 QuickGPT。*
+_本 README 使用 Markdown 编写，支持丰富的格式和链接，帮助您更好地了解和使用 QuickGPT。_
 
 # 总结
 
@@ -382,7 +384,7 @@ QuickGPT 是一个强大的工具，旨在通过简化提示管理和增强快�
 
 ---
 
-*© 2023 QuickGPT 团队。保留所有权利。*
+_© 2023 QuickGPT 团队。保留所有权利。_
 
 # Show License
 
