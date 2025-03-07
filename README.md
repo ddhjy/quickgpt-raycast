@@ -20,7 +20,7 @@ QuickGPT 是一个专为 Raycast 设计的高效提示管理工具，旨在通�
    ```
 2. **安装依赖**
    ```bash
-   cd quickgpt
+   cd quickgpt-raycast
    npm install
    ```
 3. **构建项目**
