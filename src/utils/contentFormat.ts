@@ -5,6 +5,7 @@ export type SpecificReplacements = {
   currentApp?: string;
   browserContent?: string;
   now?: string;
+  promptTitles?: string;
 };
 
 type PlaceholderInfo = {
@@ -19,6 +20,7 @@ const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
   currentApp: { literal: "<当前应用>" },
   browserContent: { literal: "<浏览器内容>" },
   now: { literal: "<当前时间>", alias: "n" },
+  promptTitles: { literal: "<提示词标题>", alias: "pt" },
 };
 
 // Create alias to key mapping
