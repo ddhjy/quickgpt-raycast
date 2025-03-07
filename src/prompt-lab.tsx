@@ -53,7 +53,8 @@ const placeholderIcons: { [key: string]: Icon } = {
   clipboard: Icon.Clipboard,
   selection: Icon.Text,
   currentApp: Icon.Window,
-  browserContent: Icon.Globe
+  browserContent: Icon.Globe,
+  promptTitles: Icon.List
 };
 
 /**
@@ -132,7 +133,11 @@ function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
   const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
 
   const formattedContent = () =>
-    contentFormat(getFormattedContent() || "", { ...selectedOptions, ...selectedTextInputs });
+    contentFormat(getFormattedContent() || "", {
+      ...selectedOptions,
+      ...selectedTextInputs,
+      promptTitles: getIndentedPromptTitles(),
+    });
 
   return (
     <Form
@@ -192,7 +197,13 @@ function buildFormattedPromptContent(prompt: PromptProps, replacements: Specific
     ? applyPrefixCommandsToContent(prompt.content, prompt.prefixCMD)
     : undefined;
 
-  const formattedContent = contentFormat(processedContent || "", replacements);
+  // 确保replacements包含promptTitles
+  const updatedReplacements = {
+    ...replacements,
+    promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
+  };
+
+  const formattedContent = contentFormat(processedContent || "", updatedReplacements);
   return formattedContent;
 }
 
@@ -259,6 +270,7 @@ function PromptList({
     selection: selectionText,
     currentApp: currentApp,
     browserContent: browserContent,
+    promptTitles: getIndentedPromptTitles(),
   };
 
   const promptItems = prompts
@@ -741,4 +753,70 @@ function getPlaceholderIcons(
   });
 
   return placeholderIconsArray;
+}
+
+/**
+ * 获取带有层级缩进的提示词标题列表，并附带内容摘要
+ * @returns 带有层级缩进的提示词标题列表和内容摘要
+ */
+function getIndentedPromptTitles(): string {
+  const rootPrompts = promptManager.getRootPrompts();
+  const result: string[] = [];
+
+  function processPrompt(prompt: PromptProps, level: number = 0) {
+    const indent = '  '.repeat(level);
+
+    // 获取内容摘要（开头的20个字符）
+    let contentSummary = '';
+    if (prompt.content) {
+      // 处理内容，应用前缀命令
+      let processedContent = prompt.content;
+
+      // 如果有rawRef，处理文件引用
+      if (prompt.rawRef) {
+        for (const [key, filePath] of Object.entries(prompt.rawRef)) {
+          try {
+            if (typeof filePath === 'string') {
+              const fileContent = fs.readFileSync(filePath, 'utf8');
+              const placeholder = `{{${key}}}`;
+              processedContent = processedContent.replace(placeholder, fileContent);
+            }
+          } catch (error) {
+            console.error(`Error: Failed to read file: ${filePath}`, error);
+          }
+        }
+      }
+
+      // 应用前缀命令
+      processedContent = applyPrefixCommandsToContent(processedContent, prompt.prefixCMD);
+
+      // 移除内容中的换行符和前缀命令行，以便更好地显示摘要
+      const cleanContent = processedContent
+        .replace(/^! .*\n/gm, '') // 移除前缀命令行
+        .replace(/\n/g, ' ')      // 将换行符替换为空格
+        .trim();
+
+      contentSummary = cleanContent.length > 20
+        ? cleanContent.substring(0, 20) + '...'
+        : cleanContent;
+
+      if (contentSummary) {
+        contentSummary = ` - ${contentSummary}`;
+      }
+    }
+
+    result.push(`${indent}${prompt.title}${contentSummary}`);
+
+    if (prompt.subprompts && prompt.subprompts.length > 0) {
+      prompt.subprompts.forEach(subprompt => {
+        processPrompt(subprompt, level + 1);
+      });
+    }
+  }
+
+  rootPrompts.forEach(prompt => {
+    processPrompt(prompt);
+  });
+
+  return result.join('\n');
 }
