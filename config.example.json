@@ -1,0 +1,34 @@
+{
+  "providers": {
+    "openai": {
+      "apiKey": "your-openai-api-key",
+      "model": "gpt-3.5-turbo",
+      "defaultSystemPrompt": "你是一个有帮助的助手。",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000,
+        "topP": 1
+      }
+    },
+    "azure-openai": {
+      "apiKey": "your-azure-openai-api-key",
+      "model": "gpt-4",
+      "defaultSystemPrompt": "你是一个专业的 AI 助手。",
+      "apiEndpoint": "https://your-resource-name.openai.azure.com",
+      "options": {
+        "temperature": 0.9,
+        "maxTokens": 4000
+      }
+    },
+    "anthropic": {
+      "apiKey": "your-anthropic-api-key",
+      "model": "claude-2",
+      "defaultSystemPrompt": "你是 Claude，一个有帮助的 AI 助手。",
+      "apiEndpoint": "https://api.anthropic.com",
+      "options": {
+        "temperature": 0.8,
+        "maxTokens": 3000
+      }
+    }
+  }
+}
