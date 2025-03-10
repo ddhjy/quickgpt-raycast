@@ -1,6 +1,5 @@
 import type { AIProvider, ChatOptions, ChatResponse } from "./types";
-import { ConfigurableProvider } from "./ConfigurableAIProvider";
-import type { Provider } from "./BaseAIProvider";
+import { VercelAIProvider } from "./VercelAIProvider";
 import * as fs from "fs";
 import { getPreferenceValues } from "@raycast/api";
 
@@ -13,8 +12,7 @@ interface ProviderConfig {
     maxTokens?: number;
     topP?: number;
   };
-  apiEndpoint: string;
-  provider: Provider;
+  apiEndpoint?: string;
 }
 
 interface Config {
@@ -41,13 +39,12 @@ export class AIService {
     if (this.config.providers && Object.keys(this.config.providers).length > 0) {
       for (const [providerName, providerConfig] of Object.entries(this.config.providers)) {
         try {
-          const provider = new ConfigurableProvider(
+          const provider = new VercelAIProvider(
             providerName,
-            providerConfig.apiEndpoint,
-            providerConfig.provider,
+            providerConfig.apiKey,
             providerConfig.model,
             [providerConfig.model],
-            providerConfig.apiKey
+            providerConfig.apiEndpoint
           );
           this.providers.set(providerName, provider);
           this.log(`Provider ${providerName} initialized successfully`);

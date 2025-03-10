@@ -76,11 +76,13 @@
     "@raycast/api": "^1.82.5",
     "@raycast/utils": "^1.16.3",
     "@types/hjson": "^2.4.6",
+    "ai": "^4.1.54",
     "glob": "^11.0.0",
     "hjson": "^3.2.2",
     "lru-cache": "^11.0.1",
     "markdown-it": "^14.1.0",
     "md5": "^2.3.0",
+    "openai": "^4.86.2",
     "pinyin-pro": "^3.16.3",
     "rimraf": "^6.0.1",
     "token.js": "^0.4.7"
