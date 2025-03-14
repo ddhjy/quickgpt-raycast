@@ -67,15 +67,15 @@ npm run dev
 
 使用以下占位符可以动态替换提示内容中的变量：
 
-| 占位符            | 别名   | 说明                                           | 示例                     |
-|-------------------|--------|------------------------------------------------|--------------------------|
-| `{{input}}`       | `{{i}}`| Raycast 搜索框输入的文本                       | 输入内容: {{input}}      |
-| `{{clipboard}}`   | `{{c}}`| 当前剪贴板文本                                 |剪贴板: {{clipboard}}     |
-| `{{selection}}`   | `{{s}}`| 当前前台应用中选中的文本                       |选中文本: {{selection}}   |
-| `{{currentApp}}`  | -      | 当前激活的应用程序名称                         |应用: {{currentApp}}      |
-| `{{browserContent}}`| -    | 浏览器当前标签页面选中的文本 *(需Raycast浏览器插件)*|网页内容: {{browserContent}}|
-| `{{now}}`         | `{{n}}`| 当前日期与时间                                 |当前时间: {{now}}         |
-| `{{promptTitles}}`|`{{pt}}`| 提供所有提示标题的摘要列表                      |提示列表:\n{{promptTitles}}|
+| 占位符               | 别名     | 说明                                                 | 示例                         |
+| -------------------- | -------- | ---------------------------------------------------- | ---------------------------- |
+| `{{input}}`          | `{{i}}`  | Raycast 搜索框输入的文本                             | 输入内容: {{input}}          |
+| `{{clipboard}}`      | `{{c}}`  | 当前剪贴板文本                                       | 剪贴板: {{clipboard}}        |
+| `{{selection}}`      | `{{s}}`  | 当前前台应用中选中的文本                             | 选中文本: {{selection}}      |
+| `{{currentApp}}`     | -        | 当前激活的应用程序名称                               | 应用: {{currentApp}}         |
+| `{{browserContent}}` | -        | 浏览器当前标签页面选中的文本 _(需Raycast浏览器插件)_ | 网页内容: {{browserContent}} |
+| `{{now}}`            | `{{n}}`  | 当前日期与时间                                       | 当前时间: {{now}}            |
+| `{{promptTitles}}`   | `{{pt}}` | 提供所有提示标题的摘要列表                           | 提示列表:\n{{promptTitles}}  |
 
 ### 高级用法
 
@@ -83,20 +83,6 @@ npm run dev
   - 如 `{{input|selection|clipboard}}`
 - 显示占位符文字而非具体内容（便于模板演示）：
   - 在占位符前添加 `p:` 前缀，如 `{{p:input}}`
-
-## 项目重要文件结构说明
-
-- `assets/prompts.pm.json`  
-  提示模板数据文件。
-
-- `src/contentFormat.ts`  
-  提示内容中占位符处理与替换逻辑实现。
-
-- `src/components`  
-  UI组件，用于Raycast交互界面实现。
-
-- `managers`  
-  提示模板载入和管理相关的模块，例如PromptManager、PinsManager 等。
 
 ## 如何贡献
 
