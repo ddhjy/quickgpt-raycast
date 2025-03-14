@@ -1,439 +1,124 @@
-# QuickGPT
+# QuickGPT – Raycast 智能提示管理工具
 
-QuickGPT 是一个专为 Raycast 设计的高效提示管理工具，旨在通过快速访问和自定义提示来提升您的生产力。无论您是在编写代码、撰写文档还是进行日常任务，QuickGPT 都能帮助您轻松生成和管理各种提示。
+QuickGPT 是一款专门为 Raycast 设计的高效提示模板管理工具，致力于为用户提供快速的提示访问与自动化内容生成能力。通过灵活配置的提示结构和丰富的动态占位符机制，QuickGPT 能够优化你的工作流程并显著提升生产力，特别适合于开发、文档撰写、日常办公以及其他需要频繁内容重复输入的场景。
 
-## 特性
+## 核心功能
 
-- **自定义提示**：根据您的需求创建和管理个性化提示。
-- **快捷操作**：通过快捷键快速复制、粘贴或在浏览器中打开提示内容。
-- **内容格式化**：支持多种占位符替换，实现动态内容生成。
-- **持久化存储**：自动保存和管理您固定的提示，确保常用提示随时可用。
-- **多语言支持**：支持中文等多种语言，满足不同用户的需求。
+- **自定义 Prompt 模板**  
+  使用简单的 JSON 格式文件，自由创建和管理符合你特定需求的提示模板，一次设置持续受用。
 
-## 安装
+- **动态占位符替换能力**  
+  提供强大的占位符引擎，可自动插入剪贴板内容、选中文本、应用程序信息、当前时间等动态数据，避免重复劳动。
 
-要安装 QuickGPT，请确保您已经安装了 [Raycast](https://www.raycast.com/)。然后按照以下步骤操作：
+- **快捷键与操作整合**  
+  深度集成 Raycast，支持一键快速复制提示内容、粘贴到指定位置以及调用自定义脚本，实现自动化操作闭环。
 
-1. **克隆仓库**
-   ```bash
-   git clone https://github.com/ddhjy/quickgpt-raycast.git
-   ```
-2. **安装依赖**
-   ```bash
-   cd quickgpt-raycast
-   npm install
-   ```
-3. **构建项目**
-   ```bash
-   npm run dev
-   ```
-4. **在 Raycast 中添加扩展**
-   - 打开 Raycast
-   - 转到扩展面板
-   - 添加新的本地扩展，指向 `quickgpt` 项目目录
+- **提示持久保存与管理**  
+  所有用户定义的提示模板都会自动保存并永久可用，便于长期和重复调用。
 
-## 使用方法
+- **国际化语言支持**  
+  原生支持中文及其他多语言，方便不同语言环境下的高效提示管理。
 
-### 启动 QuickGPT
+## 安装方法
 
-在 Raycast 中输入 `QuickGPT`，即可启动提示管理界面。您可以浏览、搜索和选择不同的提示来快速插入到您的工作流中。
+请确保你已经在 Mac 中安装了 [Raycast](https://www.raycast.com/)。
 
-### 创建自定义提示
+执行以下命令进行安装：
 
-1. 打开 `assets/prompts.pm.json` 文件或您的自定义提示文件。
-2. 按照以下格式添加新的提示：
-   ```json
-   {
-     "identifier": "unique_id",
-     "title": "您的提示标题",
-     "content": "您的提示内容，例如：Hello {{input}}, your clipboard says {{clipboard}}",
-     "options": {
-       "input": ["选项1", "选项2"],
-       "clipboard": ["选项A", "选项B"]
-     }
-   }
-   ```
-3. 保存文件，QuickGPT 将自动加载新的提示。
-
-### 快捷操作
-
-- **复制提示内容**：选择提示后，按下快捷键 `Cmd + Shift + C` 将内容复制到剪贴板。
-- **粘贴提示内容**：选择提示后，按下快捷键 `Cmd + Shift + V` 将内容粘贴到当前应用。
-- **运行脚本**：您可以配置自定义脚本，通过提示内容执行特定操作。
-
-## 支持的占位符
-
-QuickGPT 支持以下占位符，可以在提示内容中使用：
-
-| 占位符               | 别名     | 描述                                           | 示例                                   |
-| -------------------- | -------- | ---------------------------------------------- | -------------------------------------- |
-| `{{input}}`          | `{{i}}`  | 输入文本，通常是搜索框中输入的内容             | `Hello {{input}}`                      |
-| `{{selection}}`      | `{{s}}`  | 选中的文本，从当前应用中选择的内容             | `Selected text: {{selection}}`         |
-| `{{clipboard}}`      | `{{c}}`  | 剪贴板中的文本                                 | `Clipboard content: {{clipboard}}`     |
-| `{{currentApp}}`     | -        | 当前活动的应用程序名称                         | `You are using {{currentApp}}`         |
-| `{{browserContent}}` | -        | 当前浏览器标签页的内容                         | `Browser shows: {{browserContent}}`    |
-| `{{now}}`            | `{{n}}`  | 当前时间，自动添加                             | `Current time: {{now}}`                |
-| `{{promptTitles}}`   | `{{pt}}` | 所有提示词的标题列表，按层级缩进并显示内容摘要 | `Available prompts:\n{{promptTitles}}` |
-
-### 占位符的高级用法
-
-#### 组合占位符
-
-您可以使用 `|` 符号组合多个占位符，系统将使用第一个有值的占位符：
-
-```
-{{input|selection|clipboard}}
+```bash
+git clone https://github.com/ddhjy/quickgpt-raycast.git
+cd quickgpt-raycast
+npm install
+npm run dev
 ```
 
-上面的例子会首先尝试使用输入文本，如果没有则使用选中文本，如果还是没有则使用剪贴板文本。
+安装完成后，请在 Raycast 中打开 `Extensions` 面板，点击导入本地扩展，选择你的 `quickgpt-raycast` 文件夹。
 
-#### 占位符前缀
+## 快速使用指南
 
-使用 `p:` 前缀可以显示占位符的字面量而不是其值：
+### 启动扩展
 
-```
-{{p:input}}  // 显示 "<输入文本>" 而不是实际的输入内容
-```
+在 Raycast 搜索栏输入并运行关键字 `QuickGPT` 即可打开提示模板列表，快速浏览和选择你所需的提示内容。
 
-这在创建模板或示例时特别有用。
+### 创建与管理 Prompt 模板
 
-## 文件结构
+在默认路径（`assets/prompts.pm.json`）下添加新的提示模板数据：
 
-```plaintext
-quickgpt/
-├── __tests__/
-│   └── contentFormat.test.ts
-├── assets/
-│   ├── ChatGPT.applescript
-│   └── prompts.pm.json
-├── src/
-│   ├── components/
-│   │   └── Ref.tsx
-│   ├── contentFormat.ts
-│   ├── getPromptActions.tsx
-│   ├── index.tsx
-│   ├── lastActionStore.ts
-│   ├── pinsManager.ts
-│   └── promptManager.ts
-├── package.json
-└── README.md
-```
-
-### 主要文件说明
-
-- `__tests__/contentFormat.test.ts`：内容格式化功能的单元测试。
-- `assets/prompts.pm.json`：默认的提示集合，您可以在此文件中添加自定义提示。
-- `src/contentFormat.ts`：负责处理和格式化提示内容，包括占位符的替换逻辑。
-- `src/promptManager.ts`：管理提示的加载、解析和过滤。
-- `src/getPromptActions.tsx`：定义提示的快捷操作，如复制、粘贴和运行脚本。
-- `src/index.tsx`：主入口文件，构建提示列表并处理用户交互。
-- `src/lastActionStore.ts`：记录和获取用户最后执行的操作。
-- `src/pinsManager.ts`：管理用户固定的提示，确保常用提示随时可用。
-
-## 贡献
-
-欢迎任何形式的贡献！如果您发现问题或有改进建议，请提交 [Issue](https://github.com/ddhjy/quickgpt/issues)。欢迎提交 Pull Request 来贡献代码。
-
-## 许可证
-
-本项目基于 [MIT 许可证](LICENSE) 许可，您可以自由地使用、修改和分发。
-
----
-
-感谢您使用 QuickGPT！如果您喜欢这个项目，请给我们一个星 ⭐️，并分享给更多需要的朋友！
-
-# 联系方式
-
-如果您有任何问题或建议，请通过以下方式与我们联系：
-
-- **GitHub**: [https://github.com/您的用户名/quickgpt](https://github.com/您的用户名/quickgpt)
-- **邮箱**: your-email@example.com
-
-# 版本
-
-当前版本：`1.0.0`
-
-# 更新日志
-
-查看 [CHANGELOG.md](CHANGELOG.md) 了解最新的更新和变更。
-
-# 致谢
-
-感谢所有贡献者和支持者，使 QuickGPT 成为可能！
-
-# 支持
-
-如果您喜欢 QuickGPT，请考虑给我们一个 [Star](https://github.com/您的用户名/quickgpt) 或者分享给您的朋友！
-
-# 免责声明
-
-QuickGPT 是基于开源技术开发的，任何使用本项目的风险由您自行承担。我们不对任何直接或间接的损失负责。
-
-# 实例
-
-以下是 QuickGPT 的一些使用实例：
-
-## 替换占位符
-
-```typescript:contentFormat.ts
-export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
-  const placeholderPattern = /{{([^}]+)}}/g;
-
-  return text.replace(placeholderPattern, (_, placeholderContent) => {
-    const isPrefixed = placeholderContent.startsWith('p:');
-    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-    const parts = content.split('|');
-
-    for (const part of parts) {
-      const key = aliasMap[part] || (part as keyof SpecificReplacements);
-      let replacement: string | undefined;
-
-      if (isPrefixed) {
-        replacement = specificReplacements[key] ? placeholders[key]?.literal || `<${key}>` : undefined;
-      } else {
-        replacement = specificReplacements[key];
-      }
-
-      if (replacement) {
-        return replacement;
-      }
-    }
-
-    // 如果没有找到合适的替换，则返回原始占位符
-    return _;
-  });
+```json
+{
+  "identifier": "my_unique_prompt",
+  "title": "自定义提示标题",
+  "content": "问候 {{input}}，剪贴板内容为: {{clipboard}}。",
+  "options": {
+    "input": ["选项1", "选项2"]
+  }
 }
 ```
 
-## 快捷操作
+模板文件修改保存之后可自动载入，无需额外操作。
 
-```typescript:getPromptActions.tsx
-export function getPromptActions(
-  getFormattedDescription: () => string,
-  actions?: string[]
-): React.ReactNode[] {
-  // ...实现快捷操作逻辑
-}
-```
+### 快捷操作方式
 
-# 联系我们
+- **复制短语**：选中提示后按快捷键 `Cmd + Shift + C` 即可将模板内容复制到剪贴板。
+- **快速粘贴**：选中提示后按快捷键 `Cmd + Shift + V` 可直接粘贴到当前应用。
+- **调用脚本与自动化**：支持自定义脚本执行，配合提示动态内容实现复杂自动化工作。
 
-如果您有任何问题或建议，请在 [GitHub Issues](https://github.com/您的用户名/quickgpt/issues) 中提出，或者通过电子邮件与我们联系。
+## 内置占位符支持
 
----
+使用以下占位符可以动态替换提示内容中的变量：
 
-_本项目由 [您的名字](https://github.com/您的用户名) 维护。感谢您的支持！_
+| 占位符            | 别名   | 说明                                           | 示例                     |
+|-------------------|--------|------------------------------------------------|--------------------------|
+| `{{input}}`       | `{{i}}`| Raycast 搜索框输入的文本                       | 输入内容: {{input}}      |
+| `{{clipboard}}`   | `{{c}}`| 当前剪贴板文本                                 |剪贴板: {{clipboard}}     |
+| `{{selection}}`   | `{{s}}`| 当前前台应用中选中的文本                       |选中文本: {{selection}}   |
+| `{{currentApp}}`  | -      | 当前激活的应用程序名称                         |应用: {{currentApp}}      |
+| `{{browserContent}}`| -    | 浏览器当前标签页面选中的文本 *(需Raycast浏览器插件)*|网页内容: {{browserContent}}|
+| `{{now}}`         | `{{n}}`| 当前日期与时间                                 |当前时间: {{now}}         |
+| `{{promptTitles}}`|`{{pt}}`| 提供所有提示标题的摘要列表                      |提示列表:\n{{promptTitles}}|
 
-# 反馈
+### 高级用法
 
-我们非常重视您的反馈！请随时通过 GitHub 提交问题或建议。
+- 多个替代选项依次尝试（第一个有数据的占位符将生效）：
+  - 如 `{{input|selection|clipboard}}`
+- 显示占位符文字而非具体内容（便于模板演示）：
+  - 在占位符前添加 `p:` 前缀，如 `{{p:input}}`
 
-# 版权信息
+## 项目重要文件结构说明
 
-© 2023 Your Name. 版权所有。
+- `assets/prompts.pm.json`  
+  提示模板数据文件。
 
-# 免责声明
+- `src/contentFormat.ts`  
+  提示内容中占位符处理与替换逻辑实现。
 
-本项目仅供学习和交流使用，不得用于任何商业用途。使用本项目需遵守相关法律法规。
+- `src/components`  
+  UI组件，用于Raycast交互界面实现。
 
-# 结语
+- `managers`  
+  提示模板载入和管理相关的模块，例如PromptManager、PinsManager 等。
 
-希望 QuickGPT 能为您的工作带来便利和效率。感谢您的使用与支持！
+## 如何贡献
 
-# License
+欢迎通过以下流程贡献代码或提出改进：
 
-MIT
+1. Fork 项目仓库
+2. 创建新分支 (`git checkout -b feature/my-feature`)
+3. 修改后提交代码 (`git commit -m '新增特性说明'`)
+4. 推送至远端 (`git push origin feature/my-feature`)
+5. 提交 Pull Request 并说明贡献内容
 
-# 版本记录
+## 问题反馈与交流
 
-## [1.0.0] - 2023-10-01
+- 发现软件缺陷或希望获得新功能支持，请前往 [GitHub issues](https://github.com/ddhjy/quickgpt/issues) 提交反馈。
+- 邮件联系: your-email@example.com
 
-### 添加
+我们重视各类反馈与建议，持续优化产品体验。
 
-- 初始发布 QuickGPT，具备基本的提示管理和快捷操作功能。
+## 开源许可协议
 
----
-
-如果您有任何疑问或需要进一步的信息，请随时与我们联系！
-
-# 参考资料
-
-- [Raycast 官方文档](https://developers.raycast.com/)
-- [TypeScript 官方文档](https://www.typescriptlang.org/docs/)
-- [React 官方文档](https://reactjs.org/docs/getting-started.html)
-
-# 更新与维护
-
-我们定期更新 QuickGPT 以修复漏洞和添加新功能。请确保您使用的是最新版本，以获得最佳体验。
-
-# 贡献指南
-
-如果您想为 QuickGPT 贡献代码，请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建您的分支 (`git checkout -b feature/新功能`)
-3. 提交您的更改 (`git commit -m '添加新功能'`)
-4. 推送到分支 (`git push origin feature/新功能`)
-5. 创建一个新的 Pull Request
-
-我们会尽快审核您的贡献！
-
-# 常见问题
-
-**Q: QuickGPT 如何工作？**
-A: QuickGPT 通过读取和管理提示文件，允许您快速访问和使用各种自定义提示。它支持占位符替换和多种快捷操作，以提升您的生产力。
-
-**Q: 我如何添加自定义提示？**
-A: 您可以在 `assets/prompts.pm.json` 文件中添加新的提示，或者创建自己的提示文件并配置路径。
-
-**Q: QuickGPT 支持哪些占位符？**
-A: QuickGPT 支持包括 `{{input}}`、`{{clipboard}}` 等多种占位符，您可以根据需要进行扩展和定制。
+QuickGPT 基于 MIT 协议开源发布，具体详细信息请参考 [LICENSE 文件](LICENSE)。
 
 ---
 
-感谢您的阅读，祝您使用愉快！
-
-# 标签
-
-- Raycast
-- TypeScript
-- React
-- 提示管理
-- 快捷操作
-- 内容格式化
-
-# 示例截图
-
-![QuickGPT 界面截图](assets/screenshot.png)
-
-# 代码示例
-
-以下是 QuickGPT 的核心功能代码示例：
-
-```typescript:contentFormat.ts
-/**
- * 格式化内容，替换占位符为具体值
- * @param text 要格式化的文本
- * @param specificReplacements 替换的具体值
- * @returns 格式化后的文本
- */
-export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
-  const placeholderPattern = /{{([^}]+)}}/g;
-
-  return text.replace(placeholderPattern, (_, placeholderContent) => {
-    const isPrefixed = placeholderContent.startsWith('p:');
-    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-    const parts = content.split('|');
-
-    for (const part of parts) {
-      const key = aliasMap[part] || (part as keyof SpecificReplacements);
-      let replacement: string | undefined;
-
-      if (isPrefixed) {
-        replacement = specificReplacements[key] ? placeholders[key]?.literal || `<${key}>` : undefined;
-      } else {
-        replacement = specificReplacements[key];
-      }
-
-      if (replacement) {
-        return replacement;
-      }
-    }
-
-    // 如果没有找到合适的替换，则返回原始占位符
-    return _;
-  });
-}
-```
-
----
-
-_本项目基于 MIT 许可发布。_
-
-# 感谢
-
-感谢所有为 QuickGPT 做出贡献的开发者和用户，您的支持是我们不断前进的动力！
-
-# 未来计划
-
-- **多平台支持**：扩展到更多平台，如 VSCode、Slack 等。
-- **高级占位符**：支持更复杂的占位符和逻辑替换。
-- **用户界面优化**：提升界面的友好性和交互性。
-- **插件生态**：开放 API，允许第三方开发者创建插件。
-
-# 版权声明
-
-所有项目文件均遵循 MIT 许可证，详见 [LICENSE](LICENSE)。
-
-# 相关链接
-
-- [项目主页](https://github.com/您的用户名/quickgpt)
-- [文档](https://github.com/您的用户名/quickgpt/wiki)
-- [问题追踪](https://github.com/您的用户名/quickgpt/issues)
-
-# 快速开始
-
-1. **安装依赖**
-   ```bash
-   npm install
-   ```
-2. **启动开发模式**
-   ```bash
-   npm run dev
-   ```
-3. **构建项目**
-   ```bash
-   npm run build
-   ```
-
-# 参与讨论
-
-加入我们的 [讨论区](https://github.com/您的用户名/quickgpt/discussions) ，与其他用户交流经验和建议。
-
----
-
-再次感谢您的关注与支持！希望 QuickGPT 能为您的工作带来更多便利和效率。
-
-# 额外资源
-
-- [如何为 Raycast 创建扩展](https://developers.raycast.com/)
-- [TypeScript 入门指南](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [React 官方文档](https://reactjs.org/docs/getting-started.html)
-
-# Stack Overflow
-
-如果在使用过程中遇到问题，您可以在 [Stack Overflow](https://stackoverflow.com/) 上搜索相关问题或提出新的问题，标签使用 `quickgpt` 和 `raycast`。
-
----
-
-_本 README 使用 Markdown 编写，支持丰富的格式和链接，帮助您更好地了解和使用 QuickGPT。_
-
-# 总结
-
-QuickGPT 是一个强大的工具，旨在通过简化提示管理和增强快捷操作来提升您的工作效率。通过灵活的配置和丰富的功能，QuickGPT 能为各类用户提供极大的便利。
-
-快来体验 QuickGPT 吧，让您的工作流程更加高效流畅！
-
-# 最后
-
-如果您喜欢这个项目，请给我们一个星 ⭐️ 并分享给您的朋友！
-
----
-
-_© 2023 QuickGPT 团队。保留所有权利。_
-
-# Show License
-
-MIT License
-
-版权所有 (c) 2023 Your Name
-
-特此授权，免费向任何获得本软件及相关文档文件（以下简称"软件"）副本的人士，允许运行、复制、修改、合并、出版、分发、再许可及/或销售软件的副本，并允许向其提供软件，符合以下条件：
-
-上述版权声明和本许可声明应包含在软件的所有副本或主要部分中。
-
-本软件按"原样"提供，无任何明示或暗示的担保，包括但不限于对适销性、特定用途的适用性及不侵权的担保。在任何情况下，作者或版权持有人均不对因软件或软件的使用或其他交易中产生的任何索赔、损害或其他责任承担责任。
-
-# 结束
-
-感谢您的阅读和使用，祝您有一个愉快的开发体验！
+感谢你的关注和支持，如觉得有帮助请给本项目一个 GitHub star，同时欢迎向更多人分享这款工具。
