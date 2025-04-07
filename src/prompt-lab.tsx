@@ -230,8 +230,10 @@ function PromptList({
   const [, forceUpdate] = useState(0);
   const preferences = getPreferenceValues<{
     customPromptsDirectory?: string;
+    customPromptsDirectory1?: string;
     customPromptsDirectory2?: string;
     customPromptsDirectory3?: string;
+    customPromptsDirectory4?: string;
     scriptsDirectory?: string;
   }>();
   const aiService = AIService.getInstance();
@@ -329,9 +331,11 @@ function PromptList({
               {prompt.identifier === "open-custom-prompts-dir" ? (
                 <>
                   {[
-                    { dir: preferences.customPromptsDirectory, label: "Custom Prompts 1" },
+                    { dir: preferences.customPromptsDirectory1, label: "Custom Prompts 1" },
+                    { dir: preferences.customPromptsDirectory, label: "Custom Prompts" },
                     { dir: preferences.customPromptsDirectory2, label: "Custom Prompts 2" },
-                    { dir: preferences.customPromptsDirectory3, label: "Custom Prompts 3" }
+                    { dir: preferences.customPromptsDirectory3, label: "Custom Prompts 3" },
+                    { dir: preferences.customPromptsDirectory4, label: "Custom Prompts 4" }
                   ].map(({ dir, label }) =>
                     dir && (
                       <Action
@@ -345,19 +349,25 @@ function PromptList({
                       />
                     )
                   )}
-                  {![preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].some(Boolean) && (
-                    <Action
-                      title="Open"
-                      icon={Icon.Folder}
-                      onAction={async () => {
-                        await showToast({
-                          title: "Error",
-                          message: "No custom prompts directories configured",
-                          style: Toast.Style.Failure
-                        });
-                      }}
-                    />
-                  )}
+                  {![
+                    preferences.customPromptsDirectory1,
+                    preferences.customPromptsDirectory,
+                    preferences.customPromptsDirectory2,
+                    preferences.customPromptsDirectory3,
+                    preferences.customPromptsDirectory4
+                  ].some(Boolean) && (
+                      <Action
+                        title="Open"
+                        icon={Icon.Folder}
+                        onAction={async () => {
+                          await showToast({
+                            title: "Error",
+                            message: "No custom prompts directories configured",
+                            style: Toast.Style.Failure
+                          });
+                        }}
+                      />
+                    )}
                 </>
               ) : prompt.identifier === "open-scripts-dir" ? (
                 <Action

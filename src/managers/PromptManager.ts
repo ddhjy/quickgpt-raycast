@@ -9,8 +9,10 @@ type Preferences = {
   customPrompts2?: string;
   customPrompts3?: string;
   customPromptsDirectory?: string;
+  customPromptsDirectory1?: string;
   customPromptsDirectory2?: string;
   customPromptsDirectory3?: string;
+  customPromptsDirectory4?: string;
 };
 
 export type PromptProps = {
@@ -54,7 +56,13 @@ class PromptManager {
   }
 
   private getPromptFilePaths(preferences: Preferences): string[] {
-    const customPromptDirectories = [preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].filter(Boolean) as string[];
+    const customPromptDirectories = [
+      preferences.customPromptsDirectory1,
+      preferences.customPromptsDirectory,
+      preferences.customPromptsDirectory2,
+      preferences.customPromptsDirectory3,
+      preferences.customPromptsDirectory4
+    ].filter(Boolean) as string[];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
 
     // 如果有自定义提示词目录,就不加载默认提示词
