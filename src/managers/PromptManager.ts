@@ -5,7 +5,6 @@ import { getPreferenceValues } from "@raycast/api";
 import * as hjson from 'hjson';
 
 type Preferences = {
-  disableDefaultPrompts: boolean;
   customPrompts?: string;
   customPrompts2?: string;
   customPrompts3?: string;
@@ -55,9 +54,12 @@ class PromptManager {
   }
 
   private getPromptFilePaths(preferences: Preferences): string[] {
-    const promptFiles = !preferences.disableDefaultPrompts ? [path.join(__dirname, "assets/prompts.hjson")] : [];
-    const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
     const customPromptDirectories = [preferences.customPromptsDirectory, preferences.customPromptsDirectory2, preferences.customPromptsDirectory3].filter(Boolean) as string[];
+    const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
+
+    // 如果有自定义提示词目录,就不加载默认提示词
+    const promptFiles = customPromptDirectories.length > 0 ? [] : [path.join(__dirname, "assets/prompts.hjson")];
+
     return [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
   }
 

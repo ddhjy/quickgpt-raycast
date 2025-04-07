@@ -17,14 +17,6 @@
       "mode": "view",
       "preferences": [
         {
-          "name": "disableDefaultPrompts",
-          "title": "Default Prompts",
-          "required": false,
-          "label": "Turn Off Default Prompts",
-          "description": "Turn Off default prompts",
-          "type": "checkbox"
-        },
-        {
           "name": "customPromptsDirectory",
           "title": "Custom Prompts",
           "required": false,
