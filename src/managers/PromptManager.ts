@@ -57,8 +57,8 @@ class PromptManager {
 
   private getPromptFilePaths(preferences: Preferences): string[] {
     const customPromptDirectories = [
-      preferences.customPromptsDirectory1,
       preferences.customPromptsDirectory,
+      preferences.customPromptsDirectory1,
       preferences.customPromptsDirectory2,
       preferences.customPromptsDirectory3,
       preferences.customPromptsDirectory4
