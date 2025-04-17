@@ -140,32 +140,33 @@ class PromptManager {
     return prompt;
   }
 
-  private processPrompts(prompts: PromptProps[], parentPath: string = '', parentActions?: string[], parentPrefixCMD?: string, parentFilePath?: string): PromptProps[] {
+  private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map(prompt => {
       prompt = this.processPrompt(prompt);
 
-      const currentPath = parentPath ? `${parentPath} / ${prompt.title}` : prompt.title;
+      const currentPath = parentPrompt?.path ? `${parentPrompt.path} / ${prompt.title}` : prompt.title;
       prompt.path = currentPath;
 
-      if (!prompt.actions && parentActions) {
-        prompt.actions = parentActions;
+      if (!prompt.actions && parentPrompt?.actions) {
+        prompt.actions = parentPrompt.actions;
       }
 
-      if (!prompt.prefixCMD && parentPrefixCMD) {
-        prompt.prefixCMD = parentPrefixCMD;
+      if (!prompt.prefixCMD && parentPrompt?.prefixCMD) {
+        prompt.prefixCMD = parentPrompt.prefixCMD;
       }
 
-      if (!prompt.filePath && parentFilePath) {
-        prompt.filePath = parentFilePath;
+      if (!prompt.icon && parentPrompt?.icon) {
+        prompt.icon = parentPrompt.icon;
+      }
+
+      if (!prompt.filePath && parentPrompt?.filePath) {
+        prompt.filePath = parentPrompt.filePath;
       }
 
       if (prompt.subprompts) {
         prompt.subprompts = this.processPrompts(
           prompt.subprompts,
-          currentPath,
-          prompt.actions || parentActions,
-          prompt.prefixCMD || parentPrefixCMD,
-          prompt.filePath || parentFilePath
+          prompt
         );
       }
 
