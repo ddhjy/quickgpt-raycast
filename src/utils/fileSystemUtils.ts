@@ -1,5 +1,6 @@
 import path from "path";
 import fsPromises from "fs/promises";
+import fs from "fs";
 
 export const BINARY_MEDIA_EXTENSIONS = new Set([
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
@@ -66,6 +67,51 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
                 content += `File: ${relativePath} (read failed)\n\n`;
             }
         }
+    }
+
+    return content;
+};
+
+/**
+ * Synchronously and recursively reads the contents of a directory.
+ * @param dirPath The path to the directory.
+ * @param basePath The base path for constructing relative paths (internal use).
+ * @returns The string representation of the directory contents.
+ */
+export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''): string => {
+    let content = "";
+    try {
+        const items = fs.readdirSync(dirPath, { withFileTypes: true });
+
+        for (const item of items) {
+            const itemName = item.name;
+            const itemPath = path.join(dirPath, itemName);
+            const relativePath = path.join(basePath, itemName);
+
+            if (isIgnoredItem(itemName)) {
+                continue; // Skip ignored items
+            }
+
+            try {
+                if (item.isDirectory()) {
+                    content += `Directory: ${relativePath}${path.sep}\n`;
+                    content += readDirectoryContentsSync(itemPath, relativePath); // Recursive call
+                } else if (item.isFile()) {
+                    if (isBinaryOrMediaFile(itemName)) {
+                        content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
+                    } else {
+                        const fileContent = fs.readFileSync(itemPath, 'utf-8');
+                        content += `File: ${relativePath}\n${fileContent}\n\n`;
+                    }
+                }
+            } catch (readError) {
+                console.warn(`Warning: Could not read item ${itemPath}:`, readError);
+                content += `Item: ${relativePath} (read failed)\n\n`;
+            }
+        }
+    } catch (error) {
+        console.error(`Error reading directory ${dirPath}:`, error);
+        content += `Error reading directory: ${basePath || dirPath}\n\n`;
     }
 
     return content;
