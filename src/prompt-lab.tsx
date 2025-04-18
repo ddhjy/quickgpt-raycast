@@ -33,7 +33,7 @@ import { AIService } from "./services/AIService";
 import { AIProvider } from "./services/types";
 import defaultActionPreferenceStore from "./stores/DefaultActionPreferenceStore";
 import { getAvailableScripts } from "./utils/scriptUtils";
-import { isBinaryOrMediaFile, readDirectoryContents } from "./utils/fileSystemUtils";
+import { isBinaryOrMediaFile, readDirectoryContents, readDirectoryContentsSync } from "./utils/fileSystemUtils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const DEFAULT_ICON = "🔖";
@@ -178,32 +178,96 @@ function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
   );
 }
 
-function buildFormattedPromptContent(prompt: PromptProps, replacements: SpecificReplacements): string {
+function buildFormattedPromptContent(
+  prompt: PromptProps,
+  replacements: SpecificReplacements,
+  relativeRootDir?: string
+): string {
+  let currentContent = prompt.content; // Work on a copy
+
+  // Step 1: Handle rawRef (if any)
   if (prompt.rawRef) {
     for (const [key, filePath] of Object.entries(prompt.rawRef)) {
       try {
-        if (typeof filePath === 'string') {
+        if (typeof filePath === 'string' && currentContent) {
           const fileContent = fs.readFileSync(filePath, 'utf8');
           const placeholder = `{{${key}}}`;
-          prompt.content = prompt.content?.replace(placeholder, fileContent);
+          // Replace in the working copy
+          currentContent = currentContent.replace(placeholder, fileContent);
         }
       } catch (error) {
-        console.error(`Error: Failed to read file: ${filePath}`, error);
+        console.error(`Error: Failed to read file for rawRef key ${key}: ${filePath}`, error);
+        // Optionally, replace with an error message or keep the placeholder
+        // currentContent = currentContent?.replace(`{{${key}}}`, `[Error reading file: ${key}]`);
       }
     }
   }
 
-  const processedContent = prompt.content
-    ? applyPrefixCommandsToContent(prompt.content, prompt.prefixCMD)
+  // Step 2: Apply prefix commands
+  const processedContent = currentContent
+    ? applyPrefixCommandsToContent(currentContent, prompt.prefixCMD)
     : undefined;
 
-  // 确保replacements包含promptTitles
+  // Step 3: Update replacements (e.g., promptTitles)
   const updatedReplacements = {
     ...replacements,
     promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
   };
 
-  const formattedContent = contentFormat(processedContent || "", updatedReplacements);
+  // Step 4: Format standard placeholders using contentFormat
+  let formattedContent = contentFormat(processedContent || "", updatedReplacements);
+
+  // Step 5: Handle {{file:filepath}} placeholders (relative to specified root or absolute)
+  const filePlaceholderPattern = /{{file:([^}]+)}}/g;
+  formattedContent = formattedContent.replace(filePlaceholderPattern, (match, filePath) => {
+    const trimmedPath = filePath.trim();
+    let absoluteTargetPath: string;
+
+    if (path.isAbsolute(trimmedPath)) {
+      absoluteTargetPath = trimmedPath;
+    } else {
+      if (!relativeRootDir) {
+        console.error(`Error: Relative path "${trimmedPath}" provided, but no custom prompt directory is configured as the root.`);
+        return `[Error: Root directory not configured for relative path: ${trimmedPath}]`;
+      }
+      absoluteTargetPath = path.resolve(relativeRootDir, trimmedPath);
+      if (!absoluteTargetPath.startsWith(relativeRootDir)) {
+        console.error(`Error: Relative path traversal detected. Attempted access outside of root directory ${relativeRootDir}. Path: ${trimmedPath}`);
+        return `[Error: Path traversal detected for: ${trimmedPath}]`;
+      }
+    }
+
+    try {
+      // Check if path exists and is a file or directory
+      const stats = fs.statSync(absoluteTargetPath);
+
+      if (stats.isFile()) {
+        // Read file content
+        return fs.readFileSync(absoluteTargetPath, 'utf-8');
+      } else if (stats.isDirectory()) {
+        // Read directory contents using the sync helper function
+        // Pass the directory name itself as the initial basePath for clarity
+        return readDirectoryContentsSync(absoluteTargetPath, path.basename(absoluteTargetPath));
+      } else {
+        // Handle other types like symbolic links, sockets, etc. if needed
+        console.warn(`Warning: Path is neither a file nor a directory: ${absoluteTargetPath}`);
+        return `[Unsupported path type: ${trimmedPath}]`;
+      }
+    } catch (error) {
+      // Handle errors like permission denied or file/dir not found
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`Warning: File or directory not found for placeholder: ${absoluteTargetPath}`);
+        return `[Path not found: ${trimmedPath}]`;
+      } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+        console.error(`Error: Permission denied for path: ${absoluteTargetPath}`, error);
+        return `[Permission denied: ${trimmedPath}]`;
+      } else {
+        console.error(`Error accessing path specified in placeholder: ${absoluteTargetPath}`, error);
+        return `[Error accessing path: ${trimmedPath}]`;
+      }
+    }
+  });
+
   return formattedContent;
 }
 
@@ -238,6 +302,15 @@ function PromptList({
   }>();
   const aiService = AIService.getInstance();
   const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
+
+  // Get all configured, non-empty custom prompt directories
+  const configuredRootDirs = [
+    preferences.customPromptsDirectory1,
+    preferences.customPromptsDirectory,
+    preferences.customPromptsDirectory2,
+    preferences.customPromptsDirectory3,
+    preferences.customPromptsDirectory4
+  ].filter((dir): dir is string => typeof dir === 'string' && dir.trim() !== '');
 
   // Filter prompts only in search mode
   if (searchMode && searchText.length > 0) {
@@ -279,13 +352,35 @@ function PromptList({
     .sort((a, b) => Number(b.pinned) - Number(a.pinned))
     .slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined)
     .map((prompt, index) => {
+      // Determine the specific root directory for *this* prompt
+      let promptSpecificRootDir: string | undefined = undefined;
+      if (prompt.filePath) {
+        let longestMatchLength = 0;
+        for (const rootDir of configuredRootDirs) {
+          // Normalize to ensure consistent path comparison
+          const normalizedRootDir = path.normalize(rootDir);
+          const normalizedPromptPath = path.normalize(prompt.filePath);
+
+          // Check if the prompt path starts with the root directory path
+          // Add path.sep to avoid matching '/path/to/rootABC' with '/path/to/root'
+          const rootDirWithSeparator = normalizedRootDir.endsWith(path.sep) ? normalizedRootDir : normalizedRootDir + path.sep;
+
+          if (normalizedPromptPath.startsWith(rootDirWithSeparator) || normalizedPromptPath === normalizedRootDir) {
+            if (normalizedRootDir.length > longestMatchLength) {
+              longestMatchLength = normalizedRootDir.length;
+              promptSpecificRootDir = rootDir; // Store the original, non-normalized path from preferences
+            }
+          }
+        }
+      }
+
       const title = contentFormat(prompt.title || "", replacements);
       const formattedTitle = searchMode && prompt.path
         ? `${contentFormat(prompt.path, replacements).replace(title, '')}${title}`.trim()
         : title;
 
-      // Lazy generation of formatted content
-      const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements);
+      // Lazy generation of formatted content, passing the determined specific root directory
+      const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
 
       // Exclude prompts not matching search criteria in input mode
       if (

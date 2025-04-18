@@ -49,6 +49,7 @@ export function contentFormat(text: string, specificReplacements: SpecificReplac
   const placeholderPattern = /{{([^}]+)}}/g;
 
   return text.replace(placeholderPattern, (match, placeholderContent) => {
+    // 恢复原有逻辑
     const isPrefixed = placeholderContent.startsWith("p:");
     const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
     const parts = content.split("|");
