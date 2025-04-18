@@ -131,9 +131,6 @@ class PromptManager {
   }
 
   private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
-    if (typeof prompt.content === 'string' && prompt.content.startsWith('/')) {
-      prompt.content = loadContentFromFileSync(prompt.content, baseDir);
-    }
     if (Array.isArray(prompt.subprompts)) {
       prompt.subprompts = prompt.subprompts.map(subprompt => this.loadPromptContentFromFileSync(subprompt, baseDir));
     }
