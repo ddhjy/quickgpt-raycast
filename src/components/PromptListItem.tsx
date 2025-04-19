@@ -1,7 +1,6 @@
 import {
     List,
     ActionPanel,
-    Action as RaycastAction,
     Icon,
     Action,
     Color,
@@ -108,7 +107,7 @@ export function PromptListItem({
                             }}
                         />
                     ) : prompt.subprompts ? (
-                        <RaycastAction.Push
+                        <Action.Push
                             title="Open"
                             icon={prompt.icon ?? "🔖"}
                             target={
@@ -126,7 +125,7 @@ export function PromptListItem({
                     ) : (
                         <>
                             {prompt.options && Object.keys(prompt.options).length > 0 ? (
-                                <RaycastAction.Push
+                                <Action.Push
                                     title="Select Options"
                                     icon={Icon.Gear}
                                     target={
@@ -151,12 +150,12 @@ export function PromptListItem({
                         shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                     />
                     <>
-                        <RaycastAction.CopyToClipboard
+                        <Action.CopyToClipboard
                             title="Copy Identifier"
                             content={`quickgpt-${prompt.identifier}`}
                             icon={Icon.Document}
                         />
-                        <RaycastAction.CopyToClipboard
+                        <Action.CopyToClipboard
                             title="Copy Deeplink"
                             content={`raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments=${encodeURIComponent(
                                 JSON.stringify({
