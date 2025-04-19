@@ -51,10 +51,10 @@ export function PromptList({
     const aiService = AIService.getInstance();
     const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
 
-    // 强制更新组件的函数
+    // Function to force component update
     const forceUpdate = () => setForceUpdateCounter((prev: number) => prev + 1);
 
-    // 处理Pin/Unpin操作的回调
+    // Callback to handle Pin/Unpin operations
     const handlePinToggle = (prompt: PromptProps) => {
         prompt.pinned = !prompt.pinned;
         prompt.pinned
@@ -138,7 +138,7 @@ export function PromptList({
             }
         }
 
-        // 排除不匹配搜索条件的提示
+        // Exclude prompts that do not match the search criteria
         if (
             searchMode &&
             activeSearchText &&
@@ -162,9 +162,9 @@ export function PromptList({
                 activeSearchText={activeSearchText}
             />
         );
-    }).filter(Boolean); // 过滤空项
+    }).filter(Boolean); // Filter out null items
 
-    // 获取可用脚本
+    // Get available scripts
     const getScripts = () => {
         return getAvailableScripts(preferences.scriptsDirectory);
     };
