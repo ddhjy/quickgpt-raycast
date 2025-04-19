@@ -41,7 +41,7 @@ export function placeholderFormatter(text: string, specificReplacements: Specifi
     Object.entries(specificReplacements).filter(([, value]) => value !== '')
   ) as SpecificReplacements;
 
-  // 自动添加当前时间
+  // Automatically add current time
   if (!cleanedReplacements.now) {
     cleanedReplacements.now = new Date().toLocaleString();
   }
@@ -49,7 +49,7 @@ export function placeholderFormatter(text: string, specificReplacements: Specifi
   const placeholderPattern = /{{([^}]+)}}/g;
 
   return text.replace(placeholderPattern, (match, placeholderContent) => {
-    // 恢复原有逻辑
+    // Restore original logic
     const isPrefixed = placeholderContent.startsWith("p:");
     const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
     const parts = content.split("|");
@@ -97,7 +97,7 @@ export function resolvePlaceholders(
         const value = cleanedReplacements[key];
         if (value) {
           usedPlaceholders.add(key);
-          break; // 使用第一个可用的占位符
+          break; // Use the first available placeholder
         }
       }
     }

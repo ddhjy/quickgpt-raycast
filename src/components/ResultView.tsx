@@ -2,18 +2,18 @@ import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD,
 import React, { useMemo } from "react";
 import MarkdownIt from "markdown-it";
 
-// 初始化 Markdown 解析器
+// Initialize Markdown parser
 const md = new MarkdownIt();
 
-// 使用近似值计算 tokens
+// Calculate tokens using approximate values
 const countTokens = (text: string): number => {
-  // 中文字符计为2个token，其他字符计为0.25个token
+  // Chinese characters count as 2 tokens, other characters as 0.25 tokens
   const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
   const otherCount = text.length - chineseCount;
   return Math.ceil(chineseCount * 2 + otherCount * 0.25);
 };
 
-// 提取代码块的辅助函数，限制最大代码块数量
+// Helper function to extract code blocks, limiting max number of blocks
 const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
   const tokens = md.parse(text, {});
   const codeBlocks: string[] = [];
@@ -23,19 +23,19 @@ const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
     if (token.type === 'fence' && token.tag === 'code') {
       codeBlocks.push(token.content.trim());
       count += 1;
-      if (count >= maxBlocks) break; // 达到上限后停止
+      if (count >= maxBlocks) break; // Stop when limit is reached
     }
   }
 
   return codeBlocks;
 };
 
-// 获取最长的代码块
+// Get the longest code block
 const getLongestCodeBlock = (blocks: string[]): string => {
   return blocks.reduce((max, current) => (current.length > max.length ? current : max), "");
 };
 
-// 获取代码块摘要
+// Get code block summary
 const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
   const firstLine = block.split('\n').find(line => line.trim().length > 0) || '';
   const summary = firstLine.trim();
@@ -61,15 +61,15 @@ export function ChatResultView({
   topP = 0.95,
   isLoading,
 }: ResultViewProps) {
-  // 使用 useMemo 缓存代码块的提取结果，限制最大代码块数量
-  const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]); // 例如限制为10个
+  // Use useMemo to cache code block extraction results, limit max number of blocks
+  const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]); // For example, limit to 10
   const hasCodeBlock = codeBlocks.length > 0;
 
   const longestCodeBlock = useMemo(() => getLongestCodeBlock(codeBlocks), [codeBlocks]);
   const longestBlockSummary = useMemo(() => getCodeBlockSummary(longestCodeBlock), [longestCodeBlock]);
 
   const actions = useMemo(() => {
-    // 如果正在加载，返回空数组
+    // If loading, return empty array
     if (isLoading) {
       return [];
     }
