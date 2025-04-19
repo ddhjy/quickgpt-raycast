@@ -23,7 +23,7 @@ import {
 import { runAppleScript } from "@raycast/utils";
 import pinsManager from "./managers/PinsManager";
 import promptManager, { PromptProps } from "./managers/PromptManager";
-import { contentFormat, resolvePlaceholders, SpecificReplacements } from "./utils/contentFormat";
+import { placeholderFormatter, resolvePlaceholders, SpecificReplacements } from "./utils/placeholderFormatter";
 import fs from "fs";
 import { match } from "pinyin-pro";
 import { generatePromptActions } from "./components/PromptActions";
@@ -133,7 +133,7 @@ function PromptOptionsForm({ prompt, getFormattedContent }: OptionsFormProps) {
   const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
 
   const formattedContent = () =>
-    contentFormat(getFormattedContent() || "", {
+    placeholderFormatter(getFormattedContent() || "", {
       ...selectedOptions,
       ...selectedTextInputs,
       promptTitles: getIndentedPromptTitles(),
@@ -196,8 +196,8 @@ function buildFormattedPromptContent(
     promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
   };
 
-  // Step 4: Format standard placeholders using contentFormat
-  let formattedContent = contentFormat(processedContent || "", updatedReplacements);
+  // Step 4: Format standard placeholders using placeholderFormatter
+  let formattedContent = placeholderFormatter(processedContent || "", updatedReplacements);
 
   // Step 5: Handle {{file:filepath}} placeholders (relative to specified root or absolute)
   const filePlaceholderPattern = /{{file:([^}]+)}}/g;
@@ -356,9 +356,9 @@ function PromptList({
         }
       }
 
-      const title = contentFormat(prompt.title || "", replacements);
+      const title = placeholderFormatter(prompt.title || "", replacements);
       const formattedTitle = searchMode && prompt.path
-        ? `${contentFormat(prompt.path, replacements).replace(title, '')}${title}`.trim()
+        ? `${placeholderFormatter(prompt.path, replacements).replace(title, '')}${title}`.trim()
         : title;
 
       // Lazy generation of formatted content, passing the determined specific root directory

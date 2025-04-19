@@ -36,7 +36,7 @@ const aliasMap = Object.fromEntries(
  * @param specificReplacements - The specific values for replacement.
  * @returns The formatted text.
  */
-export function contentFormat(text: string, specificReplacements: SpecificReplacements): string {
+export function placeholderFormatter(text: string, specificReplacements: SpecificReplacements): string {
   const cleanedReplacements = Object.fromEntries(
     Object.entries(specificReplacements).filter(([, value]) => value !== '')
   ) as SpecificReplacements;
