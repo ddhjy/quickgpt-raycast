@@ -183,25 +183,7 @@ function buildFormattedPromptContent(
   replacements: SpecificReplacements,
   relativeRootDir?: string
 ): string {
-  let currentContent = prompt.content; // Work on a copy
-
-  // Step 1: Handle rawRef (if any)
-  if (prompt.rawRef) {
-    for (const [key, filePath] of Object.entries(prompt.rawRef)) {
-      try {
-        if (typeof filePath === 'string' && currentContent) {
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          const placeholder = `{{${key}}}`;
-          // Replace in the working copy
-          currentContent = currentContent.replace(placeholder, fileContent);
-        }
-      } catch (error) {
-        console.error(`Error: Failed to read file for rawRef key ${key}: ${filePath}`, error);
-        // Optionally, replace with an error message or keep the placeholder
-        // currentContent = currentContent?.replace(`{{${key}}}`, `[Error reading file: ${key}]`);
-      }
-    }
-  }
+  const currentContent = prompt.content; // Work on a copy
 
   // Step 2: Apply prefix commands
   const processedContent = currentContent
@@ -876,21 +858,6 @@ function getIndentedPromptTitles(): string {
     if (prompt.content) {
       // 处理内容，应用前缀命令
       let processedContent = prompt.content;
-
-      // 如果有rawRef，处理文件引用
-      if (prompt.rawRef) {
-        for (const [key, filePath] of Object.entries(prompt.rawRef)) {
-          try {
-            if (typeof filePath === 'string') {
-              const fileContent = fs.readFileSync(filePath, 'utf8');
-              const placeholder = `{{${key}}}`;
-              processedContent = processedContent.replace(placeholder, fileContent);
-            }
-          } catch (error) {
-            console.error(`Error: Failed to read file: ${filePath}`, error);
-          }
-        }
-      }
 
       // 应用前缀命令
       processedContent = applyPrefixCommandsToContent(processedContent, prompt.prefixCMD);
