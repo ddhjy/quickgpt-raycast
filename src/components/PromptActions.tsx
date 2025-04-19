@@ -22,11 +22,16 @@ interface Preferences {
   scriptsDirectory?: string;
 }
 
+// Define a more specific type for Action props we might access
+// Adjust this based on the actual props you need to access (shortcut, onAction, etc.)
+// Using Action.Props might be sufficient if all actions derive from it.
+type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
+
 interface ActionItem {
   name: string;
   displayName: string;
   condition: boolean;
-  action: React.ReactElement;
+  action: ActionWithPossibleProps; // Use the more specific type
 }
 
 interface ChatViewProps {
@@ -158,7 +163,7 @@ export function generatePromptActions(
     title: string | undefined,
     url: string,
     getFormattedDescription: () => string | number | Clipboard.Content
-  ) => (
+  ): ActionWithPossibleProps => (
     <Action.OpenInBrowser
       title={title}
       url={url}
@@ -221,7 +226,7 @@ export function generatePromptActions(
               target={<ChatResponseView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
             />
           ),
-        };
+        } as ActionItem;
       });
     })(),
     {
@@ -294,6 +299,7 @@ export function generatePromptActions(
     if (indexB !== -1) return 1;
 
     // Check if the action has a shortcut
+    // Access props safely after updating the type
     const hasShortcutA = Boolean(a.action.props.shortcut);
     const hasShortcutB = Boolean(b.action.props.shortcut);
 
@@ -309,15 +315,17 @@ export function generatePromptActions(
   return (
     <>
       {filteredActions.map((option, index) => {
+        // Define handleAction using the props from the typed element
         const handleAction = () => {
           if (option.action.props.onAction) {
             option.action.props.onAction();
           }
         };
 
+        // Clone the element, the types should now match
         return React.cloneElement(option.action, {
           key: option.name || index,
-          onAction: handleAction,
+          onAction: handleAction, // Pass the new handler
         });
       })}
     </>
