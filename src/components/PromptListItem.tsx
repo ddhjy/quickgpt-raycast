@@ -17,6 +17,8 @@ import path from "path";
 import { Clipboard } from "@raycast/api";
 import { generatePromptActions } from "./PromptActions";
 import { buildFormattedPromptContent, getPlaceholderIcons } from "../utils/promptFormattingUtils";
+import { ScriptInfo } from "../utils/scriptUtils";
+import { AIProvider } from "../services/types";
 
 interface PromptListItemProps {
     prompt: PromptProps;
@@ -27,6 +29,8 @@ interface PromptListItemProps {
     allowedActions?: string[];
     onPinToggle: (prompt: PromptProps) => void;
     activeSearchText?: string;
+    scripts: ScriptInfo[];
+    aiProviders: AIProvider[];
 }
 
 export function PromptListItem({
@@ -37,6 +41,8 @@ export function PromptListItem({
     promptSpecificRootDir,
     allowedActions,
     onPinToggle,
+    scripts,
+    aiProviders
 }: PromptListItemProps) {
     // Lazy generation of formatted content, passing the determined specific root directory
     const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
@@ -100,6 +106,8 @@ export function PromptListItem({
                             currentApp={replacements.currentApp as string}
                             browserContent={replacements.browserContent as string}
                             allowedActions={allowedActions}
+                            initialScripts={scripts}
+                            initialAiProviders={aiProviders}
                         />
                     }
                 />
@@ -116,17 +124,18 @@ export function PromptListItem({
                                 <PromptOptionsForm
                                     prompt={prompt}
                                     getFormattedContent={getFormattedContent}
+                                    scripts={scripts}
+                                    aiProviders={aiProviders}
                                 />
                             }
                         />
                     ) : (
-                        // generatePromptActions depends on getFormattedContent, which in turn depends on prompt, replacements, promptSpecificRootDir
-                        // It also depends on allowedActions or prompt.actions
-                        // We pass getFormattedContent directly, assuming its dependencies are stable or correctly handled by generatePromptActions internal logic if it uses hooks.
+                        // Pass scripts and providers to generatePromptActions
                         generatePromptActions(
                             getFormattedContent,
                             allowedActions || prompt.actions,
-                            // Need to include dependencies that influence defaultActionPreferenceStore if relevant inside generatePromptActions
+                            scripts,
+                            aiProviders
                         )
                     )}
                 </>
@@ -143,8 +152,9 @@ export function PromptListItem({
         replacements.currentApp,
         replacements.browserContent,
         allowedActions,
-        getFormattedContent // Assuming getFormattedContent is stable or its dependencies are captured correctly elsewhere
-        // Dependency on defaultActionPreferenceStore state needs careful handling if generatePromptActions uses it.
+        scripts,
+        aiProviders,
+        getFormattedContent
     ]);
 
     return (
@@ -177,7 +187,7 @@ export function PromptListItem({
             ]}
             actions={
                 <ActionPanel>
-                    {promptActions} {/* Use memoized actions */}
+                    {promptActions}
                     <Action
                         title={prompt.pinned ? "Unpin" : "Pin"}
                         icon={Icon.Pin}
