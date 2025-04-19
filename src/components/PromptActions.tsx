@@ -7,7 +7,6 @@ import {
   Toast,
   closeMainWindow,
   showToast,
-  showHUD,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -16,7 +15,6 @@ import { ChatResultView } from "./ResultView";
 import { AIService } from "../services/AIService";
 import { ChatOptions } from "../services/types";
 import { getAvailableScripts } from "../utils/scriptUtils";
-import { ChatView } from "./ChatView";
 
 interface Preferences {
   openURL?: string;
@@ -172,7 +170,7 @@ export function generatePromptActions(
   if (preferences.scriptsDirectory) {
     try {
       // 使用工具函数获取所有可用脚本
-      const scripts = getAvailableScripts(preferences.scriptsDirectory, __dirname);
+      const scripts = getAvailableScripts(preferences.scriptsDirectory);
 
       // 为每个脚本创建 Action
       scripts.forEach(({ path: scriptPath, name: scriptName }) => {
