@@ -58,13 +58,13 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * 应用前缀命令到内容
- * @param content 原始内容
- * @param prefixCommands 前缀命令
- * @returns 处理后的内容
+ * Apply prefix commands to content
+ * @param content Original content
+ * @param prefixCommands Prefix commands
+ * @returns Processed content
  */
 function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
-  // 如果 prefixCommands 包含 "none"，直接返回原始内容
+  // If prefixCommands contains "none", return the original content
   if (prefixCommands?.includes("none")) {
     return content;
   }
@@ -90,10 +90,10 @@ function applyPrefixCommandsToContent(content: string, prefixCommands: string | 
 }
 
 /**
- * 获取快速提示
- * @param selectionText 选中的文本
- * @param identifier 目标标识符
- * @returns 快速示和清理后的选择文本
+ * Get quick prompt
+ * @param selectionText Selected text
+ * @param identifier Target identifier
+ * @returns Quick prompt and cleaned selected text
  */
 function getQuickPrompt(selectionText: string, identifier?: string, filePath?: string): [PromptProps | undefined, string] {
   let foundPrompt;
@@ -564,7 +564,7 @@ function PromptList({
       );
     });
 
-  // 获取可用脚本
+  // Get available scripts
   const getScripts = () => {
     return getAvailableScripts(preferences.scriptsDirectory);
   };
@@ -577,29 +577,29 @@ function PromptList({
       searchBarAccessory={
         searchMode ? (
           <List.Dropdown
-            tooltip="选择首选操作"
+            tooltip="Select preferred action"
             value={selectedAction}
             onChange={(newValue: string) => {
               if (newValue === selectedAction) return;
 
-              // 当选择默认项（值为空）时，直接清空设置
+              // When selecting the default item (value is empty), directly clear the setting
               if (newValue === "") {
                 setSelectedAction("");
                 defaultActionPreferenceStore.saveDefaultActionPreference("");
-                console.log("已清除首选操作");
+                console.log("Cleared preferred action");
                 showToast({
                   style: Toast.Style.Success,
-                  title: "已清除首选操作",
+                  title: "Cleared preferred action",
                 });
                 return;
               }
 
               setSelectedAction(newValue);
               defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
-              console.log(`已设置首选操作: ${newValue}`);
+              console.log(`Set preferred action: ${newValue}`);
               showToast({
                 style: Toast.Style.Success,
-                title: "已设置首选操作",
+                title: "Set preferred action",
                 message: newValue,
               });
             }}
@@ -651,7 +651,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     filePath,
   } = props.arguments;
 
-  // 将 actions 字符串转换回数组
+  // Convert actions string back to array
   const allowedActions = actions?.split(',').filter(Boolean);
 
   const shouldActivateOCR = activateOCR === "true";
@@ -703,7 +703,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
             return content;
           }
         } catch (finderError) {
-          // 继续执行
+          // Continue execution
         }
 
         const text = await getSelectedText();
@@ -734,18 +734,18 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     };
 
     const timer = setTimeout(async () => {
-      // 先获取前台应用名称
+      // First get the foreground application name
       const frontmostApp = await fetchFrontmostApp();
 
-      // 并行获取其他内容
+      // Get other content in parallel
       const [fetchedClipboardText, fetchedSelectedText] = await Promise.all([
         fetchClipboardText(),
         fetchSelectedText(),
       ]);
 
-      // 只有在前台应用是浏览器时才获取浏览器内容
+      // Only get browser content if the foreground app is a browser
       let fetchedBrowserContent = "";
-      // 检查前台应用是否是浏览器（可能需要根据实际情况调整浏览器名称列表）
+      // Check if the foreground app is a browser (may need to adjust browser name list based on actual situation)
       const browserNames = ["Safari", "Google Chrome", "Firefox", "Edge", "Arc"];
       if (browserNames.some(browser => frontmostApp.includes(browser))) {
         fetchedBrowserContent = await fetchBrowserContent();
@@ -843,8 +843,8 @@ function getPlaceholderIcons(
 }
 
 /**
- * 获取带有层级缩进的提示词标题列表，并附带内容摘要
- * @returns 带有层级缩进的提示词标题列表和内容摘要
+ * Get prompt titles with hierarchical indentation and content summary
+ * @returns Prompt titles with hierarchical indentation and content summary
  */
 function getIndentedPromptTitles(): string {
   const rootPrompts = promptManager.getRootPrompts();
@@ -853,19 +853,19 @@ function getIndentedPromptTitles(): string {
   function processPrompt(prompt: PromptProps, level: number = 0) {
     const indent = '  '.repeat(level);
 
-    // 获取内容摘要（开头的20个字符）
+    // Get content summary (first 20 characters)
     let contentSummary = '';
     if (prompt.content) {
-      // 处理内容，应用前缀命令
+      // Process content, apply prefix commands
       let processedContent = prompt.content;
 
-      // 应用前缀命令
+      // Apply prefix commands
       processedContent = applyPrefixCommandsToContent(processedContent, prompt.prefixCMD);
 
-      // 移除内容中的换行符和前缀命令行，以便更好地显示摘要
+      // Remove newlines and prefix command lines from content for better summary display
       const cleanContent = processedContent
-        .replace(/^! .*\n/gm, '') // 移除前缀命令行
-        .replace(/\n/g, ' ')      // 将换行符替换为空格
+        .replace(/^! .*\n/gm, '') // Remove prefix command lines
+        .replace(/\n/g, ' ')      // Replace newlines with spaces
         .trim();
 
       contentSummary = cleanContent.length > 20

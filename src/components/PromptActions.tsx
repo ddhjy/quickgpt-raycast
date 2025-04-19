@@ -44,21 +44,21 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
   const startTimeRef = useRef<number>(0);
   const contentRef = useRef<string>('');
 
-  // 用于节流更新
+  // For throttling updates
   const updatingRef = useRef<boolean>(false);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const scheduleUpdate = useCallback(() => {
     if (!updatingRef.current) {
-      // 标记正在更新，稍后清除
+      // Mark as updating, will be cleared later
       updatingRef.current = true;
       updateTimerRef.current = setTimeout(() => {
-        // 定时更新状态
+        // Update state periodically
         setResponse(contentRef.current);
         const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
         setDuration(currentDuration);
         updatingRef.current = false;
-      }, 500); // 每500ms更新一次UI，可根据需要进行调节
+      }, 500); // Update UI every 500ms, can be adjusted as needed
     }
   }, []);
 
@@ -81,7 +81,7 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
           aiService.setCurrentProvider(providerName);
         }
 
-        // 使用流式回调，但不在回调中直接setState
+        // Use streaming callback, but don't directly setState in the callback
         const result = await aiService.chat(
           description,
           {
@@ -89,9 +89,9 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
             systemPrompt: systemPrompt || options?.systemPrompt,
             onStream: (text: string) => {
               if (!isMounted) return;
-              // 仅将新数据追加到contentRef
+              // Only append new data to contentRef
               contentRef.current += text;
-              // 使用批次更新，减少频繁UI更新
+              // Use batch updates to reduce frequent UI updates
               scheduleUpdate();
             }
           }
@@ -99,7 +99,7 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
 
         if (!isMounted) return;
 
-        // 设置模型信息
+        // Set model information
         setModel(result.model);
 
         const endTime = Date.now();
@@ -107,7 +107,7 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
         setDuration(durationSeconds);
         setIsStreaming(false);
 
-        // 确保流结束后有一次最终更新（有些流可能在timer空隙未更新完整）
+        // Ensure a final update after the stream ends (some streams may not be fully updated during timer intervals)
         setResponse(contentRef.current);
 
         if (toast) {
@@ -169,10 +169,10 @@ export function generatePromptActions(
   const scriptActions: ActionItem[] = [];
   if (preferences.scriptsDirectory) {
     try {
-      // 使用工具函数获取所有可用脚本
+      // Use utility function to get all available scripts
       const scripts = getAvailableScripts(preferences.scriptsDirectory);
 
-      // 为每个脚本创建 Action
+      // Create an Action for each script
       scripts.forEach(({ path: scriptPath, name: scriptName }) => {
         scriptActions.push({
           name: `script_${scriptName}`,
@@ -279,7 +279,7 @@ export function generatePromptActions(
   filteredActions.sort((a, b) => {
     const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
 
-    // 优先处理最近选择的动作
+    // Prioritize recently selected actions
     if (a.name === lastSelectedAction && b.name !== lastSelectedAction) return -1;
     if (b.name === lastSelectedAction && a.name !== lastSelectedAction) return 1;
 
@@ -293,17 +293,17 @@ export function generatePromptActions(
     if (indexA !== -1) return -1;
     if (indexB !== -1) return 1;
 
-    // 检查 action 是否有快捷键
+    // Check if the action has a shortcut
     const hasShortcutA = Boolean(a.action.props.shortcut);
     const hasShortcutB = Boolean(b.action.props.shortcut);
 
-    // 如果两个 action 都没有快捷键，才考虑 lastSelectedAction
+    // Only consider lastSelectedAction if both actions don't have shortcuts
     if (!hasShortcutA && !hasShortcutB) {
       if (a.name === lastSelectedAction) return -1;
       if (b.name === lastSelectedAction) return 1;
     }
 
-    return a.displayName.localeCompare(b.displayName); // 添加字母顺序作为最终后备排序
+    return a.displayName.localeCompare(b.displayName); // Add alphabetical order as final fallback sorting
   });
 
   return (
