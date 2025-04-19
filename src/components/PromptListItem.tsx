@@ -205,7 +205,6 @@ export function PromptListItem({
                             content={`raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments=${encodeURIComponent(
                                 JSON.stringify({
                                     target: `quickgpt-${prompt.identifier}`,
-                                    activateOCR: "false",
                                     actions: prompt.actions?.join(','),
                                     filePath: prompt.filePath
                                 })
