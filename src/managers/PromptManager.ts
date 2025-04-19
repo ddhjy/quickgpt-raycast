@@ -27,7 +27,6 @@ export type PromptProps = {
   noexplanation?: boolean;
   forbidChinese?: boolean;
   ref?: { [key: string]: string | string[] };
-  rawRef?: { [key: string]: string | string[] };
   options?: { [key: string]: string[] };
   actions?: string[];
   textInputs?: { [key: string]: string };
@@ -193,7 +192,6 @@ class PromptManager {
     }
 
     if (prompt.ref) {
-      prompt.rawRef = { ...prompt.ref };
       prompt.options = {};
       prompt.textInputs = {};
 
@@ -201,7 +199,7 @@ class PromptManager {
         if (Array.isArray(value)) {
           prompt.options = prompt.options || {};
           prompt.options[key] = value;
-        } else if (typeof value === 'string' && !value.startsWith('/')) {
+        } else if (typeof value === 'string') {
           prompt.textInputs = prompt.textInputs || {};
           prompt.textInputs[key] = value;
         }
