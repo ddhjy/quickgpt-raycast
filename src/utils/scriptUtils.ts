@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Script information interface
+ * Interface for script information.
  */
 export interface ScriptInfo {
     path: string;
@@ -10,10 +10,11 @@ export interface ScriptInfo {
 }
 
 /**
- * Recursively scan directory to get all script files
- * @param dir Directory to scan
- * @param relativePath Relative path (for internal use)
- * @param result Result array (for internal use)
+ * Recursively scans a directory to get all script files.
+ * @param dir The directory to scan.
+ * @param relativePath Relative path (for internal use).
+ * @param result Result array (for internal use).
+ * @returns An array of ScriptInfo objects.
  */
 export function scanScriptsDirectory(dir: string, relativePath = '', result: ScriptInfo[] = []): ScriptInfo[] {
     try {
@@ -48,10 +49,9 @@ export function scanScriptsDirectory(dir: string, relativePath = '', result: Scr
 }
 
 /**
- * Get all available scripts (including built-in scripts and user-defined scripts)
- * @param scriptsDirectory User-defined scripts directory
- * @param assetsDir Built-in scripts directory
- * @returns Array of all available scripts
+ * Gets all available scripts (user-defined scripts).
+ * @param scriptsDirectory User-defined scripts directory.
+ * @returns Array of all available scripts.
  */
 export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
     const scripts: ScriptInfo[] = [];

@@ -78,7 +78,7 @@ export function PromptListItem({
             actions={
                 <ActionPanel>
                     {prompt.identifier === "open-custom-prompts-dir" ? (
-                        // 打开自定义提示目录的操作
+                        // Action to open the custom prompts directory
                         handleCustomPromptsDirectoryActions()
                     ) : prompt.identifier === "open-scripts-dir" ? (
                         <Action
@@ -193,7 +193,7 @@ export function PromptListItem({
     );
 }
 
-// 辅助函数，处理自定义提示目录操作
+// Helper function to handle custom prompts directory actions
 function handleCustomPromptsDirectoryActions() {
     const preferences = getPreferenceValues<{
         customPromptsDirectory?: string;
@@ -211,7 +211,7 @@ function handleCustomPromptsDirectoryActions() {
         { dir: preferences.customPromptsDirectory4, label: "Custom Prompts 4" }
     ];
 
-    // 有配置的目录显示打开选项
+    // Display open options for configured directories
     const actions = dirConfigs
         .filter(({ dir }) => dir && dir.trim() !== '')
         .map(({ dir, label }) => (
@@ -226,7 +226,7 @@ function handleCustomPromptsDirectoryActions() {
             />
         ));
 
-    // 如果没有配置任何目录，显示错误操作
+    // If no directories are configured, display an error action
     if (actions.length === 0) {
         return (
             <Action
@@ -246,7 +246,7 @@ function handleCustomPromptsDirectoryActions() {
     return <>{actions}</>;
 }
 
-// 这个import必须放在文件底部以避免循环依赖
+// This import must be at the bottom of the file to avoid circular dependencies
 import { getPreferenceValues } from "@raycast/api";
 import { PromptList } from "./PromptList";
 import { PromptOptionsForm } from "./PromptOptionsForm";

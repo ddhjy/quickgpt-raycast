@@ -10,8 +10,8 @@ class PinsManager {
   }
 
   /**
-   * 添加标识符到固定列表
-   * @param identifier 要固定的标识符
+   * Adds an identifier to the pinned list.
+   * @param identifier The identifier to pin.
    */
   pin(identifier: string): void {
     const pinned = this.pinnedIdentifiers();
@@ -20,8 +20,8 @@ class PinsManager {
   }
 
   /**
-   * 从固定列表中移除标识符
-   * @param identifier 要移除的标识符
+   * Removes an identifier from the pinned list.
+   * @param identifier The identifier to unpin.
    */
   unpin(identifier: string): void {
     const pinned = this.pinnedIdentifiers();
@@ -30,8 +30,8 @@ class PinsManager {
   }
 
   /**
-   * 获取所有固定的标识符
-   * @returns 固定标识符的Set集合
+   * Gets all pinned identifiers.
+   * @returns A Set of pinned identifiers.
    */
   pinnedIdentifiers(): Set<string> {
     const pinned = this.cache.get(this.key);

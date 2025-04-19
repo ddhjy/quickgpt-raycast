@@ -25,10 +25,10 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     filePath,
   } = props.arguments;
 
-  // 转换actions字符串为数组
+  // Convert actions string to array
   const allowedActions = actions?.split(',').filter(Boolean);
 
-  // 使用自定义Hook获取初始上下文数据
+  // Use custom hook to get initial context data
   const {
     clipboardText,
     selectionText,
@@ -36,17 +36,17 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     browserContent,
   } = useInitialContext(initialClipboardText, initialSelectionText, target, activateOCR);
 
-  // 获取置顶的提示
+  // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
   const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
     prompt.pinned = pinnedIdentifiers.has(prompt.identifier);
     return prompt.pinned;
   });
 
-  // 获取快速提示
+  // Get quick prompt
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target, filePath);
 
-  // 准备要显示的提示列表
+  // Prepare the list of prompts to display
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
@@ -81,17 +81,17 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
         }
       ];
 
-  // 确定有效的选择文本
+  // Determine the effective selected text
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
-  // 去重提示列表
+  // Deduplicate the prompt list
   const uniquePrompts = Array.from(
     new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title))
   )
     .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
     .filter(Boolean) as PromptProps[];
 
-  // 渲染提示列表组件
+  // Render the prompt list component
   return (
     <PromptList
       searchMode={!quickPrompt}
