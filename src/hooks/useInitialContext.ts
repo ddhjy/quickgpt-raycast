@@ -19,15 +19,16 @@ export function useInitialContext(
     initialClipboardText?: string,
     initialSelectionText?: string,
     target?: string,
-    activateOCR?: string
-): InitialContextResult {
-    const [clipboardText, setClipboardText] = useState(initialClipboardText ?? "");
+) {
+    const [clipboardText, setClipboardText] = useState<string>("");
     const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
     const [currentApp, setCurrentApp] = useState("");
     const [browserContent, setBrowserContent] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchClipboardText = async (): Promise<string> => {
             if (initialClipboardText && initialClipboardText.length > 0) {
                 return initialClipboardText;
@@ -114,7 +115,7 @@ export function useInitialContext(
             setSelectionText(fetchedSelectedText);
             setCurrentApp(fetchedFrontmostApp);
             setBrowserContent(fetchedBrowserContent); // Set the determined value
-            setIsLoading(false);
+            isMounted && setIsLoading(false);
         };
 
         const timer = setTimeout(() => {
@@ -122,9 +123,11 @@ export function useInitialContext(
         }, 10); // Add a small delay
 
         // Cleanup function to clear the timeout
-        return () => clearTimeout(timer);
-
-    }, [initialClipboardText, initialSelectionText, target, activateOCR]);
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+        };
+    }, [initialClipboardText, initialSelectionText, target]);
 
     return {
         clipboardText,

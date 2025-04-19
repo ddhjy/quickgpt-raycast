@@ -1,4 +1,7 @@
-import { LaunchProps } from "@raycast/api";
+import {
+  List,
+  LaunchProps,
+} from "@raycast/api";
 import pinsManager from "./managers/PinsManager";
 import promptManager from "./managers/PromptManager";
 import { getQuickPrompt } from "./utils/promptFormattingUtils";
@@ -6,21 +9,19 @@ import { PromptList } from "./components/PromptList";
 import { useInitialContext } from "./hooks/useInitialContext";
 import { PromptProps } from "./managers/PromptManager";
 
-interface ExtendedArguments {
-  clipboardText?: string;
-  selectionText?: string;
+interface ExtendedArguments extends Arguments.PromptLab {
+  initialClipboardText?: string;
+  initialSelectionText?: string;
   target?: string;
-  activateOCR?: string;
   actions?: string;
   filePath?: string;
 }
 
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const {
-    selectionText: initialSelectionText,
-    clipboardText: initialClipboardText,
+    initialClipboardText,
+    initialSelectionText,
     target,
-    activateOCR,
     actions,
     filePath,
   } = props.arguments;
@@ -28,13 +29,17 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   // Convert actions string to array
   const allowedActions = actions?.split(',').filter(Boolean);
 
-  // Use custom hook to get initial context data
   const {
     clipboardText,
     selectionText,
     currentApp,
     browserContent,
-  } = useInitialContext(initialClipboardText, initialSelectionText, target, activateOCR);
+    isLoading,
+  } = useInitialContext(initialClipboardText, initialSelectionText, target);
+
+  if (isLoading) {
+    return <List isLoading={true} />;
+  }
 
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
