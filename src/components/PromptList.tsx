@@ -105,10 +105,17 @@ export function PromptList({
         return result;
     }, [prompts, searchMode, searchText]);
 
+    // Sort and slice the prompt list
+    const displayPrompts = useMemo(() => {
+        const sorted = [...filteredPrompts].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+        const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 9 : undefined);
+        return sliced;
+    }, [filteredPrompts, searchMode, searchText]);
+
     // Effect to handle pushing new list when space is entered in search mode
     useEffect(() => {
         if (searchMode && searchText.endsWith(" ") && searchText.trim().length > 0) {
-            const promptsToShow = filteredPrompts;
+            const promptsToShow = displayPrompts;
 
             clearSearchBar({ forceScrollToTop: true });
 
@@ -129,7 +136,7 @@ export function PromptList({
             );
             return;
         }
-    }, [searchMode, searchText, push, filteredPrompts, clipboardText, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
+    }, [searchMode, searchText, push, displayPrompts, clipboardText, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
 
     const handleSearchTextChange = (text: string) => {
         setSearchText(text);
@@ -149,13 +156,6 @@ export function PromptList({
         browserContent: browserContent,
         promptTitles: getIndentedPromptTitles(),
     };
-
-    // Sort and slice the prompt list
-    const displayPrompts = useMemo(() => {
-        const sorted = [...filteredPrompts].sort((a, b) => Number(b.pinned) - Number(a.pinned));
-        const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 10 : undefined);
-        return sliced;
-    }, [filteredPrompts, searchMode, searchText]);
 
     // Find the specific root directory for each prompt
     const promptItems = displayPrompts.map((prompt, index) => {
