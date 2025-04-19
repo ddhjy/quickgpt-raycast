@@ -6,9 +6,6 @@ import {
     BrowserExtension,
     getSelectedFinderItems,
 } from "@raycast/api";
-import fsPromises from "fs/promises";
-import path from "path";
-import { isBinaryOrMediaFile, readDirectoryContents } from "../utils/fileSystemUtils";
 
 interface InitialContextResult {
     clipboardText: string;
@@ -55,21 +52,9 @@ export function useInitialContext(
                     if (selectedItems.length > 0) {
                         let content = '';
                         for (const item of selectedItems) {
-                            const itemPath = item.path;
-                            const stats = await fsPromises.stat(itemPath);
-
-                            if (stats.isFile()) {
-                                if (!isBinaryOrMediaFile(itemPath)) {
-                                    const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
-                                    content += `File: ${path.basename(itemPath)}\n${fileContent}\n\n`;
-                                } else {
-                                    content += `File: ${path.basename(itemPath)} (binary or media file, content ignored)\n\n`;
-                                }
-                            } else if (stats.isDirectory()) {
-                                content += await readDirectoryContents(itemPath);
-                            }
+                            content += `{{file:${item.path}}}` + "\n";
                         }
-                        return content;
+                        return content.trim();
                     }
                 } catch (finderError) {
                     // Continue execution
@@ -105,31 +90,40 @@ export function useInitialContext(
         const fetchData = async () => {
             setIsLoading(true);
 
-            // First get the foreground application name
-            const frontmostApp = await fetchFrontmostApp();
-
-            // Get other content in parallel
-            const [fetchedClipboardText, fetchedSelectedText] = await Promise.all([
+            // Get all content concurrently
+            const [
+                fetchedFrontmostApp,
+                fetchedClipboardText,
+                fetchedSelectedText,
+                potentiallyFetchedBrowserContent,
+            ] = await Promise.all([
+                fetchFrontmostApp(),
                 fetchClipboardText(),
                 fetchSelectedText(),
+                fetchBrowserContent(), // Always fetch, handle conditionally later
             ]);
 
-            // Only get browser content if the foreground app is a browser
+            // Determine final browser content based on the frontmost app
             let fetchedBrowserContent = "";
-            // Check if the foreground app is a browser (may need to adjust browser name list based on actual situation)
             const browserNames = ["Safari", "Google Chrome", "Firefox", "Edge", "Arc"];
-            if (browserNames.some(browser => frontmostApp.includes(browser))) {
-                fetchedBrowserContent = await fetchBrowserContent();
+            if (browserNames.some(browser => fetchedFrontmostApp.includes(browser))) {
+                fetchedBrowserContent = potentiallyFetchedBrowserContent;
             }
 
             setClipboardText(fetchedClipboardText);
             setSelectionText(fetchedSelectedText);
-            setCurrentApp(frontmostApp);
-            setBrowserContent(fetchedBrowserContent);
+            setCurrentApp(fetchedFrontmostApp);
+            setBrowserContent(fetchedBrowserContent); // Set the determined value
             setIsLoading(false);
         };
 
-        fetchData();
+        const timer = setTimeout(() => {
+            fetchData();
+        }, 10); // Add a small delay
+
+        // Cleanup function to clear the timeout
+        return () => clearTimeout(timer);
+
     }, [initialClipboardText, initialSelectionText, target, activateOCR]);
 
     return {
