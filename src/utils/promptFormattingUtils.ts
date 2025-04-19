@@ -26,10 +26,10 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * Apply prefix commands to content
- * @param content Original content
- * @param prefixCommands Prefix commands
- * @returns Processed content
+ * Applies prefix commands to content.
+ * @param content The original content.
+ * @param prefixCommands The prefix commands.
+ * @returns The processed content.
  */
 export function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
     // If prefixCommands contains "none", return the original content
@@ -58,10 +58,11 @@ export function applyPrefixCommandsToContent(content: string, prefixCommands: st
 }
 
 /**
- * Get quick prompt
- * @param selectionText Selected text
- * @param identifier Target identifier
- * @returns Quick prompt and cleaned selected text
+ * Gets the quick prompt.
+ * @param selectionText The selected text.
+ * @param identifier The target identifier.
+ * @param filePath Optional file path associated with the call.
+ * @returns A tuple containing the quick prompt (or undefined) and the cleaned selected text.
  */
 export function getQuickPrompt(selectionText: string, identifier?: string, filePath?: string): [PromptProps | undefined, string] {
     let foundPrompt;
@@ -92,7 +93,11 @@ export function getQuickPrompt(selectionText: string, identifier?: string, fileP
 }
 
 /**
- * Build the formatted prompt content with all placeholders replaced
+ * Builds the formatted prompt content with all placeholders replaced.
+ * @param prompt The prompt object.
+ * @param replacements The placeholder replacements.
+ * @param relativeRootDir The root directory for resolving relative file paths.
+ * @returns The formatted content string.
  */
 export function buildFormattedPromptContent(
     prompt: PromptProps,
@@ -170,7 +175,10 @@ export function buildFormattedPromptContent(
 }
 
 /**
- * Get placeholder icons based on content and replacements
+ * Gets placeholder icons based on content and replacements.
+ * @param content The prompt content string.
+ * @param replacements The placeholder replacements.
+ * @returns An array of List.Item.Accessory representing the used placeholders.
  */
 export function getPlaceholderIcons(
     content: string | undefined,
@@ -192,8 +200,8 @@ export function getPlaceholderIcons(
 }
 
 /**
- * Get prompt titles with hierarchical indentation and content summary
- * @returns Prompt titles with hierarchical indentation and content summary
+ * Gets prompt titles with hierarchical indentation and a content summary.
+ * @returns A string containing the indented prompt titles and summaries.
  */
 export function getIndentedPromptTitles(): string {
     const rootPrompts = promptManager.getRootPrompts();

@@ -22,9 +22,9 @@ export const IGNORED_PATTERNS = [
 ];
 
 /**
- * 检查文件是否为二进制或媒体文件
- * @param fileName 文件名
- * @returns 是否为二进制或媒体文件
+ * Checks if a file is binary or media.
+ * @param fileName The file name.
+ * @returns Whether it is a binary or media file.
  */
 export const isBinaryOrMediaFile = (fileName: string): boolean => {
     const ext = path.extname(fileName).toLowerCase();
@@ -32,19 +32,19 @@ export const isBinaryOrMediaFile = (fileName: string): boolean => {
 };
 
 /**
- * 检查项目是否应被忽略
- * @param itemName 项目名称
- * @returns 是否应被忽略
+ * Checks if an item should be ignored.
+ * @param itemName The item name.
+ * @returns Whether it should be ignored.
  */
 export const isIgnoredItem = (itemName: string): boolean => {
     return IGNORED_PATTERNS.some(pattern => pattern.test(itemName));
 };
 
 /**
- * 递归读取目录内容
- * @param dirPath 目录路径
- * @param basePath 基础路径（用于构建相对路径）
- * @returns 目录内容的字符串表示
+ * Recursively reads directory contents.
+ * @param dirPath The directory path.
+ * @param basePath Base path for constructing relative paths.
+ * @returns String representation of the directory contents.
  */
 export const readDirectoryContents = async (dirPath: string, basePath: string = ''): Promise<string> => {
     let content = "";

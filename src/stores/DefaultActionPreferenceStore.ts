@@ -10,16 +10,16 @@ class DefaultActionPreferenceStore {
     }
 
     /**
-     * 保存用户的默认操作偏好
-     * @param action 操作名称
+     * Saves the user's default action preference.
+     * @param action The action name.
      */
     saveDefaultActionPreference(action: string): void {
         this.cache.set(this.key, action);
     }
 
     /**
-     * 获取用户的默认操作偏好
-     * @returns 操作名称或undefined
+     * Gets the user's default action preference.
+     * @returns The action name or undefined.
      */
     getDefaultActionPreference(): string | undefined {
         return this.cache.get(this.key);
