@@ -4,14 +4,15 @@ import {
     getPreferenceValues,
     showToast,
     Toast,
-    clearSearchBar
+    clearSearchBar,
+    useNavigation
 } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
 import { PromptProps } from "../managers/PromptManager";
 import promptManager from "../managers/PromptManager";
 import pinsManager from "../managers/PinsManager";
-import { SpecificReplacements, placeholderFormatter } from "../utils/placeholderFormatter";
+import { SpecificReplacements } from "../utils/placeholderFormatter";
 import { MemoizedPromptListItem } from "./PromptListItem";
 import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 import { AIService } from "../services/AIService";
@@ -55,6 +56,7 @@ export function PromptList({
     }>();
     const aiService = AIService.getInstance();
     const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
+    const { push } = useNavigation();
 
     const isMountedRef = useRef(false);
 
@@ -89,26 +91,45 @@ export function PromptList({
     // Filter prompts only in search mode
     const filteredPrompts = useMemo(() => {
         let result;
-        if (searchMode && searchText.length > 0) {
-            result = promptManager.getFilteredPrompts((prompt) => {
-                return (
-                    prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
-                    !!match(prompt.title, searchText.trim(), { continuous: true })
-                );
+        const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : prompts;
+
+        if (searchMode && searchText.trim().length > 0) {
+            result = sourcePrompts.filter((prompt) => {
+                const titleMatch = prompt.title.toLowerCase().includes(searchText.trim().toLowerCase());
+                const pinyinMatch = !!match(prompt.title, searchText.trim(), { continuous: true });
+                return titleMatch || pinyinMatch;
             });
         } else {
-            result = prompts; // Return original prompts if not searching
+            result = prompts;
         }
         return result;
     }, [prompts, searchMode, searchText]);
 
-    // Effect to handle clearing search when space is entered in search mode
+    // Effect to handle pushing new list when space is entered in search mode
     useEffect(() => {
-        if (searchMode && searchText.endsWith(" ")) {
+        if (searchMode && searchText.endsWith(" ") && searchText.trim().length > 0) {
+            const promptsToShow = filteredPrompts;
+
             clearSearchBar({ forceScrollToTop: true });
-            setSearchText(""); // Clear the search text instead of returning early
+
+            setSearchText("");
+
+            push(
+                <PromptList
+                    clipboardText={clipboardText}
+                    selectionText={selectionText}
+                    currentApp={currentApp}
+                    browserContent={browserContent}
+                    allowedActions={allowedActions}
+                    initialScripts={initialScripts}
+                    initialAiProviders={initialAiProviders}
+                    prompts={promptsToShow}
+                    searchMode={false}
+                />
+            );
+            return;
         }
-    }, [searchMode, searchText]);
+    }, [searchMode, searchText, push, filteredPrompts, clipboardText, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
 
     const handleSearchTextChange = (text: string) => {
         setSearchText(text);
@@ -117,7 +138,6 @@ export function PromptList({
     const activeSearchText = searchMode ? "" : searchText;
 
     // OPTIMIZATION 1: Calculate scripts and providers once using useMemo
-    // Use initial values if provided (for nested lists), otherwise calculate them.
     const scripts = useMemo(() => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory), [initialScripts, preferences.scriptsDirectory]);
     const aiProviders = useMemo(() => initialAiProviders ?? aiService.getAllProviders(), [initialAiProviders, aiService]);
 
@@ -132,49 +152,33 @@ export function PromptList({
 
     // Sort and slice the prompt list
     const displayPrompts = useMemo(() => {
-        const sorted = filteredPrompts.sort((a, b) => Number(b.pinned) - Number(a.pinned));
-        const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
+        const sorted = [...filteredPrompts].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+        const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 10 : undefined);
         return sliced;
     }, [filteredPrompts, searchMode, searchText]);
 
     // Find the specific root directory for each prompt
     const promptItems = displayPrompts.map((prompt, index) => {
-        // Determine the specific root directory for *this* prompt
         let promptSpecificRootDir: string | undefined = undefined;
         if (prompt.filePath) {
             let longestMatchLength = 0;
             for (const rootDir of configuredRootDirs) {
-                // Normalize to ensure consistent path comparison
                 const normalizedRootDir = path.normalize(rootDir);
                 const normalizedPromptPath = path.normalize(prompt.filePath);
 
-                // Check if the prompt path starts with the root directory path
-                // Add path.sep to avoid matching '/path/to/rootABC' with '/path/to/root'
                 const rootDirWithSeparator = normalizedRootDir.endsWith(path.sep) ? normalizedRootDir : normalizedRootDir + path.sep;
 
                 if (normalizedPromptPath.startsWith(rootDirWithSeparator) || normalizedPromptPath === normalizedRootDir) {
                     if (normalizedRootDir.length > longestMatchLength) {
                         longestMatchLength = normalizedRootDir.length;
-                        promptSpecificRootDir = rootDir; // Store the original, non-normalized path from preferences
+                        promptSpecificRootDir = rootDir;
                     }
                 }
             }
         }
 
-        // Exclude prompts that do not match the search criteria
-        if (
-            searchMode &&
-            activeSearchText &&
-            prompt.title === placeholderFormatter(prompt.title || "", replacements) &&
-            !prompt.title.toLowerCase().includes(activeSearchText.toLowerCase()) &&
-            !match(prompt.title, activeSearchText, { continuous: true })
-        ) {
-            return null;
-        }
-
         return (
             <MemoizedPromptListItem
-                // OPTIMIZATION 2: Use identifier/title + index for key (temporary fix for duplicate keys)
                 key={`${prompt.identifier || prompt.title}-${index}`}
                 prompt={prompt}
                 index={index}
@@ -184,17 +188,18 @@ export function PromptList({
                 allowedActions={allowedActions}
                 onPinToggle={handlePinToggle}
                 activeSearchText={activeSearchText}
-                // OPTIMIZATION 1 (continued): Pass memoized scripts and providers down
                 scripts={scripts}
                 aiProviders={aiProviders}
             />
         );
-    }).filter(Boolean); // Filter out null items
+    }).filter(Boolean);
 
     return (
         <List
-            searchBarPlaceholder={searchMode ? "Search" : "Input"}
+            isLoading={false}
+            searchBarPlaceholder={searchMode ? "Search Prompts..." : "Input"}
             onSearchTextChange={handleSearchTextChange}
+            searchText={searchText}
             filtering={false}
             searchBarAccessory={
                 searchMode ? (
@@ -204,7 +209,6 @@ export function PromptList({
                         onChange={(newValue: string) => {
                             if (newValue === selectedAction) return;
 
-                            // When selecting the default item (value is empty), directly clear the setting
                             if (newValue === "") {
                                 setSelectedAction("");
                                 defaultActionPreferenceStore.saveDefaultActionPreference("");
@@ -247,7 +251,13 @@ export function PromptList({
                 ) : null
             }
         >
-            {promptItems}
+            {promptItems.length === 0 && !searchMode && searchText.length === 0 ? (
+                <List.EmptyView title="No Prompts Found" description="Check your custom prompt directories." />
+            ) : promptItems.length === 0 && searchMode && searchText.length > 0 ? (
+                <List.EmptyView title="No Matching Prompts" description="Try a different search term." />
+            ) : (
+                promptItems
+            )}
         </List>
     );
 } 
