@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
     List,
     getPreferenceValues,
@@ -16,7 +16,8 @@ import { MemoizedPromptListItem } from "./PromptListItem";
 import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 import { AIService } from "../services/AIService";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
-import { getAvailableScripts } from "../utils/scriptUtils";
+import { getAvailableScripts, ScriptInfo } from "../utils/scriptUtils";
+import { AIProvider } from "../services/types";
 
 interface PromptListProps {
     prompts: PromptProps[];
@@ -26,6 +27,8 @@ interface PromptListProps {
     currentApp: string;
     browserContent: string;
     allowedActions?: string[];
+    initialScripts?: ScriptInfo[];
+    initialAiProviders?: AIProvider[];
 }
 
 export function PromptList({
@@ -36,6 +39,8 @@ export function PromptList({
     currentApp,
     browserContent,
     allowedActions,
+    initialScripts,
+    initialAiProviders
 }: PromptListProps) {
     const [searchText, setSearchText] = useState<string>("");
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -50,6 +55,15 @@ export function PromptList({
     }>();
     const aiService = AIService.getInstance();
     const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
+
+    const isMountedRef = useRef(false);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Function to force component update
     const forceUpdate = () => setForceUpdateCounter((prev: number) => prev + 1);
@@ -74,34 +88,38 @@ export function PromptList({
 
     // Filter prompts only in search mode
     const filteredPrompts = useMemo(() => {
+        let result;
         if (searchMode && searchText.length > 0) {
-            return promptManager.getFilteredPrompts((prompt) => {
+            result = promptManager.getFilteredPrompts((prompt) => {
                 return (
                     prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
                     !!match(prompt.title, searchText.trim(), { continuous: true })
                 );
             });
         } else {
-            return prompts; // Return original prompts if not searching
+            result = prompts; // Return original prompts if not searching
         }
+        return result;
     }, [prompts, searchMode, searchText]);
 
-    if (searchMode && searchText.endsWith(" ")) {
-        clearSearchBar({ forceScrollToTop: true });
-        return (
-            <PromptList
-                searchMode={false}
-                prompts={filteredPrompts}
-                clipboardText={clipboardText}
-                selectionText={selectionText}
-                currentApp={currentApp}
-                browserContent={browserContent}
-                allowedActions={allowedActions}
-            />
-        );
-    }
+    // Effect to handle clearing search when space is entered in search mode
+    useEffect(() => {
+        if (searchMode && searchText.endsWith(" ")) {
+            clearSearchBar({ forceScrollToTop: true });
+            setSearchText(""); // Clear the search text instead of returning early
+        }
+    }, [searchMode, searchText]);
+
+    const handleSearchTextChange = (text: string) => {
+        setSearchText(text);
+    };
 
     const activeSearchText = searchMode ? "" : searchText;
+
+    // OPTIMIZATION 1: Calculate scripts and providers once using useMemo
+    // Use initial values if provided (for nested lists), otherwise calculate them.
+    const scripts = useMemo(() => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory), [initialScripts, preferences.scriptsDirectory]);
+    const aiProviders = useMemo(() => initialAiProviders ?? aiService.getAllProviders(), [initialAiProviders, aiService]);
 
     const replacements: SpecificReplacements = {
         input: activeSearchText,
@@ -114,9 +132,9 @@ export function PromptList({
 
     // Sort and slice the prompt list
     const displayPrompts = useMemo(() => {
-        return filteredPrompts
-            .sort((a, b) => Number(b.pinned) - Number(a.pinned))
-            .slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
+        const sorted = filteredPrompts.sort((a, b) => Number(b.pinned) - Number(a.pinned));
+        const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
+        return sliced;
     }, [filteredPrompts, searchMode, searchText]);
 
     // Find the specific root directory for each prompt
@@ -156,6 +174,7 @@ export function PromptList({
 
         return (
             <MemoizedPromptListItem
+                // OPTIMIZATION 2: Use identifier/title + index for key (temporary fix for duplicate keys)
                 key={`${prompt.identifier || prompt.title}-${index}`}
                 prompt={prompt}
                 index={index}
@@ -165,18 +184,17 @@ export function PromptList({
                 allowedActions={allowedActions}
                 onPinToggle={handlePinToggle}
                 activeSearchText={activeSearchText}
+                // OPTIMIZATION 1 (continued): Pass memoized scripts and providers down
+                scripts={scripts}
+                aiProviders={aiProviders}
             />
         );
     }).filter(Boolean); // Filter out null items
 
-    // Memoize scripts and providers lists for searchBarAccessory
-    const scripts = useMemo(() => getAvailableScripts(preferences.scriptsDirectory), [preferences.scriptsDirectory]);
-    const aiProviders = useMemo(() => aiService.getAllProviders(), [aiService]);
-
     return (
         <List
             searchBarPlaceholder={searchMode ? "Search" : "Input"}
-            onSearchTextChange={setSearchText}
+            onSearchTextChange={handleSearchTextChange}
             filtering={false}
             searchBarAccessory={
                 searchMode ? (
@@ -190,7 +208,6 @@ export function PromptList({
                             if (newValue === "") {
                                 setSelectedAction("");
                                 defaultActionPreferenceStore.saveDefaultActionPreference("");
-                                console.log("Cleared preferred action");
                                 showToast({
                                     style: Toast.Style.Success,
                                     title: "Cleared preferred action",
@@ -200,7 +217,6 @@ export function PromptList({
 
                             setSelectedAction(newValue);
                             defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
-                            console.log(`Set preferred action: ${newValue}`);
                             showToast({
                                 style: Toast.Style.Success,
                                 title: "Set preferred action",

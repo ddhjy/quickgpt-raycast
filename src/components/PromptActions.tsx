@@ -13,8 +13,8 @@ import fs from "fs";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
 import { ChatResultView } from "./ResultView";
 import { AIService } from "../services/AIService";
-import { ChatOptions } from "../services/types";
-import { getAvailableScripts } from "../utils/scriptUtils";
+import { ChatOptions, AIProvider } from "../services/types";
+import { ScriptInfo } from "../utils/scriptUtils";
 
 interface Preferences {
   openURL?: string;
@@ -102,7 +102,9 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
           }
         );
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          return;
+        }
 
         // Set model information
         setModel(result.model);
@@ -121,7 +123,7 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
         }
       } catch (error) {
         if (!isMounted) return;
-        console.error(error);
+        console.error("[ChatResponseView] Error during fetchResponse:", error);
         setIsStreaming(false);
         await showToast(Toast.Style.Failure, "Error", String(error));
       }
@@ -152,12 +154,18 @@ function ChatResponseView({ getFormattedDescription, options, providerName, syst
 
 export function generatePromptActions(
   getFormattedDescription: () => string,
-  actions?: string[],
+  actions: string[] | undefined,
+  scripts: ScriptInfo[],
+  aiProviders: AIProvider[]
 ) {
   const preferences = getPreferenceValues<Preferences>();
+  // Combine actions from prompt definition and global preferences
   const configuredActions =
-    preferences.primaryAction?.split(",").map((action) => action.trim()) || [];
-  const finalActions = [...(actions || []), ...configuredActions];
+    preferences.primaryAction?.split(",").map((action) => action.trim()).filter(Boolean) || [];
+
+  const promptDefinedActions = actions || [];
+  // Use Set to ensure uniqueness and maintain order (prompt actions first, then global)
+  const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
   const createRaycastOpenInBrowser = (
     title: string | undefined,
@@ -171,64 +179,50 @@ export function generatePromptActions(
     />
   );
 
-  const scriptActions: ActionItem[] = [];
-  if (preferences.scriptsDirectory) {
-    try {
-      // Use utility function to get all available scripts
-      const scripts = getAvailableScripts(preferences.scriptsDirectory);
+  // Use the passed-in scripts directly
+  const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
+    name: `script_${scriptName}`,
+    displayName: scriptName,
+    condition: true,
+    action: (
+      <Action
+        title={scriptName}
+        icon={Icon.Terminal}
+        onAction={async () => {
+          const description = getFormattedDescription();
+          await Clipboard.copy(description);
+          try {
+            closeMainWindow();
+            const scriptContent = fs.readFileSync(scriptPath, "utf8");
+            await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [description] : []);
+          } catch (error) {
+            console.error(`Failed to execute script: ${error}`);
+            await showToast(Toast.Style.Failure, "Error", String(error));
+          }
+        }}
+      />
+    ),
+  }));
 
-      // Create an Action for each script
-      scripts.forEach(({ path: scriptPath, name: scriptName }) => {
-        scriptActions.push({
-          name: `script_${scriptName}`,
-          displayName: scriptName,
-          condition: true,
-          action: (
-            <Action
-              title={scriptName}
-              icon={Icon.Terminal}
-              onAction={async () => {
-                const description = getFormattedDescription();
-                await Clipboard.copy(description);
+  // Use the passed-in aiProviders directly
+  const providerActions: ActionItem[] = aiProviders.map(provider => {
+    const displayName = `${provider.name}`;
+    return {
+      name: provider.name.toLowerCase(),
+      displayName,
+      condition: true,
+      action: (
+        <Action.Push
+          title={displayName}
+          icon={Icon.Network}
+          target={<ChatResponseView getFormattedDescription={getFormattedDescription} providerName={provider.name} />}
+        />
+      ),
+    } as ActionItem;
+  });
 
-                try {
-                  closeMainWindow();
-                  const scriptContent = fs.readFileSync(scriptPath, "utf8");
-                  await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [description] : []);
-                } catch (error) {
-                  console.error(`Failed to execute script: ${error}`);
-                  await showToast(Toast.Style.Failure, "Error", String(error));
-                }
-              }}
-            />
-          ),
-        });
-      });
-    } catch (error) {
-      console.error("Failed to read scripts directory:", error);
-    }
-  }
-
-  const actionItems: ActionItem[] = [
-    ...scriptActions,
-    ...(() => {
-      const aiService = AIService.getInstance();
-      return aiService.getProviderNames().map(providerName => {
-        const displayName = `${providerName}`;
-        return {
-          name: providerName.toLowerCase(),
-          displayName,
-          condition: true,
-          action: (
-            <Action.Push
-              title={displayName}
-              icon={Icon.Network}
-              target={<ChatResponseView getFormattedDescription={getFormattedDescription} providerName={providerName} />}
-            />
-          ),
-        } as ActionItem;
-      });
-    })(),
+  // Define all possible base actions
+  const baseActionItems: ActionItem[] = [
     {
       name: "openURL",
       displayName: "Open URL",
@@ -275,59 +269,85 @@ export function generatePromptActions(
     },
   ];
 
-  const filteredActions = actionItems.filter(
-    (option) => option.condition && option.action
-  );
+  // Combine all potential actions
+  const allActionItems: ActionItem[] = [
+    ...scriptActions,
+    ...providerActions,
+    ...baseActionItems
+  ];
 
+  // Filter actions based ONLY on their condition first
+  const eligibleActions = allActionItems.filter((item) => item.condition);
 
-  const lastSelectedAction = defaultActionPreferenceStore.getDefaultActionPreference();
-  filteredActions.sort((a, b) => {
-    const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
+  // Now, sort eligibleActions. Use finalActions for priority sorting.
+  eligibleActions.sort((a, b) => {
+    const getNameForSort = (name: string) => name.toLowerCase().replace(/^script_/, '');
+    const nameA = getNameForSort(a.name);
+    const nameB = getNameForSort(b.name);
 
-    // Prioritize recently selected actions
-    if (a.name === lastSelectedAction && b.name !== lastSelectedAction) return -1;
-    if (b.name === lastSelectedAction && a.name !== lastSelectedAction) return 1;
+    const indexA = finalActions.findIndex(name => name.toLowerCase() === nameA);
+    const indexB = finalActions.findIndex(name => name.toLowerCase() === nameB);
 
-    const indexA = finalActions.indexOf(stripRunPrefix(a.displayName));
-    const indexB = finalActions.indexOf(stripRunPrefix(b.displayName));
-
+    // Both are in finalActions: sort by their index in finalActions
     if (indexA !== -1 && indexB !== -1) {
       return indexA - indexB;
     }
-
-    if (indexA !== -1) return -1;
-    if (indexB !== -1) return 1;
-
-    // Check if the action has a shortcut
-    // Access props safely after updating the type
-    const hasShortcutA = Boolean(a.action.props.shortcut);
-    const hasShortcutB = Boolean(b.action.props.shortcut);
-
-    // Only consider lastSelectedAction if both actions don't have shortcuts
-    if (!hasShortcutA && !hasShortcutB) {
-      if (a.name === lastSelectedAction) return -1;
-      if (b.name === lastSelectedAction) return 1;
+    // Only A is in finalActions: A comes first
+    if (indexA !== -1) {
+      return -1;
     }
-
-    return a.displayName.localeCompare(b.displayName); // Add alphabetical order as final fallback sorting
+    // Only B is in finalActions: B comes first
+    if (indexB !== -1) {
+      return 1;
+    }
+    // Neither is in finalActions: sort alphabetically by display name
+    return a.displayName.localeCompare(b.displayName);
   });
 
-  return (
-    <>
-      {filteredActions.map((option, index) => {
-        // Define handleAction using the props from the typed element
-        const handleAction = () => {
-          if (option.action.props.onAction) {
-            option.action.props.onAction();
-          }
-        };
+  // Find and prioritize the default action from the sorted eligible list
+  const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
+  let defaultActionItem: ActionItem | undefined;
+  if (defaultActionPreference) {
+    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+)/, '');
+    // Find based on the eligible and sorted list
+    defaultActionItem = eligibleActions.find((item) =>
+      item.name.toLowerCase().replace(/^script_/, '') === preferenceBaseName.toLowerCase()
+    );
+  }
 
-        // Clone the element, the types should now match
-        return React.cloneElement(option.action, {
-          key: option.name || index,
-          onAction: handleAction, // Pass the new handler
-        });
-      })}
-    </>
-  );
+  // Prepare the final list of action elements based on the sorted eligible list
+  let resultActions: React.ReactElement[] = [];
+
+  if (defaultActionItem) {
+    const defaultAction = defaultActionItem.action;
+    const handleAction = () => {
+      if (defaultAction.props.onAction && typeof defaultAction.props.onAction === 'function') {
+        defaultAction.props.onAction();
+      }
+    };
+    // Add the prioritized default action first
+    resultActions.push(React.cloneElement(defaultAction, {
+      key: defaultActionItem.name, // Use name as key
+      title: `${defaultActionItem.displayName}`,
+      onAction: handleAction,
+    }));
+    // Add other actions, excluding the default one
+    resultActions = resultActions.concat(
+      eligibleActions // Use eligibleActions here
+        .filter((item) => item.name !== defaultActionItem?.name)
+        .map((item) => React.cloneElement(item.action, { key: item.name, title: `${item.displayName}` }))
+    );
+  } else {
+    // If no default action, just use the sorted eligible list
+    const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
+    resultActions = eligibleActions.map((item) => { // Use eligibleActions here
+      const originalAction = item.action;
+      const originalTitle = originalAction.props.title || item.displayName;
+      const newTitle = stripRunPrefix(originalTitle);
+      // Ensure correct key prop for list rendering
+      return React.cloneElement(originalAction, { key: item.name, title: newTitle });
+    });
+  }
+
+  return resultActions; // Return the array of React elements
 }

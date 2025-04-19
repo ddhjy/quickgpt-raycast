@@ -80,6 +80,7 @@
     "@eslint/config-array": "^0.18.0",
     "@eslint/object-schema": "^2.1.4",
     "@raycast/utils": "^1.19.0",
+    "@raycast/api": "^1.96.0",
     "@types/hjson": "^2.4.6",
     "ai": "^4.1.54",
     "glob": "^11.0.0",
