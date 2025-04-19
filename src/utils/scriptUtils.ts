@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 /**
- * 脚本信息接口
+ * Script information interface
  */
 export interface ScriptInfo {
     path: string;
@@ -10,27 +10,27 @@ export interface ScriptInfo {
 }
 
 /**
- * 递归扫描目录，获取所有脚本文件
- * @param dir 要扫描的目录
- * @param relativePath 相对路径（内部使用）;
- * @param result 结果数组（内部使用）
+ * Recursively scan directory to get all script files
+ * @param dir Directory to scan
+ * @param relativePath Relative path (for internal use)
+ * @param result Result array (for internal use)
  */
 export function scanScriptsDirectory(dir: string, relativePath = '', result: ScriptInfo[] = []): ScriptInfo[] {
     try {
         const items = fs.readdirSync(dir);
 
         for (const item of items) {
-            // 忽略以 # 开头的文件和目录
+            // Ignore files and directories starting with #
             if (item.startsWith('#')) continue;
 
             const itemPath = path.join(dir, item);
             const itemStat = fs.statSync(itemPath);
 
             if (itemStat.isDirectory()) {
-                // 递归扫描子目录
+                // Recursively scan subdirectories
                 scanScriptsDirectory(itemPath, path.join(relativePath, item), result);
             } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
-                // 只使用文件名作为显示名称，不包含路径
+                // Use only the filename as display name, without the path
                 const displayName = path.basename(item, path.extname(item));
 
                 result.push({
@@ -48,17 +48,15 @@ export function scanScriptsDirectory(dir: string, relativePath = '', result: Scr
 }
 
 /**
- * 获取所有可用脚本（包括内置脚本和用户自定义脚本）
- * @param scriptsDirectory 用户自定义脚本目录
- * @param assetsDir 内置脚本所在目录
- * @returns 所有可用脚本的数组
+ * Get all available scripts (including built-in scripts and user-defined scripts)
+ * @param scriptsDirectory User-defined scripts directory
+ * @param assetsDir Built-in scripts directory
+ * @returns Array of all available scripts
  */
 export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
     const scripts: ScriptInfo[] = [];
 
-
-
-    // 获取用户自定义脚本
+    // Get user-defined scripts
     if (scriptsDirectory) {
         try {
             const userScripts = scanScriptsDirectory(scriptsDirectory);

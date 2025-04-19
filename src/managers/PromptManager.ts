@@ -64,7 +64,7 @@ class PromptManager {
     ].filter(Boolean) as string[];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
 
-    // 如果有自定义提示词目录,就不加载默认提示词
+    // If there are custom prompt directories, don't load default prompts
     const promptFiles = customPromptDirectories.length > 0 ? [] : [path.join(__dirname, "assets/prompts.hjson")];
 
     return [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
