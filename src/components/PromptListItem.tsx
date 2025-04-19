@@ -1,3 +1,4 @@
+import React, { useMemo } from "react";
 import {
     List,
     ActionPanel,
@@ -46,6 +47,106 @@ export function PromptListItem({
         ? `${prompt.path.replace(title, '')}${title}`.trim()
         : title;
 
+    // Memoize placeholder icons
+    const placeholderIcons = useMemo(() => getPlaceholderIcons(prompt.content, replacements), [prompt.content, replacements]);
+
+    // Memoize prompt actions
+    const promptActions = useMemo(() => {
+        // Determine the actions to generate based on context
+        if (prompt.identifier === "open-custom-prompts-dir") {
+            return handleCustomPromptsDirectoryActions();
+        } else if (prompt.identifier === "open-scripts-dir") {
+            return (
+                <Action
+                    title="Open"
+                    icon={Icon.Folder}
+                    onAction={async () => {
+                        const preferences = getPreferenceValues();
+                        if (preferences.scriptsDirectory) {
+                            await runAppleScript(`do shell script "open -a Cursor '${preferences.scriptsDirectory}'"`);
+                            await closeMainWindow();
+                        } else {
+                            await showToast({
+                                title: "Error",
+                                message: "Scripts directory not configured",
+                                style: Toast.Style.Failure
+                            });
+                        }
+                    }}
+                />
+            );
+        } else if (prompt.identifier === "open-preferences") {
+            return (
+                <Action
+                    title="Open"
+                    icon={Icon.Gear}
+                    onAction={() => {
+                        openExtensionPreferences();
+                        closeMainWindow();
+                    }}
+                />
+            );
+        } else if (prompt.subprompts) {
+            return (
+                <Action.Push
+                    title="Open"
+                    icon={prompt.icon ?? "🔖"}
+                    target={
+                        <PromptList
+                            searchMode={false}
+                            prompts={prompt.subprompts}
+                            clipboardText={replacements.clipboard as string}
+                            selectionText={replacements.selection as string}
+                            currentApp={replacements.currentApp as string}
+                            browserContent={replacements.browserContent as string}
+                            allowedActions={allowedActions}
+                        />
+                    }
+                />
+            );
+        } else {
+            // Generate actions for regular prompts or those with options
+            return (
+                <>
+                    {prompt.options && Object.keys(prompt.options).length > 0 ? (
+                        <Action.Push
+                            title="Select Options"
+                            icon={Icon.Gear}
+                            target={
+                                <PromptOptionsForm
+                                    prompt={prompt}
+                                    getFormattedContent={getFormattedContent}
+                                />
+                            }
+                        />
+                    ) : (
+                        // generatePromptActions depends on getFormattedContent, which in turn depends on prompt, replacements, promptSpecificRootDir
+                        // It also depends on allowedActions or prompt.actions
+                        // We pass getFormattedContent directly, assuming its dependencies are stable or correctly handled by generatePromptActions internal logic if it uses hooks.
+                        generatePromptActions(
+                            getFormattedContent,
+                            allowedActions || prompt.actions,
+                            // Need to include dependencies that influence defaultActionPreferenceStore if relevant inside generatePromptActions
+                        )
+                    )}
+                </>
+            );
+        }
+    }, [
+        prompt.identifier,
+        prompt.subprompts,
+        prompt.icon,
+        prompt.options,
+        prompt.actions,
+        replacements.clipboard,
+        replacements.selection,
+        replacements.currentApp,
+        replacements.browserContent,
+        allowedActions,
+        getFormattedContent // Assuming getFormattedContent is stable or its dependencies are captured correctly elsewhere
+        // Dependency on defaultActionPreferenceStore state needs careful handling if generatePromptActions uses it.
+    ]);
+
     return (
         <List.Item
             key={index}
@@ -55,7 +156,7 @@ export function PromptListItem({
                 prompt.pinned
                     ? { tag: { value: "PIN", color: Color.SecondaryText } }
                     : {},
-                ...getPlaceholderIcons(prompt.content, replacements).map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
+                ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
                     i === arr.length - 1
                         ? {
                             ...accessory,
@@ -65,7 +166,7 @@ export function PromptListItem({
                         }
                         : accessory
                 ),
-                ...(getPlaceholderIcons(prompt.content, replacements).length === 0
+                ...(placeholderIcons.length === 0
                     ? [{
                         icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
                         tooltip: prompt.content ?? prompt.subprompts
@@ -76,73 +177,7 @@ export function PromptListItem({
             ]}
             actions={
                 <ActionPanel>
-                    {prompt.identifier === "open-custom-prompts-dir" ? (
-                        // Action to open the custom prompts directory
-                        handleCustomPromptsDirectoryActions()
-                    ) : prompt.identifier === "open-scripts-dir" ? (
-                        <Action
-                            title="Open"
-                            icon={Icon.Folder}
-                            onAction={async () => {
-                                const preferences = getPreferenceValues();
-                                if (preferences.scriptsDirectory) {
-                                    await runAppleScript(`do shell script "open -a Cursor '${preferences.scriptsDirectory}'"`);
-                                    await closeMainWindow();
-                                } else {
-                                    await showToast({
-                                        title: "Error",
-                                        message: "Scripts directory not configured",
-                                        style: Toast.Style.Failure
-                                    });
-                                }
-                            }}
-                        />
-                    ) : prompt.identifier === "open-preferences" ? (
-                        <Action
-                            title="Open"
-                            icon={Icon.Gear}
-                            onAction={() => {
-                                openExtensionPreferences();
-                                closeMainWindow();
-                            }}
-                        />
-                    ) : prompt.subprompts ? (
-                        <Action.Push
-                            title="Open"
-                            icon={prompt.icon ?? "🔖"}
-                            target={
-                                <PromptList
-                                    searchMode={false}
-                                    prompts={prompt.subprompts}
-                                    clipboardText={replacements.clipboard as string}
-                                    selectionText={replacements.selection as string}
-                                    currentApp={replacements.currentApp as string}
-                                    browserContent={replacements.browserContent as string}
-                                    allowedActions={allowedActions}
-                                />
-                            }
-                        />
-                    ) : (
-                        <>
-                            {prompt.options && Object.keys(prompt.options).length > 0 ? (
-                                <Action.Push
-                                    title="Select Options"
-                                    icon={Icon.Gear}
-                                    target={
-                                        <PromptOptionsForm
-                                            prompt={prompt}
-                                            getFormattedContent={getFormattedContent}
-                                        />
-                                    }
-                                />
-                            ) : (
-                                generatePromptActions(
-                                    getFormattedContent,
-                                    allowedActions || prompt.actions,
-                                )
-                            )}
-                        </>
-                    )}
+                    {promptActions} {/* Use memoized actions */}
                     <Action
                         title={prompt.pinned ? "Unpin" : "Pin"}
                         icon={Icon.Pin}
@@ -244,6 +279,9 @@ function handleCustomPromptsDirectoryActions() {
 
     return <>{actions}</>;
 }
+
+// Wrap the component with React.memo
+export const MemoizedPromptListItem = React.memo(PromptListItem);
 
 // This import must be at the bottom of the file to avoid circular dependencies
 import { getPreferenceValues } from "@raycast/api";
