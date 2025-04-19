@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     List,
     getPreferenceValues,
@@ -12,7 +12,7 @@ import { PromptProps } from "../managers/PromptManager";
 import promptManager from "../managers/PromptManager";
 import pinsManager from "../managers/PinsManager";
 import { SpecificReplacements, placeholderFormatter } from "../utils/placeholderFormatter";
-import { PromptListItem } from "./PromptListItem";
+import { MemoizedPromptListItem } from "./PromptListItem";
 import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 import { AIService } from "../services/AIService";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
@@ -73,15 +73,18 @@ export function PromptList({
     ].filter((dir): dir is string => typeof dir === 'string' && dir.trim() !== '');
 
     // Filter prompts only in search mode
-    let filteredPrompts = prompts;
-    if (searchMode && searchText.length > 0) {
-        filteredPrompts = promptManager.getFilteredPrompts((prompt) => {
-            return (
-                prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
-                !!match(prompt.title, searchText.trim(), { continuous: true })
-            );
-        });
-    }
+    const filteredPrompts = useMemo(() => {
+        if (searchMode && searchText.length > 0) {
+            return promptManager.getFilteredPrompts((prompt) => {
+                return (
+                    prompt.title.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+                    !!match(prompt.title, searchText.trim(), { continuous: true })
+                );
+            });
+        } else {
+            return prompts; // Return original prompts if not searching
+        }
+    }, [prompts, searchMode, searchText]);
 
     if (searchMode && searchText.endsWith(" ")) {
         clearSearchBar({ forceScrollToTop: true });
@@ -110,9 +113,11 @@ export function PromptList({
     };
 
     // Sort and slice the prompt list
-    const displayPrompts = filteredPrompts
-        .sort((a, b) => Number(b.pinned) - Number(a.pinned))
-        .slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
+    const displayPrompts = useMemo(() => {
+        return filteredPrompts
+            .sort((a, b) => Number(b.pinned) - Number(a.pinned))
+            .slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
+    }, [filteredPrompts, searchMode, searchText]);
 
     // Find the specific root directory for each prompt
     const promptItems = displayPrompts.map((prompt, index) => {
@@ -150,7 +155,7 @@ export function PromptList({
         }
 
         return (
-            <PromptListItem
+            <MemoizedPromptListItem
                 key={`${prompt.identifier || prompt.title}-${index}`}
                 prompt={prompt}
                 index={index}
@@ -164,10 +169,9 @@ export function PromptList({
         );
     }).filter(Boolean); // Filter out null items
 
-    // Get available scripts
-    const getScripts = () => {
-        return getAvailableScripts(preferences.scriptsDirectory);
-    };
+    // Memoize scripts and providers lists for searchBarAccessory
+    const scripts = useMemo(() => getAvailableScripts(preferences.scriptsDirectory), [preferences.scriptsDirectory]);
+    const aiProviders = useMemo(() => aiService.getAllProviders(), [aiService]);
 
     return (
         <List
@@ -206,7 +210,7 @@ export function PromptList({
                     >
                         <List.Dropdown.Item key="default" title="Default" value="" />
                         <List.Dropdown.Section title="Execute Scripts">
-                            {getScripts().map((script) => (
+                            {scripts.map((script) => (
                                 <List.Dropdown.Item
                                     key={script.path}
                                     title={script.name}
@@ -215,7 +219,7 @@ export function PromptList({
                             ))}
                         </List.Dropdown.Section>
                         <List.Dropdown.Section title="AI Providers">
-                            {aiService.getAllProviders().map((provider) => (
+                            {aiProviders.map((provider) => (
                                 <List.Dropdown.Item
                                     key={provider.name}
                                     title={`${provider.name}`}
