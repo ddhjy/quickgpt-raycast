@@ -109,12 +109,12 @@ export function PromptList({
         promptTitles: getIndentedPromptTitles(),
     };
 
-    // 排序并切片提示列表
+    // Sort and slice the prompt list
     const displayPrompts = filteredPrompts
         .sort((a, b) => Number(b.pinned) - Number(a.pinned))
         .slice(0, searchMode && searchText.trim().length > 0 ? 5 : undefined);
 
-    // 为每个提示找到特定的根目录
+    // Find the specific root directory for each prompt
     const promptItems = displayPrompts.map((prompt, index) => {
         // Determine the specific root directory for *this* prompt
         let promptSpecificRootDir: string | undefined = undefined;
