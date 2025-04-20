@@ -7,14 +7,6 @@ import {
     getSelectedFinderItems,
 } from "@raycast/api";
 
-interface InitialContextResult {
-    clipboardText: string;
-    selectionText: string;
-    currentApp: string;
-    browserContent: string;
-    isLoading: boolean;
-}
-
 export function useInitialContext(
     initialClipboardText?: string,
     initialSelectionText?: string,
