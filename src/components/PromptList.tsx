@@ -197,7 +197,7 @@ export function PromptList({
     return (
         <List
             isLoading={false}
-            searchBarPlaceholder={searchMode ? "Search Prompts..." : "Input"}
+            searchBarPlaceholder={searchMode ? "Search" : "Input"}
             onSearchTextChange={handleSearchTextChange}
             searchText={searchText}
             filtering={false}
