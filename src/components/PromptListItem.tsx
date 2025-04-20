@@ -19,6 +19,7 @@ import { generatePromptActions } from "./PromptActions";
 import { buildFormattedPromptContent, getPlaceholderIcons } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { AIProvider } from "../services/types";
+import { placeholderFormatter } from "../utils/placeholderFormatter";
 
 interface PromptListItemProps {
     prompt: PromptProps;
@@ -70,10 +71,17 @@ export function PromptListItem({
     const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
 
     // Format title
-    const title = prompt.title || "";
+    const rawTitle = prompt.title || "";
+    // Apply placeholder formatting to the title
+    const formattedTitleWithPlaceholders = placeholderFormatter(
+        rawTitle,
+        replacements,
+        promptSpecificRootDir
+    );
+    // Combine with search mode path logic
     const formattedTitle = searchMode && prompt.path
-        ? `${prompt.path.replace(title, '')}${title}`.trim()
-        : title;
+        ? `${prompt.path.replace(rawTitle, '')}${formattedTitleWithPlaceholders}`.trim() // Use rawTitle for path replace, formatted for display
+        : formattedTitleWithPlaceholders;
 
     // Memoize placeholder icons
     const placeholderIcons = useMemo(() => getPlaceholderIcons(prompt.content, replacements), [prompt.content, replacements]);
