@@ -7,6 +7,17 @@ import {
     getSelectedFinderItems,
 } from "@raycast/api";
 
+/**
+ * Custom hook to fetch initial context information needed for prompts.
+ * This includes clipboard text, selected text, frontmost application name,
+ * and content from the active browser tab (if applicable).
+ *
+ * @param initialClipboardText Optional pre-fetched clipboard text.
+ * @param initialSelectionText Optional pre-fetched selection text.
+ * @param target Optional target identifier, used as a dependency to refetch context if needed.
+ * @returns An object containing the fetched context data and a loading state indicator:
+ *          { clipboardText, selectionText, currentApp, browserContent, isLoading }
+ */
 export function useInitialContext(
     initialClipboardText?: string,
     initialSelectionText?: string,
@@ -21,6 +32,13 @@ export function useInitialContext(
     useEffect(() => {
         let isMounted = true;
 
+        /**
+         * Fetches the current text content from the clipboard.
+         * Uses initial value if provided, otherwise reads from Clipboard API.
+         * Handles potential errors gracefully by returning an empty string.
+         *
+         * @returns A promise resolving to the clipboard text or an empty string.
+         */
         const fetchClipboardText = async (): Promise<string> => {
             if (initialClipboardText && initialClipboardText.length > 0) {
                 return initialClipboardText;
@@ -34,6 +52,15 @@ export function useInitialContext(
             }
         };
 
+        /**
+         * Fetches the currently selected text or selected Finder items.
+         * Uses initial value if provided.
+         * Prioritizes selected Finder items, formatting them as `{{file:path}}` placeholders.
+         * Falls back to `getSelectedText()`.
+         * Handles potential errors gracefully by returning an empty string.
+         *
+         * @returns A promise resolving to the selected text/Finder items or an empty string.
+         */
         const fetchSelectedText = async (): Promise<string> => {
             if (initialSelectionText && initialSelectionText.length > 0) {
                 return initialSelectionText;
@@ -65,11 +92,23 @@ export function useInitialContext(
             }
         };
 
+        /**
+         * Fetches the name of the frontmost application.
+         *
+         * @returns A promise resolving to the application name.
+         */
         const fetchFrontmostApp = async (): Promise<string> => {
             const app = await getFrontmostApplication();
             return app.name;
         };
 
+        /**
+         * Fetches the content (Markdown format) of the active browser tab using BrowserExtension API.
+         * Handles potential errors (e.g., no browser active, extension not available) gracefully
+         * by returning an empty string.
+         *
+         * @returns A promise resolving to the browser tab content (Markdown) or an empty string.
+         */
         const fetchBrowserContent = async (): Promise<string> => {
             try {
                 const content = await BrowserExtension.getContent({ format: "markdown" });
