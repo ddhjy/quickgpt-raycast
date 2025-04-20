@@ -64,10 +64,20 @@ class PromptManager {
     ].filter(Boolean) as string[];
     const customPromptFiles = [preferences.customPrompts, preferences.customPrompts2, preferences.customPrompts3].filter(Boolean) as string[];
 
-    // If there are custom prompt directories, don't load default prompts
-    const promptFiles = customPromptDirectories.length > 0 ? [] : [path.join(__dirname, "assets/prompts.hjson")];
+    // Path to the new system prompts file
+    const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
 
-    return [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
+    // Always include system prompts. Include default prompts only if no custom directories are specified.
+    const defaultPromptsPath = path.join(__dirname, "assets/prompts.hjson");
+    const promptFiles = customPromptDirectories.length > 0 ? [] : [defaultPromptsPath];
+
+    // Load default/user files/directories first, then append system prompts
+    return [
+      ...promptFiles,
+      ...customPromptFiles,
+      ...customPromptDirectories,
+      systemPromptsPath // Append system prompts path at the end
+    ];
   }
 
   private loadPromptsFromFileSync(filePath: string): PromptProps[] {
@@ -189,23 +199,6 @@ class PromptManager {
       ].filter(Boolean).join('-');
 
       prompt.identifier = md5(baseStr).substring(0, 8);
-    }
-
-    if (prompt.ref) {
-      prompt.options = {};
-      prompt.textInputs = {};
-
-      Object.entries(prompt.ref).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          prompt.options = prompt.options || {};
-          prompt.options[key] = value;
-        } else if (typeof value === 'string') {
-          prompt.textInputs = prompt.textInputs || {};
-          prompt.textInputs[key] = value;
-        }
-      });
-
-      delete prompt.ref;
     }
 
     return prompt;
