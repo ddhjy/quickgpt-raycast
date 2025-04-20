@@ -1,3 +1,7 @@
+import fs from "fs";
+import path from "path";
+import { readDirectoryContentsSync } from "./fileSystemUtils";
+
 export type SpecificReplacements = {
   input?: string;
   clipboard?: string;
@@ -34,9 +38,14 @@ const aliasMap = Object.fromEntries(
  * Formats the content by replacing placeholders with specific values.
  * @param text - The text to format.
  * @param specificReplacements - The specific values for replacement.
+ * @param relativeRootDir - The relative root directory for file placeholders.
  * @returns The formatted text.
  */
-export function placeholderFormatter(text: string, specificReplacements: SpecificReplacements): string {
+export function placeholderFormatter(
+  text: string,
+  specificReplacements: SpecificReplacements,
+  relativeRootDir?: string
+): string {
   const cleanedReplacements = Object.fromEntries(
     Object.entries(specificReplacements).filter(([, value]) => value !== '')
   ) as SpecificReplacements;
@@ -46,10 +55,9 @@ export function placeholderFormatter(text: string, specificReplacements: Specifi
     cleanedReplacements.now = new Date().toLocaleString();
   }
 
-  const placeholderPattern = /{{([^}]+)}}/g;
-
-  return text.replace(placeholderPattern, (match, placeholderContent) => {
-    // Restore original logic
+  // Process standard placeholders first
+  const standardPlaceholderPattern = /{{(?!file:)([^}]+)}}/g;
+  const partiallyFormattedText = text.replace(standardPlaceholderPattern, (match, placeholderContent) => {
     const isPrefixed = placeholderContent.startsWith("p:");
     const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
     const parts = content.split("|");
@@ -66,10 +74,55 @@ export function placeholderFormatter(text: string, specificReplacements: Specifi
         }
       }
     }
-
-    // Return the original placeholder if no replacement is found
     return match;
   });
+
+  // Now process {{file:filepath}} placeholders
+  const filePlaceholderPattern = /{{file:([^}]+)}}/g;
+  const fullyFormattedText = partiallyFormattedText.replace(filePlaceholderPattern, (match, filePath) => {
+    const trimmedPath = filePath.trim();
+    let absoluteTargetPath: string;
+
+    if (path.isAbsolute(trimmedPath)) {
+      absoluteTargetPath = trimmedPath;
+    } else {
+      if (!relativeRootDir) {
+        console.error(`Error: Relative path "${trimmedPath}" provided, but no custom prompt directory is configured as the root.`);
+        return `[Error: Root directory not configured for relative path: ${trimmedPath}]`;
+      }
+      absoluteTargetPath = path.resolve(relativeRootDir, trimmedPath);
+      // Basic security check: ensure the resolved path is still within the root directory
+      if (!absoluteTargetPath.startsWith(relativeRootDir)) {
+        console.error(`Error: Relative path traversal detected. Attempted access outside of root directory ${relativeRootDir}. Path: ${trimmedPath}`);
+        return `[Error: Path traversal detected for: ${trimmedPath}]`;
+      }
+    }
+
+    try {
+      const stats = fs.statSync(absoluteTargetPath);
+      if (stats.isFile()) {
+        return fs.readFileSync(absoluteTargetPath, 'utf-8');
+      } else if (stats.isDirectory()) {
+        return readDirectoryContentsSync(absoluteTargetPath, path.basename(absoluteTargetPath));
+      } else {
+        console.warn(`Warning: Path is neither a file nor a directory: ${absoluteTargetPath}`);
+        return `[Unsupported path type: ${trimmedPath}]`;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`Warning: File or directory not found for placeholder: ${absoluteTargetPath}`);
+        return `[Path not found: ${trimmedPath}]`;
+      } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+        console.error(`Error: Permission denied for path: ${absoluteTargetPath}`, error);
+        return `[Permission denied: ${trimmedPath}]`;
+      } else {
+        console.error(`Error accessing path specified in placeholder: ${absoluteTargetPath}`, error);
+        return `[Error accessing path: ${trimmedPath}]`;
+      }
+    }
+  });
+
+  return fullyFormattedText;
 }
 
 export function resolvePlaceholders(
@@ -97,7 +150,7 @@ export function resolvePlaceholders(
         const value = cleanedReplacements[key];
         if (value) {
           usedPlaceholders.add(key);
-          break; // Use the first available placeholder
+          break;
         }
       }
     }

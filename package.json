@@ -8,7 +8,7 @@
   "categories": [
     "Productivity"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "commands": [
     {
       "name": "prompt-lab",
@@ -76,7 +76,6 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.96.0",
     "@raycast/utils": "^1.19.0",
     "@types/hjson": "^2.4.6",
     "hjson": "^3.2.2",

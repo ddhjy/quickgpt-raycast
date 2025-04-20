@@ -1,10 +1,7 @@
-import fs from "fs";
-import path from "path";
 import { Icon, List } from "@raycast/api";
 import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements, placeholderFormatter, resolvePlaceholders } from "./placeholderFormatter";
 import promptManager from "../managers/PromptManager";
-import { readDirectoryContentsSync } from "./fileSystemUtils";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
 const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
@@ -104,72 +101,23 @@ export function buildFormattedPromptContent(
     replacements: SpecificReplacements,
     relativeRootDir?: string
 ): string {
-    const currentContent = prompt.content; // Work on a copy
+    const currentContent = prompt.content || ""; // Ensure content is a string
 
-    // Step 2: Apply prefix commands
-    const processedContent = currentContent
-        ? applyPrefixCommandsToContent(currentContent, prompt.prefixCMD)
-        : undefined;
+    // Step 1: Apply prefix commands (Changed order based on description)
+    const processedContent = applyPrefixCommandsToContent(currentContent, prompt.prefixCMD);
 
-    // Step 3: Update replacements (e.g., promptTitles)
+    // Step 2: Update dynamic replacements like promptTitles (if necessary)
     const updatedReplacements = {
         ...replacements,
         promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
     };
 
-    // Step 4: Format standard placeholders using placeholderFormatter
-    let formattedContent = placeholderFormatter(processedContent || "", updatedReplacements);
+    // Step 3: Call the unified placeholderFormatter, passing relativeRootDir
+    const formattedContent = placeholderFormatter(processedContent, updatedReplacements, relativeRootDir);
 
-    // Step 5: Handle {{file:filepath}} placeholders (relative to specified root or absolute)
-    const filePlaceholderPattern = /{{file:([^}]+)}}/g;
-    formattedContent = formattedContent.replace(filePlaceholderPattern, (match, filePath) => {
-        const trimmedPath = filePath.trim();
-        let absoluteTargetPath: string;
-
-        if (path.isAbsolute(trimmedPath)) {
-            absoluteTargetPath = trimmedPath;
-        } else {
-            if (!relativeRootDir) {
-                console.error(`Error: Relative path "${trimmedPath}" provided, but no custom prompt directory is configured as the root.`);
-                return `[Error: Root directory not configured for relative path: ${trimmedPath}]`;
-            }
-            absoluteTargetPath = path.resolve(relativeRootDir, trimmedPath);
-            if (!absoluteTargetPath.startsWith(relativeRootDir)) {
-                console.error(`Error: Relative path traversal detected. Attempted access outside of root directory ${relativeRootDir}. Path: ${trimmedPath}`);
-                return `[Error: Path traversal detected for: ${trimmedPath}]`;
-            }
-        }
-
-        try {
-            // Check if path exists and is a file or directory
-            const stats = fs.statSync(absoluteTargetPath);
-
-            if (stats.isFile()) {
-                // Read file content
-                return fs.readFileSync(absoluteTargetPath, 'utf-8');
-            } else if (stats.isDirectory()) {
-                // Read directory contents using the sync helper function
-                // Pass the directory name itself as the initial basePath for clarity
-                return readDirectoryContentsSync(absoluteTargetPath, path.basename(absoluteTargetPath));
-            } else {
-                // Handle other types like symbolic links, sockets, etc. if needed
-                console.warn(`Warning: Path is neither a file nor a directory: ${absoluteTargetPath}`);
-                return `[Unsupported path type: ${trimmedPath}]`;
-            }
-        } catch (error) {
-            // Handle errors like permission denied or file/dir not found
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                console.warn(`Warning: File or directory not found for placeholder: ${absoluteTargetPath}`);
-                return `[Path not found: ${trimmedPath}]`;
-            } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
-                console.error(`Error: Permission denied for path: ${absoluteTargetPath}`, error);
-                return `[Permission denied: ${trimmedPath}]`;
-            } else {
-                console.error(`Error accessing path specified in placeholder: ${absoluteTargetPath}`, error);
-                return `[Error accessing path: ${trimmedPath}]`;
-            }
-        }
-    });
+    // Step 4: Remove the old {{file:filepath}} handling logic block
+    // const filePlaceholderPattern = /{{file:([^}]+)}}/g;
+    // formattedContent = formattedContent.replace(filePlaceholderPattern, (match, filePath) => { ... });
 
     return formattedContent;
 }

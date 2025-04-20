@@ -1,6 +1,8 @@
-import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD, KeyEquivalent } from "@raycast/api";
-import React, { useMemo } from "react";
+import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD, KeyEquivalent, showToast, Toast } from "@raycast/api";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import MarkdownIt from "markdown-it";
+import { AIService } from "../services/AIService"; // Import AIService
+import { ChatOptions } from "../services/types"; // Import ChatOptions if needed
 
 // Initialize Markdown parser
 const md = new MarkdownIt();
@@ -42,34 +44,128 @@ const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
   return summary.length > maxLength ? `${summary.slice(0, maxLength)}...` : summary;
 };
 
+// Update props for ChatResultView
 interface ResultViewProps {
-  response: string;
-  duration: string;
-  isLoading: boolean;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
+  getFormattedDescription: () => string;
+  options?: ChatOptions;
+  providerName?: string;
+  systemPrompt?: string;
+  // Remove props that are now state: response, duration, isLoading, model
 }
 
 export function ChatResultView({
-  response,
-  duration,
-  model,
-  temperature = 0.7,
-  maxTokens = 4096,
-  topP = 0.95,
-  isLoading,
+  getFormattedDescription,
+  options,
+  providerName,
+  systemPrompt,
 }: ResultViewProps) {
-  // Use useMemo to cache code block extraction results, limit max number of blocks
-  const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]); // For example, limit to 10
+  // Internal state for AI response
+  const [response, setResponse] = useState<string>('');
+  const [duration, setDuration] = useState<string>();
+  const [isLoading, setIsLoading] = useState(true); // Start loading initially
+  const [model, setModel] = useState<string>();
+
+  // Refs for streaming and timing (from ChatResponseView)
+  const startTimeRef = useRef<number>(0);
+  const contentRef = useRef<string>('');
+  const updatingRef = useRef<boolean>(false);
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Throttling logic (from ChatResponseView)
+  const scheduleUpdate = useCallback(() => {
+    if (!updatingRef.current) {
+      updatingRef.current = true;
+      updateTimerRef.current = setTimeout(() => {
+        setResponse(contentRef.current);
+        const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
+        setDuration(currentDuration);
+        updatingRef.current = false;
+      }, 500); // Update interval
+    }
+  }, []);
+
+  // Effect to fetch AI response (logic from ChatResponseView)
+  useEffect(() => {
+    let toast: Toast;
+    let isMounted = true;
+
+    async function fetchResponse() {
+      try {
+        const description = getFormattedDescription();
+        startTimeRef.current = Date.now();
+        setIsLoading(true); // Ensure loading state is true
+        setResponse(''); // Reset response
+        contentRef.current = ''; // Reset content ref
+
+        toast = await showToast(Toast.Style.Animated, "Thinking...");
+
+        const aiService = AIService.getInstance();
+        if (providerName) {
+          aiService.setCurrentProvider(providerName);
+        }
+
+        // Fetch response with streaming
+        const result = await aiService.chat(
+          description,
+          {
+            ...options, // Pass options from props
+            systemPrompt: systemPrompt || options?.systemPrompt, // Pass systemPrompt from props
+            onStream: (text: string) => {
+              if (!isMounted) return;
+              contentRef.current += text;
+              scheduleUpdate(); // Schedule throttled state update
+            }
+          }
+        );
+
+        if (!isMounted) return;
+
+        setModel(result.model); // Set model info from result
+
+        const endTime = Date.now();
+        const durationSeconds = ((endTime - startTimeRef.current) / 1000).toFixed(1);
+        setDuration(durationSeconds);
+        setIsLoading(false); // Set loading to false
+
+        // Final update to ensure all content is rendered
+        setResponse(contentRef.current);
+
+        if (toast) {
+          toast.style = Toast.Style.Success;
+          toast.title = `Done (${durationSeconds}s)`;
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("[ChatResultView] Error fetching response:", error);
+        setIsLoading(false); // Stop loading on error
+        await showToast(Toast.Style.Failure, "Error", String(error));
+      }
+    }
+
+    fetchResponse();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (toast) {
+        toast.hide();
+      }
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+      }
+      // Optional: Cancel any ongoing AI request if AIService supports it
+    };
+  }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]); // Dependencies for the effect
+
+  // Use internal state for calculations and rendering
+  const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]);
   const hasCodeBlock = codeBlocks.length > 0;
 
   const longestCodeBlock = useMemo(() => getLongestCodeBlock(codeBlocks), [codeBlocks]);
   const longestBlockSummary = useMemo(() => getCodeBlockSummary(longestCodeBlock), [longestCodeBlock]);
 
   const actions = useMemo(() => {
-    // If loading, return empty array
+    // Use internal isLoading state
     if (isLoading) {
       return [];
     }
@@ -160,18 +256,23 @@ export function ChatResultView({
 
   const metadata = useMemo(() => (
     <Detail.Metadata>
+      {/* Use internal model and duration state */}
       {<Detail.Metadata.Label title="Model" text={model || "-"} />}
-      <Detail.Metadata.Label title="Temperature" text={temperature?.toFixed(2) || "-"} />
-      <Detail.Metadata.Label title="Max Tokens" text={maxTokens?.toString() || "-"} />
-      <Detail.Metadata.Label title="Top P" text={topP?.toFixed(2) || "-"} />
+      {/* Access options if needed, or pass them through props if they are static */}
+      <Detail.Metadata.Label title="Temperature" text={options?.temperature?.toFixed(2) || "-"} />
+      <Detail.Metadata.Label title="Max Tokens" text={options?.maxTokens?.toString() || "-"} />
+      <Detail.Metadata.Label title="Top P" text={options?.topP?.toFixed(2) || "-"} />
       <Detail.Metadata.Separator />
       <Detail.Metadata.Label title="Duration(s)" text={duration ? `${duration}` : "-"} />
+      {/* Use internal response state */}
       <Detail.Metadata.Label title="Response Tokens" text={response ? `${countTokens(response)}` : "-"} />
     </Detail.Metadata>
-  ), [model, temperature, maxTokens, topP, duration, response]);
+    // Use internal state and options in dependencies
+  ), [model, options, duration, response]);
 
   return (
     <Detail
+      // Use internal response and isLoading state
       markdown={response}
       isLoading={isLoading}
       actions={<ActionPanel>{actions}</ActionPanel>}

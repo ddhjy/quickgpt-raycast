@@ -1,0 +1,27 @@
+{
+  // System-level prompts like Settings
+  title: "Settings"
+  icon: "⚙️"
+  identifier: "settings" // Unique identifier for the settings root
+  pinned: true // Keep settings easily accessible
+  subprompts: [
+    {
+      title: "Open Extension Preferences"
+      icon: "🎛️"
+      identifier: "open-preferences"
+      actions: ["open-preferences"] // Action to trigger opening preferences
+    }
+    {
+      title: "Open Custom Prompts Directory"
+      icon: "📁"
+      identifier: "open-custom-prompts-dir"
+      actions: ["open-custom-prompts-dir"] // Action to open the custom prompts directory
+    }
+    {
+      title: "Open Scripts Directory"
+      icon: "📁"
+      identifier: "open-scripts-dir"
+      actions: ["open-scripts-dir"] // Action to open the scripts directory
+    }
+  ]
+} 
