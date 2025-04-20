@@ -8,6 +8,13 @@ import { ChatOptions } from "../services/types"; // Import ChatOptions if needed
 const md = new MarkdownIt();
 
 // Calculate tokens using approximate values
+/**
+ * Approximates the number of tokens in a given text string.
+ * Considers Chinese characters as 2 tokens and others as 0.25 tokens.
+ *
+ * @param text The input string.
+ * @returns The estimated token count.
+ */
 const countTokens = (text: string): number => {
   // Chinese characters count as 2 tokens, other characters as 0.25 tokens
   const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
@@ -16,6 +23,13 @@ const countTokens = (text: string): number => {
 };
 
 // Helper function to extract code blocks, limiting max number of blocks
+/**
+ * Extracts fenced code blocks from a Markdown string.
+ *
+ * @param text The Markdown text to parse.
+ * @param maxBlocks The maximum number of code blocks to extract. Defaults to 10.
+ * @returns An array of strings, each containing the content of a code block.
+ */
 const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
   const tokens = md.parse(text, {});
   const codeBlocks: string[] = [];
@@ -33,11 +47,24 @@ const extractCodeBlocks = (text: string, maxBlocks: number = 10): string[] => {
 };
 
 // Get the longest code block
+/**
+ * Finds the longest code block from an array of code block strings.
+ *
+ * @param blocks An array of code block strings.
+ * @returns The string content of the longest code block. Returns an empty string if the input array is empty.
+ */
 const getLongestCodeBlock = (blocks: string[]): string => {
   return blocks.reduce((max, current) => (current.length > max.length ? current : max), "");
 };
 
 // Get code block summary
+/**
+ * Creates a short summary (typically the first non-empty line) of a code block.
+ *
+ * @param block The code block string.
+ * @param maxLength The maximum length of the summary. Defaults to 30.
+ * @returns A truncated summary string, ending with '...' if truncated.
+ */
 const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
   const firstLine = block.split('\n').find(line => line.trim().length > 0) || '';
   const summary = firstLine.trim();
@@ -53,6 +80,17 @@ interface ResultViewProps {
   // Remove props that are now state: response, duration, isLoading, model
 }
 
+/**
+ * Component to display the result of an AI chat interaction.
+ * Handles fetching the response, displaying streaming updates, calculating tokens/duration,
+ * and providing relevant actions (copy, paste, copy/paste code blocks).
+ *
+ * @param props The component props.
+ * @param props.getFormattedDescription Function to retrieve the final prompt content sent to the AI.
+ * @param props.options Optional configuration for the AI chat request (e.g., model, temperature).
+ * @param props.providerName Optional name of the AI provider to use (overrides the default).
+ * @param props.systemPrompt Optional system prompt to guide the AI's behavior.
+ */
 export function ChatResultView({
   getFormattedDescription,
   options,
@@ -72,6 +110,11 @@ export function ChatResultView({
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Throttling logic (from ChatResponseView)
+  /**
+   * Schedules a state update for the response content using throttling.
+   * This prevents excessive re-renders during rapid streaming updates.
+   * Updates are buffered and applied at a maximum frequency (e.g., every 500ms).
+   */
   const scheduleUpdate = useCallback(() => {
     if (!updatingRef.current) {
       updatingRef.current = true;

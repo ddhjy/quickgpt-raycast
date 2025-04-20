@@ -14,6 +14,15 @@ interface OptionsFormProps {
     aiProviders: AIProvider[];
 }
 
+/**
+ * Component that renders a form for prompts requiring user-configurable options (dropdowns, text inputs).
+ *
+ * @param props The component props.
+ * @param props.prompt The prompt data, including defined options and text inputs.
+ * @param props.getFormattedContent Function to retrieve the base formatted content before applying form options.
+ * @param props.scripts List of available scripts for the action panel.
+ * @param props.aiProviders List of available AI providers for the action panel.
+ */
 export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProviders }: OptionsFormProps) {
     const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
     const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
@@ -26,6 +35,12 @@ export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProv
         };
     }, [prompt.title]);
 
+    /**
+     * Generates the final prompt content based on the base content and the user's selections
+     * in the form (dropdowns and text fields).
+     *
+     * @returns The final formatted content string with form options applied.
+     */
     const formattedContent = () => {
         const content = placeholderFormatter(getFormattedContent() || "", {
             ...selectedOptions,
@@ -35,10 +50,24 @@ export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProv
         return content;
     };
 
+    /**
+     * Handles changes to dropdown form elements.
+     * Updates the state with the selected dropdown value.
+     *
+     * @param key The key (identifier) of the dropdown being changed.
+     * @param newValue The newly selected value.
+     */
     const handleDropdownChange = (key: string, newValue: string) => {
         setSelectedOptions({ ...selectedOptions, [key]: newValue });
     };
 
+    /**
+     * Handles changes to text field form elements.
+     * Updates the state with the entered text value.
+     *
+     * @param key The key (identifier) of the text field being changed.
+     * @param newValue The newly entered text.
+     */
     const handleTextFieldChange = (key: string, newValue: string) => {
         setSelectedTextInputs({ ...selectedTextInputs, [key]: newValue });
     };

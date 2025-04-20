@@ -2,6 +2,11 @@ import fs from "fs";
 import path from "path";
 
 /**
+ * This file provides utility functions for discovering and managing AppleScript files
+ * that can be executed as actions within the QuickGPT extension.
+ */
+
+/**
  * Interface for script information.
  */
 export interface ScriptInfo {
@@ -10,11 +15,14 @@ export interface ScriptInfo {
 }
 
 /**
- * Recursively scans a directory to get all script files.
- * @param dir The directory to scan.
- * @param relativePath Relative path (for internal use).
- * @param result Result array (for internal use).
- * @returns An array of ScriptInfo objects.
+ * Recursively scans a specified directory to find all AppleScript files
+ * (files ending with `.applescript` or `.scpt`).
+ * Ignores files and directories starting with `#`.
+ *
+ * @param dir The absolute path of the directory to scan.
+ * @param relativePath The current relative path from the initial directory (used internally for recursion).
+ * @param result An array to accumulate the found ScriptInfo objects (used internally for recursion).
+ * @returns An array of ScriptInfo objects, each containing the full path and the display name (filename without extension) of a found script.
  */
 export function scanScriptsDirectory(dir: string, relativePath = '', result: ScriptInfo[] = []): ScriptInfo[] {
     try {
@@ -49,9 +57,11 @@ export function scanScriptsDirectory(dir: string, relativePath = '', result: Scr
 }
 
 /**
- * Gets all available scripts (user-defined scripts).
- * @param scriptsDirectory User-defined scripts directory.
- * @returns Array of all available scripts.
+ * Retrieves a list of all available AppleScript files from the user-configured scripts directory.
+ * Handles cases where the directory is not configured or is inaccessible.
+ *
+ * @param scriptsDirectory The path to the user's custom scripts directory, as configured in preferences.
+ * @returns An array of ScriptInfo objects for all discovered scripts. Returns an empty array if the directory is not set or an error occurs.
  */
 export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
     const scripts: ScriptInfo[] = [];

@@ -3,6 +3,13 @@ import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements, placeholderFormatter, resolvePlaceholders } from "./placeholderFormatter";
 import promptManager from "../managers/PromptManager";
 
+/**
+ * This file provides utility functions specifically related to formatting and processing
+ * prompt content before it's displayed or sent to an AI.
+ * Includes handling of prefix commands, resolving quick prompts from context,
+ * building the final formatted content with placeholders, and generating UI elements like icons and indented titles.
+ */
+
 const IDENTIFIER_PREFIX = "quickgpt-";
 const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
     c: "简体中文作答",
@@ -23,10 +30,14 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * Applies prefix commands to content.
- * @param content The original content.
- * @param prefixCommands The prefix commands.
- * @returns The processed content.
+ * Applies predefined prefix commands (like language instructions or behavioral directives)
+ * to the beginning of the prompt content based on the `prefixCMD` property of a prompt.
+ * Supports adding commands and negating default commands (e.g., `!c` to remove default Chinese response).
+ * If `prefixCMD` includes "none", no prefixes are added.
+ *
+ * @param content The original prompt content string.
+ * @param prefixCommands A comma-separated string of prefix command keys (e.g., "c,!ne").
+ * @returns The content with the resolved prefix command lines prepended.
  */
 export function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
     // If prefixCommands contains "none", return the original content
@@ -55,11 +66,17 @@ export function applyPrefixCommandsToContent(content: string, prefixCommands: st
 }
 
 /**
- * Gets the quick prompt.
- * @param selectionText The selected text.
- * @param identifier The target identifier.
- * @param filePath Optional file path associated with the call.
- * @returns A tuple containing the quick prompt (or undefined) and the cleaned selected text.
+ * Attempts to find a "quick prompt" based on the current selection text or a target identifier.
+ * A quick prompt is triggered if the selection text contains a prompt identifier
+ * (e.g., "Translate this: quickgpt-translate123") or if a specific identifier is provided.
+ * It also cleans the selection text by removing the identifier if found.
+ *
+ * @param selectionText The currently selected text, potentially containing a prompt identifier.
+ * @param identifier An optional specific prompt identifier to look for (e.g., from deeplink arguments).
+ * @param filePath Optional file path associated with the prompt call (used if identifier is provided).
+ * @returns A tuple: [foundPrompt | undefined, cleanedSelectionText].
+ *          `foundPrompt` is the PromptProps object if a quick prompt is identified.
+ *          `cleanedSelectionText` is the selection text with the identifier removed (if applicable).
  */
 export function getQuickPrompt(selectionText: string, identifier?: string, filePath?: string): [PromptProps | undefined, string] {
     let foundPrompt;
@@ -90,11 +107,15 @@ export function getQuickPrompt(selectionText: string, identifier?: string, fileP
 }
 
 /**
- * Builds the formatted prompt content with all placeholders replaced.
- * @param prompt The prompt object.
- * @param replacements The placeholder replacements.
- * @param relativeRootDir The root directory for resolving relative file paths.
- * @returns The formatted content string.
+ * Builds the final, fully formatted prompt content string.
+ * 1. Applies prefix commands (e.g., language directives) to the base content.
+ * 2. Ensures dynamic placeholders like `promptTitles` are up-to-date.
+ * 3. Uses `placeholderFormatter` to substitute all standard and file/directory placeholders.
+ *
+ * @param prompt The PromptProps object containing the base content and configuration.
+ * @param replacements An object containing the values for standard placeholders (clipboard, selection, etc.).
+ * @param relativeRootDir The root directory needed by `placeholderFormatter` to resolve relative `{{file:...}}` paths.
+ * @returns The final formatted content string ready to be used (e.g., sent to AI).
  */
 export function buildFormattedPromptContent(
     prompt: PromptProps,
@@ -123,10 +144,13 @@ export function buildFormattedPromptContent(
 }
 
 /**
- * Gets placeholder icons based on content and replacements.
- * @param content The prompt content string.
- * @param replacements The placeholder replacements.
- * @returns An array of List.Item.Accessory representing the used placeholders.
+ * Determines which placeholder icons (e.g., Clipboard, Text, Globe) should be displayed
+ * as accessories for a prompt list item based on the placeholders used in its content
+ * and the available replacement values.
+ *
+ * @param content The raw prompt content string (may contain placeholders).
+ * @param replacements An object containing the available replacement values for placeholders.
+ * @returns An array of `List.Item.Accessory` objects (containing icons) for the used placeholders.
  */
 export function getPlaceholderIcons(
     content: string | undefined,
@@ -148,8 +172,11 @@ export function getPlaceholderIcons(
 }
 
 /**
- * Gets prompt titles with hierarchical indentation and a content summary.
- * @returns A string containing the indented prompt titles and summaries.
+ * Generates a string containing a hierarchically indented list of all prompt titles.
+ * Each title is followed by a short summary of its content (first 20 chars, excluding prefix commands).
+ * Used for the `{{promptTitles}}` placeholder.
+ *
+ * @returns A newline-separated string of indented prompt titles and summaries.
  */
 export function getIndentedPromptTitles(): string {
     const rootPrompts = promptManager.getRootPrompts();

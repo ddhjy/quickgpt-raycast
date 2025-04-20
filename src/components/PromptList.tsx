@@ -32,6 +32,21 @@ interface PromptListProps {
     initialAiProviders?: AIProvider[];
 }
 
+/**
+ * Component for displaying a list of prompts.
+ * Handles search, pinning, dynamic content replacement, and navigation.
+ *
+ * @param props The component props.
+ * @param props.prompts The list of prompts to display.
+ * @param props.searchMode Whether the list is in search mode (true) or input mode (false).
+ * @param props.clipboardText Current clipboard content.
+ * @param props.selectionText Current selected text content.
+ * @param props.currentApp Name of the frontmost application.
+ * @param props.browserContent Content fetched from the active browser tab.
+ * @param props.allowedActions Optional list of allowed action names for the prompts.
+ * @param props.initialScripts Optional initial list of scripts (avoids re-fetching).
+ * @param props.initialAiProviders Optional initial list of AI providers (avoids re-fetching).
+ */
 export function PromptList({
     prompts,
     searchMode = false,
@@ -71,6 +86,12 @@ export function PromptList({
     const forceUpdate = () => setForceUpdateCounter((prev: number) => prev + 1);
 
     // Callback to handle Pin/Unpin operations
+    /**
+     * Handles the logic when the user clicks the Pin/Unpin button for a prompt.
+     * Updates the pin status in the PinsManager and forces a component re-render.
+     *
+     * @param prompt The prompt object being pinned or unpinned.
+     */
     const handlePinToggle = (prompt: PromptProps) => {
         prompt.pinned = !prompt.pinned;
         prompt.pinned

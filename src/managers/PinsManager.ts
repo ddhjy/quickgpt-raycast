@@ -1,9 +1,19 @@
 import { Cache } from "@raycast/api";
 
+/**
+ * Manages the persistence of pinned prompt identifiers using Raycast's Cache.
+ * Allows pinning and unpinning prompts by their unique identifier.
+ */
 class PinsManager {
   private cache: Cache;
   private key: string;
 
+  /**
+   * Initializes a new instance of the PinsManager.
+   *
+   * @param cache The Raycast Cache instance to use for storage.
+   * @param key The cache key under which to store the pinned identifiers. Defaults to "pinnedIdentifiers".
+   */
   constructor(cache: Cache, key = "pinnedIdentifiers") {
     this.cache = cache;
     this.key = key;
