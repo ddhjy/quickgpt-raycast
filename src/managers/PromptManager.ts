@@ -44,16 +44,34 @@ function loadContentFromFileSync(filePath: string, baseDir: string): string {
   }
 }
 
+/**
+ * Manages loading, parsing, processing, and accessing prompt templates.
+ * Reads prompts from HJSON files located in configured directories or default paths.
+ * Handles nested prompts (subprompts) and content loading from external files.
+ * Generates unique identifiers for prompts if not provided.
+ */
 class PromptManager {
   private promptFilePaths: string[];
   private prompts: PromptProps[] = [];
 
+  /**
+   * Initializes the PromptManager by determining prompt file paths based on preferences
+   * and loading all prompts from those paths.
+   */
   constructor() {
     const preferences = getPreferenceValues<Preferences>();
     this.promptFilePaths = this.getPromptFilePaths(preferences);
     this.loadAllPrompts();
   }
 
+  /**
+   * Determines the list of file and directory paths to load prompts from.
+   * Combines default paths, user-configured files, and user-configured directories
+   * specified in the extension preferences. Always includes the system prompts file.
+   *
+   * @param preferences The extension preferences object.
+   * @returns An array of absolute file and directory paths.
+   */
   private getPromptFilePaths(preferences: Preferences): string[] {
     const customPromptDirectories = [
       preferences.customPromptsDirectory,
@@ -80,6 +98,14 @@ class PromptManager {
     ];
   }
 
+  /**
+   * Loads and parses prompts from a single HJSON file synchronously.
+   * Handles potential file reading or parsing errors.
+   * Processes each loaded prompt to load content from external files if specified.
+   *
+   * @param filePath The absolute path to the HJSON prompt file.
+   * @returns An array of PromptProps loaded from the file, or an empty array if an error occurs.
+   */
   private loadPromptsFromFileSync(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
@@ -97,6 +123,11 @@ class PromptManager {
     }
   }
 
+  /**
+   * Loads prompts from all configured file paths.
+   * Distinguishes between files and directories, traversing directories recursively.
+   * Processes the combined list of prompts after loading.
+   */
   private loadAllPrompts(): void {
     this.prompts = this.promptFilePaths.flatMap(promptPath => {
       try {
@@ -114,6 +145,13 @@ class PromptManager {
     this.prompts = this.processPrompts(this.prompts);
   }
 
+  /**
+   * Recursively traverses a directory to find and load prompts from HJSON files.
+   * Ignores files starting with '#'.
+   *
+   * @param directoryPath The absolute path to the directory to traverse.
+   * @returns An array of PromptProps found within the directory and its subdirectories.
+   */
   private traverseDirectorySync(directoryPath: string): PromptProps[] {
     try {
       return fs.readdirSync(directoryPath)
@@ -134,11 +172,26 @@ class PromptManager {
     }
   }
 
+  /**
+   * Checks if a given file path corresponds to a prompt file (HJSON).
+   *
+   * @param filePath The path to check.
+   * @returns True if the file has a .hjson extension, false otherwise.
+   */
   private isPromptFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
     return fileName.endsWith('.hjson');
   }
 
+  /**
+   * Recursively processes a prompt and its subprompts to load content specified
+   * via file paths in the `content` property (if applicable, though current structure might not use this).
+   * This method seems primarily focused on processing subprompts recursively.
+   *
+   * @param prompt The prompt object to process.
+   * @param baseDir The base directory for resolving relative file paths (usually the directory of the HJSON file).
+   * @returns The processed prompt object.
+   */
   private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
     if (Array.isArray(prompt.subprompts)) {
       prompt.subprompts = prompt.subprompts.map(subprompt => this.loadPromptContentFromFileSync(subprompt, baseDir));
@@ -146,6 +199,15 @@ class PromptManager {
     return prompt;
   }
 
+  /**
+   * Processes a list of prompts recursively.
+   * Assigns generated identifiers, calculates hierarchical paths, and inherits properties
+   * like actions, prefixCMD, icon, and filePath from parent prompts.
+   *
+   * @param prompts The array of prompts to process.
+   * @param parentPrompt Optional parent prompt for context (inheritance, path calculation).
+   * @returns The array of processed prompts.
+   */
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map(prompt => {
       prompt = this.processPrompt(prompt);
@@ -180,6 +242,14 @@ class PromptManager {
     });
   }
 
+  /**
+   * Processes a single prompt to ensure it has a unique identifier.
+   * If no identifier is provided, generates one based on a hash of its title,
+   * emojis, and placeholder names.
+   *
+   * @param prompt The prompt object to process.
+   * @returns The processed prompt object with an identifier.
+   */
   private processPrompt(prompt: PromptProps): PromptProps {
     if (!prompt.identifier) {
       const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
@@ -204,14 +274,32 @@ class PromptManager {
     return prompt;
   }
 
+  /**
+   * Returns the array of all loaded and processed root-level prompts.
+   *
+   * @returns An array of PromptProps representing the root prompts.
+   */
   public getRootPrompts(): PromptProps[] {
     return this.prompts;
   }
 
+  /**
+   * Returns a flattened list of all prompts (including subprompts) that satisfy the filter function.
+   *
+   * @param filterFn A function that takes a PromptProps object and returns true if it should be included.
+   * @returns A flattened array of PromptProps matching the filter.
+   */
   public getFilteredPrompts(filterFn: (prompt: PromptProps) => boolean): PromptProps[] {
     return this.prompts.flatMap(prompt => this.collectFilteredPrompts(prompt, filterFn));
   }
 
+  /**
+   * Recursively collects prompts (and subprompts) that satisfy the filter function.
+   *
+   * @param prompt The current prompt object to check.
+   * @param filterFn The filter function.
+   * @returns An array of PromptProps matching the filter within this branch of the hierarchy.
+   */
   private collectFilteredPrompts(prompt: PromptProps, filterFn: (prompt: PromptProps) => boolean): PromptProps[] {
     const result: PromptProps[] = [];
     if (filterFn(prompt)) {
@@ -223,6 +311,12 @@ class PromptManager {
     return result;
   }
 
+  /**
+   * Finds the first prompt (including subprompts) that satisfies the filter function using depth-first search.
+   *
+   * @param filterFn A function that takes a PromptProps object and returns true if it matches.
+   * @returns The first matching PromptProps object, or undefined if no match is found.
+   */
   public findPrompt(filterFn: (prompt: PromptProps) => boolean): PromptProps | undefined {
     const stack: PromptProps[] = [...this.prompts];
     while (stack.length > 0) {
@@ -238,6 +332,10 @@ class PromptManager {
     return undefined;
   }
 
+  /**
+   * Reloads all prompts from the configured file paths.
+   * This clears the current prompts and re-runs the loading and processing steps.
+   */
   public reloadPrompts(): void {
     this.loadAllPrompts();
   }

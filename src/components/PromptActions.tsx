@@ -33,6 +33,18 @@ interface ActionItem {
   action: ActionWithPossibleProps; // Use the more specific type
 }
 
+/**
+ * Generates a sorted list of Raycast Action elements based on the prompt definition,
+ * global preferences, available scripts, and AI providers.
+ *
+ * @param getFormattedDescription A function that returns the formatted prompt content.
+ * @param actions An optional array of action names specified in the prompt definition.
+ * @param scripts An array of available script information.
+ * @param aiProviders An array of available AI providers.
+ * @param options Optional chat options for AI provider actions.
+ * @param systemPrompt Optional system prompt for AI provider actions.
+ * @returns An array of React elements representing the sorted Raycast Actions.
+ */
 export function generatePromptActions(
   getFormattedDescription: () => string,
   actions: string[] | undefined,
@@ -50,6 +62,15 @@ export function generatePromptActions(
   // Use Set to ensure uniqueness and maintain order (prompt actions first, then global)
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
+  /**
+   * Creates a configured Action.OpenInBrowser component.
+   * Copies the formatted description to the clipboard when the URL is opened.
+   *
+   * @param title The title for the action.
+   * @param url The URL to open.
+   * @param getFormattedDescription A function that returns the content to be copied.
+   * @returns A React element for the Action.OpenInBrowser.
+   */
   const createRaycastOpenInBrowser = (
     title: string | undefined,
     url: string,

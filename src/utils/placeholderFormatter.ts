@@ -2,6 +2,12 @@ import fs from "fs";
 import path from "path";
 import { readDirectoryContentsSync } from "./fileSystemUtils";
 
+/**
+ * This file provides functions for handling placeholder substitution within prompt templates.
+ * It supports standard placeholders (like `{{clipboard}}`, `{{selection}}`) with optional aliases (`{{c}}`, `{{s}}`),
+ * and a special `{{file:path/to/file_or_dir}}` placeholder to include file or directory contents.
+ */
+
 export type SpecificReplacements = {
   input?: string;
   clipboard?: string;
@@ -35,11 +41,19 @@ const aliasMap = Object.fromEntries(
 ) as Record<string, keyof SpecificReplacements>;
 
 /**
- * Formats the content by replacing placeholders with specific values.
- * @param text - The text to format.
- * @param specificReplacements - The specific values for replacement.
- * @param relativeRootDir - The relative root directory for file placeholders.
- * @returns The formatted text.
+ * Replaces placeholders within a given text string with their corresponding values.
+ *
+ * Supported placeholders:
+ * - Standard: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
+ *   (and their aliases: `i`, `s`, `c`, `n`, `pt`)
+ * - Optional prefix `p:` (e.g., `{{p:clipboard}}`) to insert the placeholder literal (e.g., `<剪贴板文本>`) only if the value is non-empty.
+ * - File/Directory: `{{file:path/to/your/file_or_directory}}`. Reads the content of the specified file or directory (recursively).
+ *   Supports absolute paths and relative paths (resolved against `relativeRootDir`).
+ *
+ * @param text The input text containing placeholders.
+ * @param specificReplacements An object mapping placeholder keys (or aliases) to their replacement values.
+ * @param relativeRootDir The root directory to resolve relative paths against for `{{file:...}}` placeholders. Required if using relative paths.
+ * @returns The text with all recognized placeholders substituted.
  */
 export function placeholderFormatter(
   text: string,
@@ -125,6 +139,15 @@ export function placeholderFormatter(
   return fullyFormattedText;
 }
 
+/**
+ * Identifies which specific placeholders (like clipboard, selection) are actually used
+ * and have a corresponding non-empty value provided in a given text template.
+ * This is useful for determining which context information is relevant for a prompt.
+ *
+ * @param text The text template containing placeholders.
+ * @param specificReplacements An object containing the potential replacement values.
+ * @returns A Set containing the keys (e.g., 'clipboard', 'selection') of the used and available placeholders.
+ */
 export function resolvePlaceholders(
   text: string,
   specificReplacements: SpecificReplacements

@@ -2,6 +2,12 @@ import path from "path";
 import fsPromises from "fs/promises";
 import fs from "fs";
 
+/**
+ * This file provides utility functions for interacting with the file system,
+ * including checking for binary/media files, ignored items (like node_modules),
+ * and reading directory contents recursively (both sync and async).
+ */
+
 export const BINARY_MEDIA_EXTENSIONS = new Set([
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
     '.mp3', '.wav', '.flac', '.mp4', '.avi', '.mkv',
@@ -22,9 +28,11 @@ export const IGNORED_PATTERNS = [
 ];
 
 /**
- * Checks if a file is binary or media.
- * @param fileName The file name.
- * @returns Whether it is a binary or media file.
+ * Checks if a file extension indicates a binary or media file type.
+ * Compares the lowercased file extension against a predefined set.
+ *
+ * @param fileName The full name or path of the file.
+ * @returns True if the extension is in the predefined set, false otherwise.
  */
 export const isBinaryOrMediaFile = (fileName: string): boolean => {
     const ext = path.extname(fileName).toLowerCase();
@@ -32,19 +40,25 @@ export const isBinaryOrMediaFile = (fileName: string): boolean => {
 };
 
 /**
- * Checks if an item should be ignored.
- * @param itemName The item name.
- * @returns Whether it should be ignored.
+ * Checks if a file or directory name matches common ignore patterns.
+ * Used to skip items like `node_modules`, `.git`, etc.
+ *
+ * @param itemName The name of the file or directory.
+ * @returns True if the name matches any of the ignore patterns, false otherwise.
  */
 export const isIgnoredItem = (itemName: string): boolean => {
     return IGNORED_PATTERNS.some(pattern => pattern.test(itemName));
 };
 
 /**
- * Recursively reads directory contents.
- * @param dirPath The directory path.
- * @param basePath Base path for constructing relative paths.
- * @returns String representation of the directory contents.
+ * Asynchronously and recursively reads the contents of a directory.
+ * Constructs a string representation including file paths and their content.
+ * Skips ignored items and binary/media files (indicating they were ignored).
+ * Handles read errors for individual files.
+ *
+ * @param dirPath The absolute path to the directory to read.
+ * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
+ * @returns A promise resolving to a string containing the formatted directory contents.
  */
 export const readDirectoryContents = async (dirPath: string, basePath: string = ''): Promise<string> => {
     let content = "";
@@ -74,9 +88,13 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
 
 /**
  * Synchronously and recursively reads the contents of a directory.
- * @param dirPath The path to the directory.
- * @param basePath The base path for constructing relative paths (internal use).
- * @returns The string representation of the directory contents.
+ * Constructs a string representation including file paths and their content.
+ * Skips ignored items and indicates when binary/media files are encountered.
+ * Logs warnings for read errors but continues processing.
+ *
+ * @param dirPath The absolute path to the directory to read.
+ * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
+ * @returns A string containing the formatted directory contents.
  */
 export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''): string => {
     let content = "";

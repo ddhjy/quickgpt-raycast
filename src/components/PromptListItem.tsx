@@ -33,6 +33,22 @@ interface PromptListItemProps {
     aiProviders: AIProvider[];
 }
 
+/**
+ * Renders a single item in the prompt list.
+ * Generates the appropriate UI and ActionPanel based on the prompt type (regular, folder, options, special).
+ *
+ * @param props The component props.
+ * @param props.prompt The prompt data for this list item.
+ * @param props.index The index of the item in the list.
+ * @param props.replacements Placeholders and their resolved values.
+ * @param props.searchMode Indicates if the parent list is in search mode.
+ * @param props.promptSpecificRootDir The specific root directory containing this prompt, if applicable.
+ * @param props.allowedActions Optional list of allowed action names for this prompt.
+ * @param props.onPinToggle Callback function to handle pinning/unpinning.
+ * @param props.activeSearchText The current text in the search bar (if not in search mode).
+ * @param props.scripts List of available scripts.
+ * @param props.aiProviders List of available AI providers.
+ */
 export function PromptListItem({
     prompt,
     index,
@@ -45,6 +61,12 @@ export function PromptListItem({
     aiProviders
 }: PromptListItemProps) {
     // Lazy generation of formatted content, passing the determined specific root directory
+    /**
+     * Lazily builds and returns the formatted content of the prompt,
+     * applying replacements and prefix commands.
+     *
+     * @returns The formatted prompt content as a string.
+     */
     const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
 
     // Format title
@@ -237,6 +259,13 @@ export function PromptListItem({
 }
 
 // Helper function to handle custom prompts directory actions
+/**
+ * Generates appropriate Action(s) for opening configured custom prompt directories.
+ * If multiple directories are configured, it provides an Action for each.
+ * If only one is configured, it provides a single direct Action.
+ *
+ * @returns A single React Action element or an array of Action elements.
+ */
 function handleCustomPromptsDirectoryActions() {
     const preferences = getPreferenceValues<{
         customPromptsDirectory?: string;
@@ -289,7 +318,10 @@ function handleCustomPromptsDirectoryActions() {
     return <>{actions}</>;
 }
 
-// Wrap the component with React.memo
+/**
+ * A memoized version of the PromptListItem component for performance optimization.
+ * Prevents unnecessary re-renders when props remain the same.
+ */
 export const MemoizedPromptListItem = React.memo(PromptListItem);
 
 // This import must be at the bottom of the file to avoid circular dependencies
