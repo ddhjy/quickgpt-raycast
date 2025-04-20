@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React from "react";
 import {
   getPreferenceValues,
   Action,
@@ -12,7 +12,6 @@ import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
 import { ChatResultView } from "./ResultView";
-import { AIService } from "../services/AIService";
 import { ChatOptions, AIProvider } from "../services/types";
 import { ScriptInfo } from "../utils/scriptUtils";
 
@@ -34,129 +33,13 @@ interface ActionItem {
   action: ActionWithPossibleProps; // Use the more specific type
 }
 
-interface ChatViewProps {
-  getFormattedDescription: () => string;
-  options?: ChatOptions;
-  providerName?: string;
-  systemPrompt?: string;
-}
-
-function ChatResponseView({ getFormattedDescription, options, providerName, systemPrompt }: ChatViewProps) {
-  const [response, setResponse] = useState<string>('');
-  const [duration, setDuration] = useState<string>();
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [model, setModel] = useState<string>();
-  const startTimeRef = useRef<number>(0);
-  const contentRef = useRef<string>('');
-
-  // For throttling updates
-  const updatingRef = useRef<boolean>(false);
-  const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const scheduleUpdate = useCallback(() => {
-    if (!updatingRef.current) {
-      // Mark as updating, will be cleared later
-      updatingRef.current = true;
-      updateTimerRef.current = setTimeout(() => {
-        // Update state periodically
-        setResponse(contentRef.current);
-        const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
-        setDuration(currentDuration);
-        updatingRef.current = false;
-      }, 500); // Update UI every 500ms, can be adjusted as needed
-    }
-  }, []);
-
-  useEffect(() => {
-    let toast: Toast;
-    let isMounted = true;
-
-    async function fetchResponse() {
-      try {
-        const description = getFormattedDescription();
-        startTimeRef.current = Date.now();
-        setIsStreaming(true);
-        setResponse('');
-        contentRef.current = '';
-
-        toast = await showToast(Toast.Style.Animated, "Thinking...");
-
-        const aiService = AIService.getInstance();
-        if (providerName) {
-          aiService.setCurrentProvider(providerName);
-        }
-
-        // Use streaming callback, but don't directly setState in the callback
-        const result = await aiService.chat(
-          description,
-          {
-            ...options,
-            systemPrompt: systemPrompt || options?.systemPrompt,
-            onStream: (text: string) => {
-              if (!isMounted) return;
-              // Only append new data to contentRef
-              contentRef.current += text;
-              // Use batch updates to reduce frequent UI updates
-              scheduleUpdate();
-            }
-          }
-        );
-
-        if (!isMounted) {
-          return;
-        }
-
-        // Set model information
-        setModel(result.model);
-
-        const endTime = Date.now();
-        const durationSeconds = ((endTime - startTimeRef.current) / 1000).toFixed(1);
-        setDuration(durationSeconds);
-        setIsStreaming(false);
-
-        // Ensure a final update after the stream ends (some streams may not be fully updated during timer intervals)
-        setResponse(contentRef.current);
-
-        if (toast) {
-          toast.style = Toast.Style.Success;
-          toast.title = `Done (${durationSeconds}s)`;
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        console.error("[ChatResponseView] Error during fetchResponse:", error);
-        setIsStreaming(false);
-        await showToast(Toast.Style.Failure, "Error", String(error));
-      }
-    }
-
-    fetchResponse();
-
-    return () => {
-      isMounted = false;
-      if (toast) {
-        toast.hide();
-      }
-      if (updateTimerRef.current) {
-        clearTimeout(updateTimerRef.current);
-      }
-    };
-  }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]);
-
-  return (
-    <ChatResultView
-      response={response}
-      duration={duration || ''}
-      isLoading={isStreaming}
-      model={model}
-    />
-  );
-}
-
 export function generatePromptActions(
   getFormattedDescription: () => string,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
-  aiProviders: AIProvider[]
+  aiProviders: AIProvider[],
+  options?: ChatOptions,
+  systemPrompt?: string
 ) {
   const preferences = getPreferenceValues<Preferences>();
   // Combine actions from prompt definition and global preferences
@@ -215,7 +98,12 @@ export function generatePromptActions(
         <Action.Push
           title={displayName}
           icon={Icon.Network}
-          target={<ChatResponseView getFormattedDescription={getFormattedDescription} providerName={provider.name} />}
+          target={<ChatResultView
+            getFormattedDescription={getFormattedDescription}
+            providerName={provider.name}
+            options={options}
+            systemPrompt={systemPrompt}
+          />}
         />
       ),
     } as ActionItem;
