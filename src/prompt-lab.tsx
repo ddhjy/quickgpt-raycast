@@ -17,6 +17,33 @@ interface ExtendedArguments extends Arguments.PromptLab {
   filePath?: string;
 }
 
+// Define the Settings prompt object as a constant
+const SETTINGS_PROMPT: PromptProps = {
+  title: "Settings",
+  icon: "⚙️",
+  identifier: "settings",
+  subprompts: [
+    {
+      title: "Open Extension Preferences",
+      icon: "🎛️",
+      identifier: "open-preferences",
+      actions: ["open-preferences"]
+    },
+    {
+      title: "Open Custom Prompts Directory",
+      icon: "📁",
+      identifier: "open-custom-prompts-dir",
+      actions: ["open-custom-prompts-dir"]
+    },
+    {
+      title: "Open Scripts Directory",
+      icon: "📁",
+      identifier: "open-scripts-dir",
+      actions: ["open-scripts-dir"]
+    }
+  ]
+};
+
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const {
     initialClipboardText,
@@ -59,31 +86,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       : [
         ...pinnedPrompts,
         ...promptManager.getRootPrompts(),
-        {
-          title: "Settings",
-          icon: "⚙️",
-          identifier: "settings",
-          subprompts: [
-            {
-              title: "Open Extension Preferences",
-              icon: "🎛️",
-              identifier: "open-preferences",
-              actions: ["open-preferences"]
-            },
-            {
-              title: "Open Custom Prompts Directory",
-              icon: "📁",
-              identifier: "open-custom-prompts-dir",
-              actions: ["open-custom-prompts-dir"]
-            },
-            {
-              title: "Open Scripts Directory",
-              icon: "📁",
-              identifier: "open-scripts-dir",
-              actions: ["open-scripts-dir"]
-            }
-          ]
-        }
+        SETTINGS_PROMPT // Use the constant here
       ];
 
   // Determine the effective selected text
