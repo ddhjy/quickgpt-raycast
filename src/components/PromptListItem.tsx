@@ -253,7 +253,7 @@ export function PromptListItem({
                                     if (!prompt.filePath) return;
                                     await Clipboard.copy(prompt.title);
                                     const configDir = path.dirname(prompt.filePath);
-                                    await runAppleScript(`do shell script "open -a Cursor '${configDir}'"`);
+                                    await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
                                     await closeMainWindow();
                                     await showToast({
                                         title: "复制标题",
