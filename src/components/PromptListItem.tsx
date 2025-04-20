@@ -68,7 +68,11 @@ export function PromptListItem({
      *
      * @returns The formatted prompt content as a string.
      */
-    const getFormattedContent = () => buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
+    const getFormattedContent = () => {
+        // Add logging here before building content
+        console.log(`[PromptListItem] Building content for prompt: ${prompt.identifier || prompt.title}, selectionText: ${replacements.selection}`);
+        return buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
+    };
 
     // Format title
     const rawTitle = prompt.title || "";
