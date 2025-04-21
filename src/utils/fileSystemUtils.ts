@@ -1,6 +1,7 @@
 import path from "path";
 import fsPromises from "fs/promises";
 import fs from "fs";
+import ignore from 'ignore';
 
 /**
  * This file provides utility functions for interacting with the file system,
@@ -98,6 +99,18 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
  */
 export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''): string => {
     let content = "";
+    let ig = ignore();
+
+    const gitignorePath = path.join(dirPath, '.gitignore');
+    if (fs.existsSync(gitignorePath)) {
+        try {
+            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+            ig.add(gitignoreContent);
+        } catch (error) {
+            console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}:`, error);
+        }
+    }
+
     try {
         const items = fs.readdirSync(dirPath, { withFileTypes: true });
 
@@ -106,14 +119,28 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''
             const itemPath = path.join(dirPath, itemName);
             const relativePath = path.join(basePath, itemName);
 
+            // Check if item is ignored by .gitignore first
+            if (ig.ignores(itemName)) {
+                // Add a note indicating it's ignored by .gitignore, then skip further processing
+                if (item.isDirectory()) {
+                    content += `Directory: ${relativePath} (ignored by .gitignore)\n\n`;
+                } else if (item.isFile()) {
+                    content += `File: ${relativePath} (ignored by .gitignore)\n\n`;
+                } else {
+                    // Handle other types like symlinks if necessary, or just a generic message
+                    content += `Item: ${relativePath} (ignored by .gitignore)\n\n`;
+                }
+                continue; // Continue to the next item
+            }
+
             if (isIgnoredItem(itemName)) {
-                continue; // Skip ignored items
+                continue;
             }
 
             try {
                 if (item.isDirectory()) {
                     content += `Directory: ${relativePath}${path.sep}\n`;
-                    content += readDirectoryContentsSync(itemPath, relativePath); // Recursive call
+                    content += readDirectoryContentsSync(itemPath, relativePath);
                 } else if (item.isFile()) {
                     if (isBinaryOrMediaFile(itemName)) {
                         content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
