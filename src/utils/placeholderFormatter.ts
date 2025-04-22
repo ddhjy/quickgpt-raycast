@@ -115,9 +115,12 @@ export function placeholderFormatter(
     try {
       const stats = fs.statSync(absoluteTargetPath);
       if (stats.isFile()) {
-        return fs.readFileSync(absoluteTargetPath, 'utf-8');
+        const fileContent = fs.readFileSync(absoluteTargetPath, 'utf-8');
+        return `File: ${trimmedPath}\n${fileContent}\n\n`;
       } else if (stats.isDirectory()) {
-        return readDirectoryContentsSync(absoluteTargetPath, path.basename(absoluteTargetPath));
+        const directoryHeader = `Directory: ${trimmedPath}${path.sep}\n`;
+        const directoryContent = readDirectoryContentsSync(absoluteTargetPath, '');
+        return `${directoryHeader}${directoryContent}`;
       } else {
         console.warn(`Warning: Path is neither a file nor a directory: ${absoluteTargetPath}`);
         return `[Unsupported path type: ${trimmedPath}]`;
