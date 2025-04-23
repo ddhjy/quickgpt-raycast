@@ -23,7 +23,6 @@ import { AIProvider } from "../services/types";
 interface PromptListProps {
     prompts: PromptProps[];
     searchMode?: boolean;
-    clipboardText: string;
     selectionText: string;
     currentApp: string;
     browserContent: string;
@@ -39,7 +38,6 @@ interface PromptListProps {
  * @param props The component props.
  * @param props.prompts The list of prompts to display.
  * @param props.searchMode Whether the list is in search mode (true) or input mode (false).
- * @param props.clipboardText Current clipboard content.
  * @param props.selectionText Current selected text content.
  * @param props.currentApp Name of the frontmost application.
  * @param props.browserContent Content fetched from the active browser tab.
@@ -50,7 +48,6 @@ interface PromptListProps {
 export function PromptList({
     prompts,
     searchMode = false,
-    clipboardText,
     selectionText,
     currentApp,
     browserContent,
@@ -144,7 +141,6 @@ export function PromptList({
 
             push(
                 <PromptList
-                    clipboardText={clipboardText}
                     selectionText={selectionText}
                     currentApp={currentApp}
                     browserContent={browserContent}
@@ -157,7 +153,7 @@ export function PromptList({
             );
             return;
         }
-    }, [searchMode, searchText, push, displayPrompts, clipboardText, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
+    }, [searchMode, searchText, push, displayPrompts, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
 
     const handleSearchTextChange = (text: string) => {
         setSearchText(text);
@@ -169,9 +165,8 @@ export function PromptList({
     const scripts = useMemo(() => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory), [initialScripts, preferences.scriptsDirectory]);
     const aiProviders = useMemo(() => initialAiProviders ?? aiService.getAllProviders(), [initialAiProviders, aiService]);
 
-    const replacements: SpecificReplacements = {
+    const replacements: Omit<SpecificReplacements, 'clipboard'> = {
         input: activeSearchText,
-        clipboard: clipboardText,
         selection: selectionText,
         currentApp: currentApp,
         browserContent: browserContent,
@@ -249,22 +244,26 @@ export function PromptList({
                             });
                         }}
                     >
-                        <List.Dropdown.Item key="default" title="Default" value="" />
-                        <List.Dropdown.Section title="Execute Scripts">
-                            {scripts.map((script) => (
-                                <List.Dropdown.Item
-                                    key={script.path}
-                                    title={script.name}
-                                    value={`script_${script.name}`}
-                                />
-                            ))}
+                        <List.Dropdown.Item key="" title="No preferred action" value="" />
+                        <List.Dropdown.Section title="Actions">
+                            <List.Dropdown.Item key="copyToClipboard" title="Copy" value="copyToClipboard" />
+                            <List.Dropdown.Item key="paste" title="Paste" value="paste" />
                         </List.Dropdown.Section>
                         <List.Dropdown.Section title="AI Providers">
                             {aiProviders.map((provider) => (
                                 <List.Dropdown.Item
-                                    key={provider.name}
-                                    title={`${provider.name}`}
-                                    value={`call ${provider.name.toLowerCase()}`}
+                                    key={provider.name.toLowerCase()}
+                                    title={provider.name}
+                                    value={provider.name.toLowerCase()}
+                                />
+                            ))}
+                        </List.Dropdown.Section>
+                        <List.Dropdown.Section title="Scripts">
+                            {scripts.map(({ name }) => (
+                                <List.Dropdown.Item
+                                    key={`script_${name}`}
+                                    title={name}
+                                    value={`script_${name}`}
                                 />
                             ))}
                         </List.Dropdown.Section>
@@ -272,13 +271,7 @@ export function PromptList({
                 ) : null
             }
         >
-            {promptItems.length === 0 && !searchMode && searchText.length === 0 ? (
-                <List.EmptyView title="No Prompts Found" description="Check your custom prompt directories." />
-            ) : promptItems.length === 0 && searchMode && searchText.length > 0 ? (
-                <List.EmptyView title="No Matching Prompts" description="Try a different search term." />
-            ) : (
-                promptItems
-            )}
+            {promptItems}
         </List>
     );
 } 

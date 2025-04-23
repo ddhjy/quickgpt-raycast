@@ -134,7 +134,7 @@ export function buildFormattedPromptContent(
     };
 
     // Step 3: Call the unified placeholderFormatter, passing relativeRootDir
-    const formattedContent = placeholderFormatter(processedContent, updatedReplacements, relativeRootDir);
+    const formattedContent = placeholderFormatter(processedContent, updatedReplacements, relativeRootDir, { resolveFile: true });
 
     // Step 4: Remove the old {{file:filepath}} handling logic block
     // const filePlaceholderPattern = /{{file:([^}]+)}}/g;
@@ -154,11 +154,14 @@ export function buildFormattedPromptContent(
  */
 export function getPlaceholderIcons(
     content: string | undefined,
-    replacements: SpecificReplacements
+    replacements: Omit<SpecificReplacements, 'clipboard'>
 ): List.Item.Accessory[] {
     if (!content) return [];
 
+    // Resolve placeholders *excluding* clipboard for icon generation
     const usedPlaceholders = resolvePlaceholders(content, replacements);
+
+    console.log("usedPlaceholders", usedPlaceholders);
 
     const placeholderIconsArray: List.Item.Accessory[] = [];
     usedPlaceholders.forEach((placeholder) => {

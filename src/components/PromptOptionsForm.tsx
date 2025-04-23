@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, ActionPanel } from "@raycast/api";
+import { Form, ActionPanel, Clipboard } from "@raycast/api";
 import { generatePromptActions } from "./PromptActions";
 import { placeholderFormatter } from "../utils/placeholderFormatter";
 import { PromptProps } from "../managers/PromptManager";
 import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { AIProvider } from "../services/types";
+import { SpecificReplacements } from "../utils/placeholderFormatter";
+import { buildFormattedPromptContent } from "../utils/promptFormattingUtils";
 
 interface OptionsFormProps {
     prompt: PromptProps;
-    getFormattedContent: () => string;
+    baseReplacements: Omit<SpecificReplacements, 'clipboard'>;
+    promptSpecificRootDir?: string;
     scripts: ScriptInfo[];
     aiProviders: AIProvider[];
 }
@@ -19,11 +22,18 @@ interface OptionsFormProps {
  *
  * @param props The component props.
  * @param props.prompt The prompt data, including defined options and text inputs.
- * @param props.getFormattedContent Function to retrieve the base formatted content before applying form options.
+ * @param props.baseReplacements Base replacements without clipboard.
+ * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
  * @param props.scripts List of available scripts for the action panel.
  * @param props.aiProviders List of available AI providers for the action panel.
  */
-export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProviders }: OptionsFormProps) {
+export function PromptOptionsForm({
+    prompt,
+    baseReplacements,
+    promptSpecificRootDir,
+    scripts,
+    aiProviders
+}: OptionsFormProps) {
     const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
     const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
 
@@ -34,21 +44,6 @@ export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProv
             isMountedRef.current = false;
         };
     }, [prompt.title]);
-
-    /**
-     * Generates the final prompt content based on the base content and the user's selections
-     * in the form (dropdowns and text fields).
-     *
-     * @returns The final formatted content string with form options applied.
-     */
-    const formattedContent = () => {
-        const content = placeholderFormatter(getFormattedContent() || "", {
-            ...selectedOptions,
-            ...selectedTextInputs,
-            promptTitles: getIndentedPromptTitles(),
-        });
-        return content;
-    };
 
     /**
      * Handles changes to dropdown form elements.
@@ -76,7 +71,16 @@ export function PromptOptionsForm({ prompt, getFormattedContent, scripts, aiProv
         <Form
             actions={
                 <ActionPanel>
-                    <>{generatePromptActions(formattedContent, prompt.actions, scripts, aiProviders)}</>
+                    <>
+                        {generatePromptActions(
+                            prompt,
+                            { ...baseReplacements, ...selectedOptions, ...selectedTextInputs },
+                            promptSpecificRootDir,
+                            prompt.actions,
+                            scripts,
+                            aiProviders
+                        )}
+                    </>
                 </ActionPanel>
             }
         >
