@@ -13,7 +13,7 @@ export const BINARY_MEDIA_EXTENSIONS = new Set([
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
     '.mp3', '.wav', '.flac', '.mp4', '.avi', '.mkv',
     '.exe', '.dll', '.bin', '.iso', '.zip', '.rar',
-    '.xcodeproj', '.xcworkspace', '.tiktoken'
+    '.xcodeproj', '.xcworkspace', '.tiktoken', '.svg', '.webp'
 ]);
 
 export const IGNORED_PATTERNS = [
@@ -99,7 +99,7 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
  */
 export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''): string => {
     let content = "";
-    let ig = ignore();
+    const ig = ignore();
 
     const gitignorePath = path.join(dirPath, '.gitignore');
     if (fs.existsSync(gitignorePath)) {
