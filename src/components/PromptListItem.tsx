@@ -9,22 +9,24 @@ import {
     Toast,
     closeMainWindow,
     openExtensionPreferences,
+    getPreferenceValues,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
 import path from "path";
-import { Clipboard } from "@raycast/api";
 import { generatePromptActions } from "./PromptActions";
-import { buildFormattedPromptContent, getPlaceholderIcons } from "../utils/promptFormattingUtils";
+import { getPlaceholderIcons } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { AIProvider } from "../services/types";
 import { placeholderFormatter } from "../utils/placeholderFormatter";
+import { PromptList } from "./PromptList";
+import { PromptOptionsForm } from "./PromptOptionsForm";
 
 interface PromptListItemProps {
     prompt: PromptProps;
     index: number;
-    replacements: SpecificReplacements;
+    replacements: Omit<SpecificReplacements, 'clipboard'>;
     searchMode?: boolean;
     promptSpecificRootDir?: string;
     allowedActions?: string[];
@@ -41,7 +43,7 @@ interface PromptListItemProps {
  * @param props The component props.
  * @param props.prompt The prompt data for this list item.
  * @param props.index The index of the item in the list.
- * @param props.replacements Placeholders and their resolved values.
+ * @param props.replacements Base replacements without clipboard.
  * @param props.searchMode Indicates if the parent list is in search mode.
  * @param props.promptSpecificRootDir The specific root directory containing this prompt, if applicable.
  * @param props.allowedActions Optional list of allowed action names for this prompt.
@@ -61,30 +63,17 @@ export function PromptListItem({
     scripts,
     aiProviders
 }: PromptListItemProps) {
-    // Lazy generation of formatted content, passing the determined specific root directory
-    /**
-     * Lazily builds and returns the formatted content of the prompt,
-     * applying replacements and prefix commands.
-     *
-     * @returns The formatted prompt content as a string.
-     */
-    const getFormattedContent = () => {
-        // Add logging here before building content
-        console.log(`[PromptListItem] Building content for prompt: ${prompt.identifier || prompt.title}, selectionText: ${replacements.selection}`);
-        return buildFormattedPromptContent(prompt, replacements, promptSpecificRootDir);
-    };
-
-    // Format title
+    // Format title (clipboard placeholder won't resolve here)
     const rawTitle = prompt.title || "";
     // Apply placeholder formatting to the title
     const formattedTitleWithPlaceholders = placeholderFormatter(
         rawTitle,
-        replacements,
-        promptSpecificRootDir
+        { ...replacements, now: new Date().toLocaleString() },
+        promptSpecificRootDir,
+        { resolveFile: false }
     );
-    // Combine with search mode path logic
     const formattedTitle = searchMode && prompt.path
-        ? `${prompt.path.replace(rawTitle, '')}${formattedTitleWithPlaceholders}`.trim() // Use rawTitle for path replace, formatted for display
+        ? `${prompt.path.replace(rawTitle, '')}${formattedTitleWithPlaceholders}`.trim()
         : formattedTitleWithPlaceholders;
 
     // Memoize placeholder icons
@@ -135,7 +124,6 @@ export function PromptListItem({
                         <PromptList
                             searchMode={false}
                             prompts={prompt.subprompts}
-                            clipboardText={replacements.clipboard as string}
                             selectionText={replacements.selection as string}
                             currentApp={replacements.currentApp as string}
                             browserContent={replacements.browserContent as string}
@@ -157,16 +145,19 @@ export function PromptListItem({
                             target={
                                 <PromptOptionsForm
                                     prompt={prompt}
-                                    getFormattedContent={getFormattedContent}
+                                    baseReplacements={replacements}
+                                    promptSpecificRootDir={promptSpecificRootDir}
                                     scripts={scripts}
                                     aiProviders={aiProviders}
                                 />
                             }
                         />
                     ) : (
-                        // Pass scripts and providers to generatePromptActions
+                        // Pass necessary data to generatePromptActions
                         generatePromptActions(
-                            getFormattedContent,
+                            prompt,
+                            replacements,
+                            promptSpecificRootDir,
                             allowedActions || prompt.actions,
                             scripts,
                             aiProviders
@@ -176,19 +167,12 @@ export function PromptListItem({
             );
         }
     }, [
-        prompt.identifier,
-        prompt.subprompts,
-        prompt.icon,
-        prompt.options,
-        prompt.actions,
-        replacements.clipboard,
-        replacements.selection,
-        replacements.currentApp,
-        replacements.browserContent,
+        prompt,
+        replacements,
+        promptSpecificRootDir,
         allowedActions,
         scripts,
-        aiProviders,
-        getFormattedContent
+        aiProviders
     ]);
 
     return (
@@ -248,18 +232,15 @@ export function PromptListItem({
                         {prompt.filePath && (
                             <Action
                                 title="Edit with Cursor"
-                                icon={Icon.Code}
+                                icon={Icon.Pencil}
                                 onAction={async () => {
-                                    if (!prompt.filePath) return;
-                                    await Clipboard.copy(prompt.title);
-                                    const configDir = path.dirname(prompt.filePath);
-                                    await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
-                                    await closeMainWindow();
-                                    await showToast({
-                                        title: "复制标题",
-                                        message: prompt.title,
-                                        style: Toast.Style.Success,
-                                    });
+                                    try {
+                                        await runAppleScript(`do shell script "open -a Cursor '${prompt.filePath}'"`);
+                                        await closeMainWindow();
+                                    } catch (error) {
+                                        console.error("Failed to open Cursor:", error);
+                                        await showToast(Toast.Style.Failure, "Error opening Cursor");
+                                    }
                                 }}
                             />
                         )}
@@ -270,14 +251,9 @@ export function PromptListItem({
     );
 }
 
-// Helper function to handle custom prompts directory actions
-/**
- * Generates appropriate Action(s) for opening configured custom prompt directories.
- * If multiple directories are configured, it provides an Action for each.
- * If only one is configured, it provides a single direct Action.
- *
- * @returns A single React Action element or an array of Action elements.
- */
+// Use React.memo to prevent unnecessary re-renders
+export const MemoizedPromptListItem = React.memo(PromptListItem);
+
 function handleCustomPromptsDirectoryActions() {
     const preferences = getPreferenceValues<{
         customPromptsDirectory?: string;
@@ -287,56 +263,67 @@ function handleCustomPromptsDirectoryActions() {
         customPromptsDirectory4?: string;
     }>();
 
-    const dirConfigs = [
-        { dir: preferences.customPromptsDirectory1, label: "Custom Prompts 1" },
-        { dir: preferences.customPromptsDirectory, label: "Custom Prompts" },
-        { dir: preferences.customPromptsDirectory2, label: "Custom Prompts 2" },
-        { dir: preferences.customPromptsDirectory3, label: "Custom Prompts 3" },
-        { dir: preferences.customPromptsDirectory4, label: "Custom Prompts 4" }
-    ];
+    // Create an array of all possible prompt directories
+    const promptDirs = [
+        preferences.customPromptsDirectory,
+        preferences.customPromptsDirectory1,
+        preferences.customPromptsDirectory2,
+        preferences.customPromptsDirectory3,
+        preferences.customPromptsDirectory4
+    ].filter(Boolean);
 
-    // Display open options for configured directories
-    const actions = dirConfigs
-        .filter(({ dir }) => dir && dir.trim() !== '')
-        .map(({ dir, label }) => (
+    if (promptDirs.length === 0) {
+        return (
             <Action
-                key={label}
-                title={`Open ${label}`}
-                icon={Icon.Folder}
-                onAction={async () => {
-                    await runAppleScript(`do shell script "open -a Cursor '${dir}'"`);
-                    await closeMainWindow();
+                title="Configure"
+                icon={Icon.Gear}
+                onAction={() => {
+                    openExtensionPreferences();
+                    closeMainWindow();
                 }}
             />
-        ));
-
-    // If no directories are configured, display an error action
-    if (actions.length === 0) {
+        );
+    } else if (promptDirs.length === 1) {
+        // If there's only one directory, open it directly
         return (
             <Action
                 title="Open"
                 icon={Icon.Folder}
                 onAction={async () => {
-                    await showToast({
-                        title: "Error",
-                        message: "No custom prompts directories configured",
-                        style: Toast.Style.Failure
-                    });
+                    try {
+                        await runAppleScript(`do shell script "open -a Cursor '${promptDirs[0]}'"`);
+                        closeMainWindow();
+                    } catch (error) {
+                        console.error("Failed to open prompt directory:", error);
+                        await showToast(Toast.Style.Failure, "Error opening directory");
+                    }
                 }}
             />
         );
+    } else {
+        // If there are multiple directories, provide actions for each
+        return (
+            <>
+                {promptDirs.map((dir, index) => {
+                    const dirName = path.basename(dir as string);
+                    return (
+                        <Action
+                            key={index}
+                            title={`Open ${dirName}`}
+                            icon={Icon.Folder}
+                            onAction={async () => {
+                                try {
+                                    await runAppleScript(`do shell script "open -a Cursor '${dir}'"`);
+                                    closeMainWindow();
+                                } catch (error) {
+                                    console.error(`Failed to open prompt directory ${dir}:`, error);
+                                    await showToast(Toast.Style.Failure, "Error opening directory");
+                                }
+                            }}
+                        />
+                    );
+                })}
+            </>
+        );
     }
-
-    return <>{actions}</>;
 }
-
-/**
- * A memoized version of the PromptListItem component for performance optimization.
- * Prevents unnecessary re-renders when props remain the same.
- */
-export const MemoizedPromptListItem = React.memo(PromptListItem);
-
-// This import must be at the bottom of the file to avoid circular dependencies
-import { getPreferenceValues } from "@raycast/api";
-import { PromptList } from "./PromptList";
-import { PromptOptionsForm } from "./PromptOptionsForm";

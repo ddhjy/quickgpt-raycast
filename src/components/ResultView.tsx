@@ -3,6 +3,9 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from "react"
 import MarkdownIt from "markdown-it";
 import { AIService } from "../services/AIService"; // Import AIService
 import { ChatOptions } from "../services/types"; // Import ChatOptions if needed
+import { PromptProps } from "../managers/PromptManager";
+import { SpecificReplacements } from "../utils/placeholderFormatter";
+import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 
 // Initialize Markdown parser
 const md = new MarkdownIt();
@@ -73,11 +76,12 @@ const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
 
 // Update props for ChatResultView
 interface ResultViewProps {
-  getFormattedDescription: () => string;
+  prompt: PromptProps;
+  baseReplacements: Omit<SpecificReplacements, 'clipboard'>;
+  promptSpecificRootDir?: string;
   options?: ChatOptions;
   providerName?: string;
   systemPrompt?: string;
-  // Remove props that are now state: response, duration, isLoading, model
 }
 
 /**
@@ -86,13 +90,17 @@ interface ResultViewProps {
  * and providing relevant actions (copy, paste, copy/paste code blocks).
  *
  * @param props The component props.
- * @param props.getFormattedDescription Function to retrieve the final prompt content sent to the AI.
+ * @param props.prompt The prompt object.
+ * @param props.baseReplacements Base replacements without clipboard.
+ * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
  * @param props.options Optional configuration for the AI chat request (e.g., model, temperature).
  * @param props.providerName Optional name of the AI provider to use (overrides the default).
  * @param props.systemPrompt Optional system prompt to guide the AI's behavior.
  */
 export function ChatResultView({
-  getFormattedDescription,
+  prompt,
+  baseReplacements,
+  promptSpecificRootDir,
   options,
   providerName,
   systemPrompt,
@@ -134,43 +142,51 @@ export function ChatResultView({
 
     async function fetchResponse() {
       try {
-        const description = getFormattedDescription();
+        // Read clipboard and build final content here
+        setIsLoading(true);
+        setResponse('');
+        contentRef.current = '';
         startTimeRef.current = Date.now();
-        setIsLoading(true); // Ensure loading state is true
-        setResponse(''); // Reset response
-        contentRef.current = ''; // Reset content ref
 
         toast = await showToast(Toast.Style.Animated, "Thinking...");
+
+        const currentClipboard = await Clipboard.readText() ?? "";
+        const finalReplacements: SpecificReplacements = {
+          ...baseReplacements,
+          clipboard: currentClipboard,
+          now: new Date().toLocaleString(),
+          promptTitles: getIndentedPromptTitles()
+        };
+        const finalContent = buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
 
         const aiService = AIService.getInstance();
         if (providerName) {
           aiService.setCurrentProvider(providerName);
         }
 
-        // Fetch response with streaming
+        // Send finalContent to AI
         const result = await aiService.chat(
-          description,
+          finalContent,
           {
-            ...options, // Pass options from props
-            systemPrompt: systemPrompt || options?.systemPrompt, // Pass systemPrompt from props
+            ...options,
+            systemPrompt: systemPrompt || options?.systemPrompt,
             onStream: (text: string) => {
               if (!isMounted) return;
               contentRef.current += text;
-              scheduleUpdate(); // Schedule throttled state update
+              scheduleUpdate();
             }
           }
         );
 
         if (!isMounted) return;
 
-        setModel(result.model); // Set model info from result
+        setModel(result.model);
 
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTimeRef.current) / 1000).toFixed(1);
         setDuration(durationSeconds);
-        setIsLoading(false); // Set loading to false
+        setIsLoading(false);
 
-        // Final update to ensure all content is rendered
         setResponse(contentRef.current);
 
         if (toast) {
@@ -180,8 +196,11 @@ export function ChatResultView({
       } catch (error) {
         if (!isMounted) return;
         console.error("[ChatResultView] Error fetching response:", error);
-        setIsLoading(false); // Stop loading on error
+        setIsLoading(false);
         await showToast(Toast.Style.Failure, "Error", String(error));
+        if (toast) {
+          toast.hide();
+        }
       }
     }
 
@@ -196,9 +215,8 @@ export function ChatResultView({
       if (updateTimerRef.current) {
         clearTimeout(updateTimerRef.current);
       }
-      // Optional: Cancel any ongoing AI request if AIService supports it
     };
-  }, [getFormattedDescription, options, providerName, systemPrompt, scheduleUpdate]); // Dependencies for the effect
+  }, [prompt, baseReplacements, promptSpecificRootDir, options, providerName, systemPrompt, scheduleUpdate]);
 
   // Use internal state for calculations and rendering
   const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]);
@@ -248,31 +266,13 @@ export function ChatResultView({
           onAction={async () => {
             await Clipboard.copy(longestCodeBlock);
             await Clipboard.paste(longestCodeBlock);
-            await showHUD(`已粘贴: ${longestBlockSummary}`);
+            await showHUD("已粘贴代码");
             closeMainWindow();
           }}
         />
       );
 
-      const codeActions = codeBlocks.length > 1 ? codeBlocks.map((block, index) => {
-        const summary = getCodeBlockSummary(block);
-        const uniqueKey = `copyCode-${index}-${summary}`;
-        return (
-          <Action
-            key={uniqueKey}
-            title={`Copy #${index + 1}: ${summary}`}
-            icon={Icon.Code}
-            shortcut={{ modifiers: ["cmd"], key: String(index + 1) as KeyEquivalent }}
-            onAction={async () => {
-              await Clipboard.copy(block);
-              await showHUD(`复制: ${summary}`);
-              closeMainWindow();
-            }}
-          />
-        );
-      }).slice(0, 9) : [];
-
-      const otherActions = [
+      const copyLongestAction = (
         <Action
           key="copyLongestCode"
           title={`Copy Longest: ${longestBlockSummary}`}
@@ -280,46 +280,93 @@ export function ChatResultView({
           shortcut={{ modifiers: ["cmd"], key: "'" }}
           onAction={async () => {
             await Clipboard.copy(longestCodeBlock);
-            await showHUD(`已复制: ${longestBlockSummary}`);
+            await showHUD("已复制代码");
             closeMainWindow();
           }}
-        />,
-      ];
+        />
+      );
 
-      return [
-        ...otherActions,
-        pasteLongestAction,
-        ...baseActions,
-        ...codeActions
-      ];
+      baseActions.unshift(pasteLongestAction, copyLongestAction); // Add code-related actions to beginning
+    }
+
+    // Add actions for each individual code block if there are multiple
+    if (codeBlocks.length > 1) {
+      codeBlocks.forEach((block, index) => {
+        const summary = getCodeBlockSummary(block, 20);
+        const blockNumber = index + 1;
+        const shortcutKey = blockNumber <= 9 ? String(blockNumber) as KeyEquivalent : undefined;
+
+        baseActions.push(
+          <Action
+            key={`copyBlock${index}`}
+            title={`Copy Block ${blockNumber}: ${summary}`}
+            icon={Icon.Code}
+            shortcut={shortcutKey ? { modifiers: ["cmd", "shift"], key: shortcutKey } : undefined}
+            onAction={async () => {
+              await Clipboard.copy(block);
+              await showHUD(`已复制代码块 ${blockNumber}`);
+              closeMainWindow();
+            }}
+          />
+        );
+
+        baseActions.push(
+          <Action
+            key={`pasteBlock${index}`}
+            title={`Paste Block ${blockNumber}: ${summary}`}
+            icon={Icon.Code}
+            onAction={async () => {
+              await Clipboard.copy(block);
+              await Clipboard.paste(block);
+              await showHUD(`已粘贴代码块 ${blockNumber}`);
+              closeMainWindow();
+            }}
+          />
+        );
+      });
     }
 
     return baseActions;
-  }, [hasCodeBlock, codeBlocks, longestCodeBlock, longestBlockSummary, response, isLoading]);
+  }, [isLoading, response, hasCodeBlock, codeBlocks, longestCodeBlock, longestBlockSummary]);
 
-  const metadata = useMemo(() => (
-    <Detail.Metadata>
-      {/* Use internal model and duration state */}
-      {<Detail.Metadata.Label title="Model" text={model || "-"} />}
-      {/* Access options if needed, or pass them through props if they are static */}
-      <Detail.Metadata.Label title="Temperature" text={options?.temperature?.toFixed(2) || "-"} />
-      <Detail.Metadata.Label title="Max Tokens" text={options?.maxTokens?.toString() || "-"} />
-      <Detail.Metadata.Label title="Top P" text={options?.topP?.toFixed(2) || "-"} />
-      <Detail.Metadata.Separator />
-      <Detail.Metadata.Label title="Duration(s)" text={duration ? `${duration}` : "-"} />
-      {/* Use internal response state */}
-      <Detail.Metadata.Label title="Response Tokens" text={response ? `${countTokens(response)}` : "-"} />
-    </Detail.Metadata>
-    // Use internal state and options in dependencies
-  ), [model, options, duration, response]);
+  // Calculate token counts, response length, model info
+  const tokenCounts = useMemo(() => {
+    const responseTokens = countTokens(response || "");
+    return responseTokens;
+  }, [response]);
+
+  // Metadata that appears as a footer in the Detail view
+  const metadata = useMemo(() => {
+    if (isLoading) {
+      return undefined;
+    }
+
+    let metaString = `${response.length} chars`;
+    if (tokenCounts && tokenCounts > 0) {
+      metaString += ` • ~${tokenCounts} tokens`;
+    }
+    if (duration) {
+      metaString += ` • ${duration}s`;
+    }
+    if (model) {
+      metaString += ` • ${model}`;
+    }
+
+    return metaString;
+  }, [isLoading, response.length, tokenCounts, duration, model]);
 
   return (
     <Detail
-      // Use internal response and isLoading state
-      markdown={response}
+      markdown={response || "*Thinking...*"}
+      actions={
+        <ActionPanel>
+          {actions}
+        </ActionPanel>
+      }
       isLoading={isLoading}
-      actions={<ActionPanel>{actions}</ActionPanel>}
-      metadata={metadata}
+      metadata={metadata ? <Detail.Metadata.TagList title="Stats">
+        <Detail.Metadata.TagList.Item text={metadata} color="#eed535" />
+      </Detail.Metadata.TagList> : undefined}
     />
   );
 }
