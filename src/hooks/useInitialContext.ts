@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-    Clipboard,
     getSelectedText,
     getFrontmostApplication,
     BrowserExtension,
@@ -9,21 +8,20 @@ import {
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
- * This includes clipboard text, selected text, frontmost application name,
+ * This includes selected text, frontmost application name,
  * and content from the active browser tab (if applicable).
  *
- * @param initialClipboardText Optional pre-fetched clipboard text.
+ * @param initialClipboardText Optional pre-fetched clipboard text (no longer used).
  * @param initialSelectionText Optional pre-fetched selection text.
  * @param target Optional target identifier, used as a dependency to refetch context if needed.
  * @returns An object containing the fetched context data and a loading state indicator:
- *          { clipboardText, selectionText, currentApp, browserContent, isLoading }
+ *          { selectionText, currentApp, browserContent, isLoading }
  */
 export function useInitialContext(
     initialClipboardText?: string,
     initialSelectionText?: string,
     target?: string,
 ) {
-    const [clipboardText, setClipboardText] = useState<string>("");
     const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
     const [currentApp, setCurrentApp] = useState("");
     const [browserContent, setBrowserContent] = useState("");
@@ -31,26 +29,6 @@ export function useInitialContext(
 
     useEffect(() => {
         let isMounted = true;
-
-        /**
-         * Fetches the current text content from the clipboard.
-         * Uses initial value if provided, otherwise reads from Clipboard API.
-         * Handles potential errors gracefully by returning an empty string.
-         *
-         * @returns A promise resolving to the clipboard text or an empty string.
-         */
-        const fetchClipboardText = async (): Promise<string> => {
-            if (initialClipboardText && initialClipboardText.length > 0) {
-                return initialClipboardText;
-            }
-            try {
-                const text = await Clipboard.readText();
-                return text ?? "";
-            } catch (error) {
-                console.info("Failed to read clipboard text. Returning empty string.", error);
-                return "";
-            }
-        };
 
         /**
          * Fetches the currently selected text or selected Finder items.
@@ -125,12 +103,10 @@ export function useInitialContext(
             // Get all content concurrently
             const [
                 fetchedFrontmostApp,
-                fetchedClipboardText,
                 fetchedSelectedText,
                 potentiallyFetchedBrowserContent,
             ] = await Promise.all([
                 fetchFrontmostApp(),
-                fetchClipboardText(),
                 fetchSelectedText(),
                 fetchBrowserContent(), // Always fetch, handle conditionally later
             ]);
@@ -142,7 +118,6 @@ export function useInitialContext(
                 fetchedBrowserContent = potentiallyFetchedBrowserContent;
             }
 
-            setClipboardText(fetchedClipboardText);
             setSelectionText(fetchedSelectedText);
             setCurrentApp(fetchedFrontmostApp);
             setBrowserContent(fetchedBrowserContent); // Set the determined value
@@ -158,10 +133,9 @@ export function useInitialContext(
             isMounted = false;
             clearTimeout(timer);
         };
-    }, [initialClipboardText, initialSelectionText, target]);
+    }, [initialSelectionText, target]);
 
     return {
-        clipboardText,
         selectionText,
         currentApp,
         browserContent,

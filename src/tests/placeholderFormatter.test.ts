@@ -1,4 +1,4 @@
-import { placeholderFormatter, SpecificReplacements } from "../utils/placeholderFormatter";
+import { placeholderFormatter, SpecificReplacements, resolvePlaceholders } from "../utils/placeholderFormatter";
 
 describe("placeholderFormatter", () => {
   it("should replace {{input}} and {{clipboard}}", () => {
@@ -122,5 +122,145 @@ describe("placeholderFormatter", () => {
       input: "",
     };
     expect(placeholderFormatter(text, replacements)).toBe("Content: {{input}}");
+  });
+});
+
+describe("resolvePlaceholders", () => {
+  it("should identify used placeholders in a template", () => {
+    const text = "Hello {{input}}, your clipboard says {{clipboard}}";
+    const replacements: SpecificReplacements = {
+      input: "World",
+      clipboard: "Copy me",
+      selection: "Selected text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(2);
+    expect(usedPlaceholders.has("input")).toBe(true);
+    expect(usedPlaceholders.has("clipboard")).toBe(true);
+    expect(usedPlaceholders.has("selection")).toBe(false);
+  });
+
+  it("should identify placeholders with aliases", () => {
+    const text = "Input: {{i}}, Selection: {{s}}, Clipboard: {{c}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+      selection: "Selected text",
+      clipboard: "Clipboard text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(3);
+    expect(usedPlaceholders.has("input")).toBe(true);
+    expect(usedPlaceholders.has("selection")).toBe(true);
+    expect(usedPlaceholders.has("clipboard")).toBe(true);
+  });
+
+  it("should handle fallback placeholders", () => {
+    const text = "Content: {{input|selection|clipboard}}";
+    const replacements: SpecificReplacements = {
+      selection: "Selected text",
+      clipboard: "Clipboard text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("selection")).toBe(true);
+    expect(usedPlaceholders.has("clipboard")).toBe(false);
+    expect(usedPlaceholders.has("input")).toBe(false);
+  });
+
+  it("should use the first available placeholder in a fallback chain", () => {
+    const text = "Content: {{input|selection|clipboard}}";
+    const replacements: SpecificReplacements = {
+      clipboard: "Clipboard text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("clipboard")).toBe(true);
+  });
+
+  it("should handle p: prefix placeholders", () => {
+    const text = "Content: {{p:input|selection|clipboard}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("input")).toBe(true);
+  });
+
+  it("should ignore file: placeholders", () => {
+    const text = "Content: {{file:path/to/file}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(0);
+  });
+
+  it("should ignore empty string values", () => {
+    const text = "Content: {{input|selection}}";
+    const replacements: SpecificReplacements = {
+      input: "",
+      selection: "Selected text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("selection")).toBe(true);
+    expect(usedPlaceholders.has("input")).toBe(false);
+  });
+
+  it("should handle multiple occurrences of the same placeholder", () => {
+    const text = "Input: {{input}}, repeat: {{input}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("input")).toBe(true);
+  });
+
+  it("should handle null and undefined values", () => {
+    const text = "Content: {{input|selection|clipboard}}";
+    const replacements = {
+      input: undefined,
+      selection: undefined,
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("clipboard")).toBe(true);
+  });
+
+  it("should handle {{i|s|c}}", () => {
+    const text = "Content: {{i|s|c}}";
+    const replacements: SpecificReplacements = {
+      input: "",
+      selection: "",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("input")).toBe(false);
+    expect(usedPlaceholders.has("selection")).toBe(false);
+    expect(usedPlaceholders.has("clipboard")).toBe(true);
+
+    const replacements2: SpecificReplacements = {
+      input: "Input text",
+      selection: "Selected text",
+    };
+    const usedPlaceholders2 = resolvePlaceholders(text, replacements2);
+    expect(usedPlaceholders2.size).toBe(1);
+    expect(usedPlaceholders2.has("input")).toBe(true);
+    expect(usedPlaceholders2.has("selection")).toBe(false);
+    expect(usedPlaceholders2.has("clipboard")).toBe(false);
+  });
+
+  it("should handle {{s|i}}", () => {
+    const text = "Content: {{s|i}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+      selection: "Selected text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("input")).toBe(false);
+    expect(usedPlaceholders.has("selection")).toBe(true);
   });
 });

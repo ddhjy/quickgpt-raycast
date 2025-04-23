@@ -14,6 +14,9 @@ import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore
 import { ChatResultView } from "./ResultView";
 import { ChatOptions, AIProvider } from "../services/types";
 import { ScriptInfo } from "../utils/scriptUtils";
+import { PromptProps } from "../managers/PromptManager";
+import { SpecificReplacements } from "../utils/placeholderFormatter";
+import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 
 interface Preferences {
   openURL?: string;
@@ -37,7 +40,9 @@ interface ActionItem {
  * Generates a sorted list of Raycast Action elements based on the prompt definition,
  * global preferences, available scripts, and AI providers.
  *
- * @param getFormattedDescription A function that returns the formatted prompt content.
+ * @param prompt The prompt object to generate actions for
+ * @param baseReplacements Base replacements without clipboard
+ * @param promptSpecificRootDir Root directory for file placeholder resolution
  * @param actions An optional array of action names specified in the prompt definition.
  * @param scripts An array of available script information.
  * @param aiProviders An array of available AI providers.
@@ -46,7 +51,9 @@ interface ActionItem {
  * @returns An array of React elements representing the sorted Raycast Actions.
  */
 export function generatePromptActions(
-  getFormattedDescription: () => string,
+  prompt: PromptProps,
+  baseReplacements: Omit<SpecificReplacements, 'clipboard'>,
+  promptSpecificRootDir: string | undefined,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
   aiProviders: AIProvider[],
@@ -62,24 +69,37 @@ export function generatePromptActions(
   // Use Set to ensure uniqueness and maintain order (prompt actions first, then global)
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
+  // Helper function to get final content with clipboard
+  const getFinalContent = async (): Promise<string> => {
+    const currentClipboard = await Clipboard.readText() ?? "";
+    const finalReplacements: SpecificReplacements = {
+      ...baseReplacements,
+      clipboard: currentClipboard,
+      now: new Date().toLocaleString(),
+      promptTitles: getIndentedPromptTitles()
+    };
+    return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
+  };
+
   /**
    * Creates a configured Action.OpenInBrowser component.
    * Copies the formatted description to the clipboard when the URL is opened.
    *
    * @param title The title for the action.
    * @param url The URL to open.
-   * @param getFormattedDescription A function that returns the content to be copied.
    * @returns A React element for the Action.OpenInBrowser.
    */
   const createRaycastOpenInBrowser = (
     title: string | undefined,
-    url: string,
-    getFormattedDescription: () => string | number | Clipboard.Content
+    url: string
   ): ActionWithPossibleProps => (
     <Action.OpenInBrowser
       title={title}
       url={url}
-      onOpen={() => Clipboard.copy(getFormattedDescription())}
+      onOpen={async () => {
+        const finalContent = await getFinalContent();
+        await Clipboard.copy(finalContent);
+      }}
     />
   );
 
@@ -93,12 +113,12 @@ export function generatePromptActions(
         title={scriptName}
         icon={Icon.Terminal}
         onAction={async () => {
-          const description = getFormattedDescription();
-          await Clipboard.copy(description);
           try {
+            const finalContent = await getFinalContent();
+            await Clipboard.copy(finalContent);
             closeMainWindow();
             const scriptContent = fs.readFileSync(scriptPath, "utf8");
-            await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [description] : []);
+            await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [finalContent] : []);
           } catch (error) {
             console.error(`Failed to execute script: ${error}`);
             await showToast(Toast.Style.Failure, "Error", String(error));
@@ -119,12 +139,16 @@ export function generatePromptActions(
         <Action.Push
           title={displayName}
           icon={Icon.Network}
-          target={<ChatResultView
-            getFormattedDescription={getFormattedDescription}
-            providerName={provider.name}
-            options={options}
-            systemPrompt={systemPrompt}
-          />}
+          target={
+            <ChatResultView
+              prompt={prompt}
+              baseReplacements={baseReplacements}
+              promptSpecificRootDir={promptSpecificRootDir}
+              providerName={provider.name}
+              options={options}
+              systemPrompt={systemPrompt}
+            />
+          }
         />
       ),
     } as ActionItem;
@@ -138,8 +162,7 @@ export function generatePromptActions(
       condition: Boolean(preferences.openURL),
       action: createRaycastOpenInBrowser(
         "Open URL",
-        preferences.openURL ?? "",
-        getFormattedDescription
+        preferences.openURL ?? ""
       ),
     },
     {
@@ -151,9 +174,10 @@ export function generatePromptActions(
           title="Copy"
           icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          onAction={() => {
+          onAction={async () => {
             closeMainWindow();
-            Clipboard.copy(getFormattedDescription());
+            const finalContent = await getFinalContent();
+            Clipboard.copy(finalContent);
           }}
         />
       ),
@@ -167,11 +191,11 @@ export function generatePromptActions(
           title="Paste"
           icon={Icon.Document}
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
-          onAction={() => {
+          onAction={async () => {
             closeMainWindow();
-            const description = getFormattedDescription();
-            Clipboard.copy(description);
-            Clipboard.paste(description);
+            const finalContent = await getFinalContent();
+            await Clipboard.copy(finalContent);
+            await Clipboard.paste(finalContent);
           }}
         />
       ),
@@ -229,16 +253,12 @@ export function generatePromptActions(
 
   if (defaultActionItem) {
     const defaultAction = defaultActionItem.action;
-    const handleAction = () => {
-      if (defaultAction.props.onAction && typeof defaultAction.props.onAction === 'function') {
-        defaultAction.props.onAction();
-      }
-    };
-    // Add the prioritized default action first
+    // The original onAction from the definition above is already async
+    const handleAction = defaultAction.props.onAction;
     resultActions.push(React.cloneElement(defaultAction, {
       key: defaultActionItem.name, // Use name as key
       title: `${defaultActionItem.displayName}`,
-      onAction: handleAction,
+      onAction: handleAction, // Use the async handler directly
     }));
     // Add other actions, excluding the default one
     resultActions = resultActions.concat(
@@ -248,15 +268,10 @@ export function generatePromptActions(
     );
   } else {
     // If no default action, just use the sorted eligible list
-    const stripRunPrefix = (name: string) => name.replace(/^Run /, "");
-    resultActions = eligibleActions.map((item) => { // Use eligibleActions here
-      const originalAction = item.action;
-      const originalTitle = originalAction.props.title || item.displayName;
-      const newTitle = stripRunPrefix(originalTitle);
-      // Ensure correct key prop for list rendering
-      return React.cloneElement(originalAction, { key: item.name, title: newTitle });
-    });
+    resultActions = eligibleActions.map((item) =>
+      React.cloneElement(item.action, { key: item.name, title: `${item.displayName}` })
+    );
   }
 
-  return resultActions; // Return the array of React elements
+  return resultActions;
 }

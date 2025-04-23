@@ -1,12 +1,18 @@
-import fs from "fs";
-import path from "path";
-import { readDirectoryContentsSync } from "./fileSystemUtils";
-
 /**
- * This file provides functions for handling placeholder substitution within prompt templates.
- * It supports standard placeholders (like `{{clipboard}}`, `{{selection}}`) with optional aliases (`{{c}}`, `{{s}}`),
- * and a special `{{file:path/to/file_or_dir}}` placeholder to include file or directory contents.
+ * This file provides utility functions for formatting text with placeholders.
+ * It supports both synchronous and asynchronous implementations for replacing:
+ * - Simple placeholders (input, clipboard, selection, etc.)
+ * - File content placeholders for reading files/directories
+ * - Fallback handling with alias support
+ * 
+ * The formatter processes all placeholders in a single RegExp scan for efficiency.
  */
+
+import fs from 'fs';
+import path from 'path';
+import { readDirectoryContentsSync } from './fileSystemUtils';
+
+/* Types & Constants */
 
 export type SpecificReplacements = {
   input?: string;
@@ -18,169 +24,440 @@ export type SpecificReplacements = {
   promptTitles?: string;
 };
 
-type PlaceholderInfo = {
-  literal?: string;
-  alias?: string;
+type PlaceholderKey = keyof SpecificReplacements;
+type PlaceholderInfo = { literal: string; alias?: string };
+
+// Log level definition
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'none';
+
+// Logger configuration
+export interface LoggerConfig {
+  level: LogLevel;
+  enabled: boolean;
+}
+
+// Default logger configuration
+const defaultLoggerConfig: LoggerConfig = {
+  level: 'info',
+  enabled: true,
 };
 
-const placeholders: Record<keyof SpecificReplacements, PlaceholderInfo> = {
-  input: { literal: "<输入文本>", alias: "i" },
-  selection: { literal: "<选中文本>", alias: "s" },
-  clipboard: { literal: "<剪贴板文本>", alias: "c" },
-  currentApp: { literal: "<当前应用>" },
-  browserContent: { literal: "<浏览器内容>" },
-  now: { literal: "<当前时间>", alias: "n" },
-  promptTitles: { literal: "<提示词标题>", alias: "pt" },
+// Current logger configuration
+let loggerConfig: LoggerConfig = { ...defaultLoggerConfig };
+
+// Log level weights
+const LOG_LEVEL_WEIGHT: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  none: 4,
 };
 
-// Create alias to key mapping
-const aliasMap = Object.fromEntries(
-  Object.entries(placeholders)
-    .filter(([, placeholder]) => placeholder.alias)
-    .map(([key, placeholder]) => [placeholder.alias, key as keyof SpecificReplacements])
-) as Record<string, keyof SpecificReplacements>;
+const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
+  input: { literal: '<输入文本>', alias: 'i' },
+  selection: { literal: '<选中文本>', alias: 's' },
+  clipboard: { literal: '<剪贴板文本>', alias: 'c' },
+  currentApp: { literal: '<当前应用>' },
+  browserContent: { literal: '<浏览器内容>' },
+  now: { literal: '<当前时间>', alias: 'n' },
+  promptTitles: { literal: '<提示词标题>', alias: 'pt' },
+};
+
+// alias ⇒ key
+const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
+  Object.entries(PLACEHOLDERS)
+    .filter(([, { alias }]) => alias)
+    .map(([key, { alias }]) => [alias as string, key as PlaceholderKey]),
+);
+
+/* Utility Functions */
+
+const PH_REG = /{{(file:)?([^}]+)}}/g;     // Single regex for all placeholders
+const isNonEmpty = (v: unknown): v is string =>
+  typeof v === 'string' && v.trim() !== '';
+
+const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
+  (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
 
 /**
- * Replaces placeholders within a given text string with their corresponding values.
- *
- * Supported placeholders:
- * - Standard: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
- *   (and their aliases: `i`, `s`, `c`, `n`, `pt`)
- * - Optional prefix `p:` (e.g., `{{p:clipboard}}`) to insert the placeholder literal (e.g., `<剪贴板文本>`) only if the value is non-empty.
- * - File/Directory: `{{file:path/to/your/file_or_directory}}`. Reads the content of the specified file or directory (recursively).
- *   Supports absolute paths and relative paths (resolved against `relativeRootDir`).
- *
- * @param text The input text containing placeholders.
- * @param specificReplacements An object mapping placeholder keys (or aliases) to their replacement values.
- * @param relativeRootDir The root directory to resolve relative paths against for `{{file:...}}` placeholders. Required if using relative paths.
- * @returns The text with all recognized placeholders substituted.
+ * Internal logging function
  */
-export function placeholderFormatter(
-  text: string,
-  specificReplacements: SpecificReplacements,
-  relativeRootDir?: string
-): string {
-  const cleanedReplacements = Object.fromEntries(
-    Object.entries(specificReplacements).filter(([, value]) => value !== '')
-  ) as SpecificReplacements;
-
-  // Automatically add current time
-  if (!cleanedReplacements.now) {
-    cleanedReplacements.now = new Date().toLocaleString();
+function logInternal(level: LogLevel, message: string, ...args: unknown[]): void {
+  if (!loggerConfig.enabled || LOG_LEVEL_WEIGHT[level] < LOG_LEVEL_WEIGHT[loggerConfig.level]) {
+    return;
   }
 
-  // Process standard placeholders first
-  const standardPlaceholderPattern = /{{(?!file:)([^}]+)}}/g;
-  const partiallyFormattedText = text.replace(standardPlaceholderPattern, (match, placeholderContent) => {
-    const isPrefixed = placeholderContent.startsWith("p:");
-    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-    const parts = content.split("|");
+  const timestamp = new Date().toISOString();
+  const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] [PlaceholderFormatter] ${message}`;
 
-    for (const part of parts) {
-      const key = aliasMap[part] || (part as keyof SpecificReplacements);
-
-      if (key in cleanedReplacements) {
-        const value = cleanedReplacements[key];
-        if (isPrefixed) {
-          return value ? placeholders[key]?.literal || `<${key}>` : match;
-        } else if (value) {
-          return value;
-        }
-      }
-    }
-    return match;
-  });
-
-  // Now process {{file:filepath}} placeholders
-  const filePlaceholderPattern = /{{file:([^}]+)}}/g;
-  const fullyFormattedText = partiallyFormattedText.replace(filePlaceholderPattern, (match, filePath) => {
-    const trimmedPath = filePath.trim();
-    let absoluteTargetPath: string;
-
-    if (path.isAbsolute(trimmedPath)) {
-      absoluteTargetPath = trimmedPath;
-    } else {
-      if (!relativeRootDir) {
-        console.error(`Error: Relative path "${trimmedPath}" provided, but no custom prompt directory is configured as the root.`);
-        return `[Error: Root directory not configured for relative path: ${trimmedPath}]`;
-      }
-      absoluteTargetPath = path.resolve(relativeRootDir, trimmedPath);
-      // Basic security check: ensure the resolved path is still within the root directory
-      if (!absoluteTargetPath.startsWith(relativeRootDir)) {
-        console.error(`Error: Relative path traversal detected. Attempted access outside of root directory ${relativeRootDir}. Path: ${trimmedPath}`);
-        return `[Error: Path traversal detected for: ${trimmedPath}]`;
-      }
-    }
-
-    try {
-      const stats = fs.statSync(absoluteTargetPath);
-      if (stats.isFile()) {
-        const fileContent = fs.readFileSync(absoluteTargetPath, 'utf-8');
-        return `File: ${trimmedPath}\n${fileContent}\n\n`;
-      } else if (stats.isDirectory()) {
-        const directoryHeader = `Directory: ${trimmedPath}${path.sep}\n`;
-        const directoryContent = readDirectoryContentsSync(absoluteTargetPath, '');
-        return `${directoryHeader}${directoryContent}`;
-      } else {
-        console.warn(`Warning: Path is neither a file nor a directory: ${absoluteTargetPath}`);
-        return `[Unsupported path type: ${trimmedPath}]`;
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        console.warn(`Warning: File or directory not found for placeholder: ${absoluteTargetPath}`);
-        return `[Path not found: ${trimmedPath}]`;
-      } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
-        console.error(`Error: Permission denied for path: ${absoluteTargetPath}`, error);
-        return `[Permission denied: ${trimmedPath}]`;
-      } else {
-        console.error(`Error accessing path specified in placeholder: ${absoluteTargetPath}`, error);
-        return `[Error accessing path: ${trimmedPath}]`;
-      }
-    }
-  });
-
-  return fullyFormattedText;
+  switch (level) {
+    case 'debug':
+      console.debug(formattedMessage, ...args);
+      break;
+    case 'info':
+      console.info(formattedMessage, ...args);
+      break;
+    case 'warn':
+      console.warn(formattedMessage, ...args);
+      break;
+    case 'error':
+      console.error(formattedMessage, ...args);
+      break;
+  }
 }
 
 /**
- * Identifies which specific placeholders (like clipboard, selection) are actually used
- * and have a corresponding non-empty value provided in a given text template.
- * This is useful for determining which context information is relevant for a prompt.
- *
- * @param text The text template containing placeholders.
- * @param specificReplacements An object containing the potential replacement values.
- * @returns A Set containing the keys (e.g., 'clipboard', 'selection') of the used and available placeholders.
+ * Logger object with methods for different log levels
+ */
+export const logger = {
+  debug: (message: string, ...args: unknown[]) => logInternal('debug', message, ...args),
+  info: (message: string, ...args: unknown[]) => logInternal('info', message, ...args),
+  warn: (message: string, ...args: unknown[]) => logInternal('warn', message, ...args),
+  error: (message: string, ...args: unknown[]) => logInternal('error', message, ...args),
+};
+
+/**
+ * Configure the logging system
+ */
+export function configureLogger(config: Partial<LoggerConfig>): void {
+  const oldLevel = loggerConfig.level;
+  const oldEnabled = loggerConfig.enabled;
+
+  loggerConfig = { ...loggerConfig, ...config };
+
+  console.log(`[PlaceholderFormatter] Logger config updated: level=${loggerConfig.level}(was:${oldLevel}), enabled=${loggerConfig.enabled}(was:${oldEnabled})`);
+}
+
+/**
+ * Builds an effective replacement map from raw replacements.
+ * Filters out empty values, trims strings, and adds the current time if not present.
+ * 
+ * @param raw The raw replacement values to process
+ * @returns A Map of valid placeholder keys to their replacement values
+ */
+function buildEffectiveMap(raw: Partial<SpecificReplacements>) {
+  const m = new Map<PlaceholderKey, string>();
+  Object.entries(raw).forEach(([k, v]) => {
+    if (isNonEmpty(v)) m.set(k as PlaceholderKey, v.trim());
+  });
+  if (!m.has('now')) m.set('now', new Date().toLocaleString());
+  return m;
+}
+
+/* File Placeholder Handling */
+
+/**
+ * Safely resolves a path to an absolute path, with security checks.
+ * 
+ * @param given The path to resolve
+ * @param root The root directory for relative paths
+ * @returns The resolved absolute path or an Error if resolution fails
+ */
+function safeResolveAbsolute(given: string, root?: string): string | Error {
+  logger.debug(`Attempting to resolve path: "${given}", root: "${root || 'not set'}"`);
+
+  const trimmed = given.trim();
+  if (path.isAbsolute(trimmed)) {
+    logger.debug(`Processing absolute path: "${trimmed}"`);
+    return trimmed;
+  }
+
+  if (!root) {
+    const error = `Root directory not configured for relative path: ${trimmed}`;
+    logger.error(error);
+    return new Error(error);
+  }
+
+  const resolved = path.resolve(root, trimmed);
+  logger.debug(`Resolved relative path: "${trimmed}" => "${resolved}"`);
+
+  if (!resolved.startsWith(root)) {
+    const error = `Path traversal detected for: ${trimmed}`;
+    logger.error(error);
+    return new Error(error);
+  }
+
+  return resolved;
+}
+
+/**
+ * Resolves a file placeholder synchronously, reading file or directory contents.
+ * 
+ * @param body The file path to resolve
+ * @param root The root directory for relative paths
+ * @returns Formatted string containing file/directory content or error message
+ */
+function resolveFilePlaceholderSync(body: string, root?: string): string {
+  const absOrErr = safeResolveAbsolute(body, root);
+  if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
+
+  try {
+    const stats = fs.statSync(absOrErr);
+    if (stats.isFile())
+      return `File: ${body.trim()}\n${fs.readFileSync(absOrErr, 'utf-8')}\n\n`;
+    if (stats.isDirectory()) {
+      const header = `Directory: ${body.trim()}${path.sep}\n`;
+      const content = readDirectoryContentsSync(absOrErr, '');
+      return `${header}${content}`;
+    }
+    return `[Unsupported path type: ${body}]`;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return `[Path not found: ${body}]`;
+    if (code === 'EACCES') return `[Permission denied: ${body}]`;
+    return `[Error accessing path: ${body}]`;
+  }
+}
+
+/* Synchronous Placeholder Formatter */
+
+/**
+ * Formats a string by replacing placeholders with actual values.
+ * Handles both regular placeholders and file content placeholders.
+ * 
+ * @param text The text containing placeholders to format
+ * @param incoming The replacement values for placeholders
+ * @param root The root directory for file placeholder resolution
+ * @param options Additional options for formatting
+ * @returns The formatted text with all placeholders replaced
+ */
+export function placeholderFormatter(
+  text: string,
+  incoming: SpecificReplacements = {},
+  root?: string,
+  options: { resolveFile?: boolean; recursionLevel?: number } = { resolveFile: true, recursionLevel: 0 },
+): string {
+  // Limit recursion depth to prevent infinite recursion
+  const MAX_RECURSION = 3;
+  const currentLevel = options.recursionLevel || 0;
+
+  if (currentLevel > MAX_RECURSION) {
+    logger.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
+    return text;
+  }
+
+  const map = buildEffectiveMap(incoming);
+
+  // Reset regex state
+  PH_REG.lastIndex = 0;
+
+  let result = text.replace(PH_REG, (_, fileFlag: string | undefined, body: string) => {
+    /* File placeholders */
+    if (fileFlag) {
+      // If file resolution is disabled, return placeholder as-is
+      if (!options.resolveFile) {
+        return `{{file:${body}}}`;
+      }
+
+      const result = resolveFilePlaceholderSync(body, root);
+      return result;
+    }
+
+    /* Regular placeholders */
+    let content = body;
+    const isPrefixed = content.startsWith('p:');
+    if (isPrefixed) content = content.slice(2);
+
+    for (const part of content.split('|')) {
+      const key = toPlaceholderKey(part.trim());
+      if (!key) continue;
+
+      const v = map.get(key);
+      if (v) {
+        const replacement = isPrefixed ? PLACEHOLDERS[key].literal : v;
+
+        // Check if replacement text still contains placeholders, if so process recursively
+        if (PH_REG.test(replacement)) {
+          // Reset regex state
+          PH_REG.lastIndex = 0;
+          return replacement;
+        }
+
+        return replacement;
+      }
+    }
+
+    return `{{${body}}}`;         // Unresolved: return as-is
+  });
+
+  // Process nested placeholders
+  if (PH_REG.test(result) && currentLevel < MAX_RECURSION) {
+    // Reset regex state
+    PH_REG.lastIndex = 0;
+    // Process recursively once
+    result = placeholderFormatter(
+      result,
+      incoming,
+      root,
+      { ...options, recursionLevel: currentLevel + 1 }
+    );
+  }
+
+  return result;
+}
+
+/* Placeholder Resolution */
+
+/**
+ * Scans a template and returns the set of placeholder keys that would be used
+ * during formatting with the given replacement values.
+ * 
+ * @param text The text to scan for placeholders
+ * @param incoming The available replacement values
+ * @returns A Set of placeholder keys that would be used in formatting
  */
 export function resolvePlaceholders(
   text: string,
-  specificReplacements: SpecificReplacements
-): Set<string> {
-  const cleanedReplacements = Object.fromEntries(
-    Object.entries(specificReplacements).filter(([, value]) => value !== "")
-  ) as SpecificReplacements;
+  incoming: Partial<SpecificReplacements> = {},
+): Set<PlaceholderKey> {
+  const used = new Set<PlaceholderKey>();
+  const map = buildEffectiveMap(incoming);
 
-  const placeholderPattern = /{{([^}]+)}}/g;
-  const usedPlaceholders = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = PH_REG.exec(text))) {
+    const [, fileFlag, rawBody] = m as unknown as [string, string | undefined, string];
+    if (fileFlag) continue;    // Skip file placeholders
 
-  let match;
-  while ((match = placeholderPattern.exec(text)) !== null) {
-    const placeholderContent = match[1];
-    const isPrefixed = placeholderContent.startsWith("p:");
-    const content = isPrefixed ? placeholderContent.slice(2) : placeholderContent;
-    const parts = content.split("|");
+    let body = rawBody;
+    if (body.startsWith('p:')) body = body.slice(2);
 
-    for (const part of parts) {
-      const key = aliasMap[part] || (part as keyof SpecificReplacements);
+    let chosen: PlaceholderKey | undefined;
 
-      if (key in cleanedReplacements) {
-        const value = cleanedReplacements[key];
-        if (value) {
-          usedPlaceholders.add(key);
-          break;
-        }
+    for (const part of body.split('|')) {
+      const key = toPlaceholderKey(part.trim());
+      if (!key) continue;
+
+      if (key === 'clipboard' && !chosen) {
+        chosen = 'clipboard';          // Rule 1.b
+        break;
+      }
+      if (map.has(key)) {             // Rule 1.a
+        chosen = key;
+        break;
       }
     }
+    if (chosen) used.add(chosen);
+  }
+  return used;
+}
+
+/* Asynchronous Implementation */
+
+/**
+ * Resolves a file placeholder asynchronously, reading file or directory contents.
+ * 
+ * @param body The file path to resolve
+ * @param root The root directory for relative paths
+ * @returns Promise resolving to formatted content or error message
+ */
+async function resolveFilePlaceholderAsync(body: string, root?: string) {
+  const absOrErr = safeResolveAbsolute(body, root);
+  if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
+
+  try {
+    const stats = await fs.promises.stat(absOrErr);
+    if (stats.isFile()) {
+      const content = await fs.promises.readFile(absOrErr, 'utf-8');
+      return `File: ${body.trim()}\n${content}\n\n`;
+    }
+    if (stats.isDirectory()) {
+      const header = `Directory: ${body.trim()}${path.sep}\n`;
+      const content = readDirectoryContentsSync(absOrErr, '');
+      return `${header}${content}`;
+    }
+    return `[Unsupported path type: ${body}]`;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return `[Path not found: ${body}]`;
+    if (code === 'EACCES') return `[Permission denied: ${body}]`;
+    return `[Error accessing path: ${body}]`;
+  }
+}
+
+/**
+ * Asynchronously formats a string by replacing placeholders with actual values.
+ * Recommended for GUI/WebWorker scenarios to avoid blocking the main thread.
+ * 
+ * @param text The text containing placeholders to format
+ * @param incoming The replacement values for placeholders
+ * @param root The root directory for file placeholder resolution
+ * @param options Additional options for formatting
+ * @returns Promise resolving to the formatted text
+ */
+export async function placeholderFormatterAsync(
+  text: string,
+  incoming: SpecificReplacements = {},
+  root?: string,
+  options: { resolveFile?: boolean; recursionLevel?: number } = { resolveFile: true, recursionLevel: 0 },
+): Promise<string> {
+  // Limit recursion depth to prevent infinite recursion
+  const MAX_RECURSION = 3;
+  const currentLevel = options.recursionLevel || 0;
+
+  if (currentLevel > MAX_RECURSION) {
+    logger.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
+    return text;
   }
 
-  return usedPlaceholders;
+  const map = buildEffectiveMap(incoming);
+
+  // Reset regex state
+  PH_REG.lastIndex = 0;
+
+  const chunks: string[] = [];
+  let lastIdx = 0;
+
+  for (let match; (match = PH_REG.exec(text));) {
+    const [whole, fileFlag, body] = match as unknown as [string, string | undefined, string];
+    chunks.push(text.slice(lastIdx, match.index));
+    lastIdx = match.index + whole.length;
+
+    if (fileFlag) {
+      // If file resolution is disabled, return placeholder as-is
+      if (!options.resolveFile) {
+        chunks.push(`{{file:${body}}}`);
+      } else {
+        const result = await resolveFilePlaceholderAsync(body, root);
+        chunks.push(result);
+      }
+      continue;
+    }
+
+    let content = body;
+    const isPrefixed = content.startsWith('p:');
+    if (isPrefixed) content = content.slice(2);
+
+    let replaced = '';
+    for (const part of content.split('|')) {
+      const key = toPlaceholderKey(part.trim());
+      if (!key) continue;
+
+      const v = map.get(key);
+      if (v) {
+        replaced = isPrefixed ? PLACEHOLDERS[key].literal : v;
+        break;
+      }
+    }
+
+    chunks.push(replaced || `{{${body}}}`);
+  }
+
+  chunks.push(text.slice(lastIdx));
+  let result = chunks.join('');
+
+  // Process nested placeholders
+  if (PH_REG.test(result) && currentLevel < MAX_RECURSION) {
+    // Reset regex state
+    PH_REG.lastIndex = 0;
+    // Process recursively once
+    result = await placeholderFormatterAsync(
+      result,
+      incoming,
+      root,
+      { ...options, recursionLevel: currentLevel + 1 }
+    );
+  }
+
+  return result;
 }

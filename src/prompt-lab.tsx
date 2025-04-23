@@ -19,7 +19,7 @@ interface ExtendedArguments extends Arguments.PromptLab {
 
 /**
  * The main entry point component for the QuickGPT Raycast command.
- * It determines the initial context (clipboard, selection, etc.), fetches prompts,
+ * It determines the initial context (selection, app, etc.), fetches prompts,
  * handles "quick prompts" based on selection/target, and renders the appropriate PromptList.
  *
  * @param props The launch properties provided by Raycast.
@@ -38,7 +38,6 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   const allowedActions = actions?.split(',').filter(Boolean);
 
   const {
-    clipboardText,
     selectionText,
     currentApp,
     browserContent,
@@ -84,7 +83,6 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     <PromptList
       searchMode={!quickPrompt}
       prompts={uniquePrompts}
-      clipboardText={clipboardText}
       selectionText={effectiveSelectionText}
       currentApp={currentApp}
       browserContent={browserContent}
