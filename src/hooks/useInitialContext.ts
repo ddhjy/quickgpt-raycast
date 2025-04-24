@@ -100,27 +100,22 @@ export function useInitialContext(
         const fetchData = async () => {
             setIsLoading(true);
 
-            // Get all content concurrently
-            const [
-                fetchedFrontmostApp,
-                fetchedSelectedText,
-                potentiallyFetchedBrowserContent,
-            ] = await Promise.all([
+            // Get frontmost app and selected text first
+            const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([
                 fetchFrontmostApp(),
                 fetchSelectedText(),
-                fetchBrowserContent(), // Always fetch, handle conditionally later
             ]);
 
-            // Determine final browser content based on the frontmost app
+            // Only fetch browser content if the frontmost app is a browser
             let fetchedBrowserContent = "";
-            const browserNames = ["Safari", "Google Chrome", "Firefox", "Edge", "Arc"];
+            const browserNames = ["Arc"];
             if (browserNames.some(browser => fetchedFrontmostApp.includes(browser))) {
-                fetchedBrowserContent = potentiallyFetchedBrowserContent;
+                fetchedBrowserContent = await fetchBrowserContent();
             }
 
             setSelectionText(fetchedSelectedText);
             setCurrentApp(fetchedFrontmostApp);
-            setBrowserContent(fetchedBrowserContent); // Set the determined value
+            setBrowserContent(fetchedBrowserContent);
             isMounted && setIsLoading(false);
         };
 
