@@ -1,6 +1,5 @@
 import {
-  List,
-  LaunchProps,
+    LaunchProps,
 } from "@raycast/api";
 import pinsManager from "./managers/PinsManager";
 import promptManager from "./managers/PromptManager";
@@ -10,7 +9,6 @@ import { useInitialContext } from "./hooks/useInitialContext";
 import { PromptProps } from "./managers/PromptManager";
 
 interface ExtendedArguments extends Arguments.PromptLab {
-  initialClipboardText?: string;
   initialSelectionText?: string;
   target?: string;
   actions?: string;
@@ -27,7 +25,6 @@ interface ExtendedArguments extends Arguments.PromptLab {
  */
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const {
-    initialClipboardText,
     initialSelectionText,
     target,
     actions,
@@ -41,12 +38,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     selectionText,
     currentApp,
     browserContent,
-    isLoading,
-  } = useInitialContext(initialClipboardText, initialSelectionText, target);
-
-  if (isLoading) {
-    return <List isLoading={true} />;
-  }
+  } = useInitialContext(initialSelectionText, target);
 
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();

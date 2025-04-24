@@ -18,18 +18,14 @@ import {
  *          { selectionText, currentApp, browserContent, isLoading }
  */
 export function useInitialContext(
-    initialClipboardText?: string,
     initialSelectionText?: string,
     target?: string,
 ) {
     const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
     const [currentApp, setCurrentApp] = useState("");
     const [browserContent, setBrowserContent] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        let isMounted = true;
-
         /**
          * Fetches the currently selected text or selected Finder items.
          * Uses initial value if provided.
@@ -98,8 +94,6 @@ export function useInitialContext(
         };
 
         const fetchData = async () => {
-            setIsLoading(true);
-
             // Get frontmost app and selected text first
             const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([
                 fetchFrontmostApp(),
@@ -116,7 +110,6 @@ export function useInitialContext(
             setSelectionText(fetchedSelectedText);
             setCurrentApp(fetchedFrontmostApp);
             setBrowserContent(fetchedBrowserContent);
-            isMounted && setIsLoading(false);
         };
 
         const timer = setTimeout(() => {
@@ -125,7 +118,6 @@ export function useInitialContext(
 
         // Cleanup function to clear the timeout
         return () => {
-            isMounted = false;
             clearTimeout(timer);
         };
     }, [initialSelectionText, target]);
@@ -134,6 +126,5 @@ export function useInitialContext(
         selectionText,
         currentApp,
         browserContent,
-        isLoading
     };
 } 
