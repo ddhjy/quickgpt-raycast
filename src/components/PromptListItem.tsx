@@ -10,6 +10,7 @@ import {
     closeMainWindow,
     openExtensionPreferences,
     getPreferenceValues,
+    Clipboard,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/PromptManager";
@@ -232,15 +233,18 @@ export function PromptListItem({
                         {prompt.filePath && (
                             <Action
                                 title="Edit with Cursor"
-                                icon={Icon.Pencil}
+                                icon={Icon.Code}
                                 onAction={async () => {
-                                    try {
-                                        await runAppleScript(`do shell script "open -a Cursor '${prompt.filePath}'"`);
-                                        await closeMainWindow();
-                                    } catch (error) {
-                                        console.error("Failed to open Cursor:", error);
-                                        await showToast(Toast.Style.Failure, "Error opening Cursor");
-                                    }
+                                    if (!prompt.filePath) return;
+                                    await Clipboard.copy(prompt.title);
+                                    const configDir = path.dirname(prompt.filePath);
+                                    await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
+                                    await closeMainWindow();
+                                    await showToast({
+                                        title: "复制标题",
+                                        message: prompt.title,
+                                        style: Toast.Style.Success,
+                                    });
                                 }}
                             />
                         )}
