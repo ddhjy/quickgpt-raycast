@@ -221,6 +221,7 @@ export function PromptList({
                 searchMode ? (
                     <List.Dropdown
                         tooltip="Select preferred action"
+                        storeValue={false}
                         value={selectedAction}
                         onChange={(newValue: string) => {
                             if (newValue === selectedAction) return;
@@ -244,7 +245,7 @@ export function PromptList({
                             });
                         }}
                     >
-                        <List.Dropdown.Item key="" title="No preferred action" value="" />
+                        <List.Dropdown.Item key="" title="Off" value="" />
                         <List.Dropdown.Section title="Actions">
                             <List.Dropdown.Item key="copyToClipboard" title="Copy" value="copyToClipboard" />
                             <List.Dropdown.Item key="paste" title="Paste" value="paste" />
