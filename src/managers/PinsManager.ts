@@ -2,7 +2,7 @@ import { Cache } from "@raycast/api";
 
 /**
  * Manages the persistence of pinned prompt identifiers using Raycast's Cache.
- * Allows pinning and unpinning prompts by their unique identifier.
+ * Allows pinning and unpinning prompts by their unique identifier, maintaining pin order.
  */
 class PinsManager {
   private cache: Cache;
@@ -20,13 +20,16 @@ class PinsManager {
   }
 
   /**
-   * Adds an identifier to the pinned list.
+   * Adds an identifier to the beginning of the pinned list, ensuring uniqueness.
    * @param identifier The identifier to pin.
    */
   pin(identifier: string): void {
-    const pinned = this.pinnedIdentifiers();
-    pinned.add(identifier);
-    this.cache.set(this.key, JSON.stringify(Array.from(pinned)));
+    let pinned = this.pinnedIdentifiers(); // Get the current ordered array
+    // Remove the identifier if it already exists to move it to the front
+    pinned = pinned.filter(id => id !== identifier);
+    // Add the new identifier to the beginning of the array
+    pinned.unshift(identifier);
+    this.cache.set(this.key, JSON.stringify(pinned));
   }
 
   /**
@@ -34,18 +37,27 @@ class PinsManager {
    * @param identifier The identifier to unpin.
    */
   unpin(identifier: string): void {
-    const pinned = this.pinnedIdentifiers();
-    pinned.delete(identifier);
-    this.cache.set(this.key, JSON.stringify(Array.from(pinned)));
+    let pinned = this.pinnedIdentifiers();
+    // Filter out the identifier to remove it
+    pinned = pinned.filter(id => id !== identifier);
+    this.cache.set(this.key, JSON.stringify(pinned));
   }
 
   /**
-   * Gets all pinned identifiers.
-   * @returns A Set of pinned identifiers.
+   * Gets all pinned identifiers in the order they were pinned (most recent first).
+   * @returns An array of pinned identifiers.
    */
-  pinnedIdentifiers(): Set<string> {
-    const pinned = this.cache.get(this.key);
-    return new Set(pinned ? JSON.parse(pinned) : []);
+  pinnedIdentifiers(): string[] {
+    const pinnedJson = this.cache.get(this.key);
+    // Parse the JSON string or return an empty array if it doesn't exist
+    try {
+      // Ensure it's always an array, even if cache is corrupted with non-array JSON
+      const parsed = pinnedJson ? JSON.parse(pinnedJson) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to parse pinned identifiers from cache:", e);
+      return []; // Return empty array on error
+    }
   }
 }
 
