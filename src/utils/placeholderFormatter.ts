@@ -4,6 +4,7 @@
  * - Simple placeholders (input, clipboard, selection, etc.)
  * - File content placeholders for reading files/directories
  * - Fallback handling with alias support
+ * - Property path placeholders (p:property.path) for accessing object properties
  * 
  * The formatter processes all placeholders in a single RegExp scan for efficiency.
  */
@@ -210,6 +211,45 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
     }
 }
 
+/**
+ * Gets a property value from an object using a dot-notation path.
+ * Safely traverses the object hierarchy and returns undefined if any path segment is invalid.
+ *
+ * @param obj The object to get the property from
+ * @param path The dot-notation path (e.g., "title", "subprompts.0.title")
+ * @returns The property value, or undefined if the path doesn't resolve
+ */
+function getPropertyByPath(obj: unknown, path: string): unknown {
+    if (!obj || typeof obj !== 'object' || !path) {
+        return undefined;
+    }
+
+    const parts = path.split('.');
+    let current: unknown = obj;
+
+    for (const part of parts) {
+        if (current === null || typeof current !== 'object') {
+            return undefined;
+        }
+
+        // Handle array indices
+        const index = parseInt(part, 10);
+        if (!isNaN(index) && Array.isArray(current)) {
+            current = current[index];
+            continue;
+        }
+
+        // Handle object properties
+        current = (current as Record<string, unknown>)[part];
+
+        if (current === undefined) {
+            return undefined;
+        }
+    }
+
+    return current;
+}
+
 /* Synchronous Placeholder Formatter */
 
 /**
@@ -259,8 +299,25 @@ export function placeholderFormatter(
 
         /* Regular placeholders */
         let content = body;
-        const isPrefixed = content.startsWith('p:');
-        if (isPrefixed) content = content.slice(2);
+        const isPNotation = content.startsWith('p:');
+        if (isPNotation) {
+            // Extract property path after 'p:' prefix
+            const propertyPath = content.slice(2).trim();
+            // Get the property value using the path
+            const propValue = getPropertyByPath(incoming, propertyPath);
+
+            // If property exists and is a valid value, return it
+            if (propValue !== undefined) {
+                if (typeof propValue === 'string') {
+                    return propValue;
+                }
+                // Convert non-string values to string representation
+                return String(propValue);
+            }
+
+            // If property doesn't exist, continue with normal placeholder processing
+            content = content.slice(2);
+        }
 
         for (const part of content.split('|')) {
             const key = toPlaceholderKey(part.trim());
@@ -268,7 +325,7 @@ export function placeholderFormatter(
 
             const v = map.get(key);
             if (v) {
-                const replacement = isPrefixed ? PLACEHOLDERS[key].literal : v;
+                const replacement = isPNotation ? PLACEHOLDERS[key].literal : v;
 
                 // Check if replacement text still contains placeholders, if so process recursively
                 if (PH_REG.test(replacement)) {
@@ -430,22 +487,44 @@ export async function placeholderFormatterAsync(
         }
 
         let content = body;
-        const isPrefixed = content.startsWith('p:');
-        if (isPrefixed) content = content.slice(2);
+        const isPNotation = content.startsWith('p:');
+        if (isPNotation) {
+            // Extract property path after 'p:' prefix
+            const propertyPath = content.slice(2).trim();
+            // Get the property value using the path
+            const propValue = getPropertyByPath(incoming, propertyPath);
 
-        let replaced = '';
+            // If property exists and is a valid value, return it
+            if (propValue !== undefined) {
+                if (typeof propValue === 'string') {
+                    chunks.push(propValue);
+                } else {
+                    // Convert non-string values to string representation
+                    chunks.push(String(propValue));
+                }
+                continue; // Skip further processing for this placeholder
+            }
+
+            // If property doesn't exist, continue with normal placeholder processing
+            content = content.slice(2);
+        }
+
+        let replaced = false;
         for (const part of content.split('|')) {
             const key = toPlaceholderKey(part.trim());
             if (!key) continue;
 
             const v = map.get(key);
             if (v) {
-                replaced = isPrefixed ? PLACEHOLDERS[key].literal : v;
+                chunks.push(isPNotation ? PLACEHOLDERS[key].literal : v);
+                replaced = true;
                 break;
             }
         }
 
-        chunks.push(replaced || `{{${body}}}`);
+        if (!replaced) {
+            chunks.push(`{{${body}}}`); // Unresolved: return as-is
+        }
     }
 
     chunks.push(text.slice(lastIdx));
