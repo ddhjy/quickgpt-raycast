@@ -1,5 +1,5 @@
 import {
-    LaunchProps,
+  LaunchProps,
 } from "@raycast/api";
 import pinsManager from "./managers/PinsManager";
 import promptManager from "./managers/PromptManager";
@@ -43,7 +43,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
   const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
-    prompt.pinned = pinnedIdentifiers.has(prompt.identifier);
+    prompt.pinned = pinnedIdentifiers.includes(prompt.identifier);
     return prompt.pinned;
   });
 

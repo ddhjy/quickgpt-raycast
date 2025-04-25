@@ -90,10 +90,15 @@ export function PromptList({
      * @param prompt The prompt object being pinned or unpinned.
      */
     const handlePinToggle = (prompt: PromptProps) => {
-        prompt.pinned = !prompt.pinned;
-        prompt.pinned
-            ? pinsManager.pin(prompt.identifier)
-            : pinsManager.unpin(prompt.identifier);
+        // Toggle the pinned state using PinsManager
+        const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
+        if (isCurrentlyPinned) {
+            pinsManager.unpin(prompt.identifier);
+        } else {
+            pinsManager.pin(prompt.identifier);
+        }
+
+        // Force the component to re-render to re-calculate displayPrompts
         forceUpdate();
     };
 
@@ -125,10 +130,40 @@ export function PromptList({
 
     // Sort and slice the prompt list
     const displayPrompts = useMemo(() => {
-        const sorted = [...filteredPrompts].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+        // Get the latest order of pinned identifiers (most recent first)
+        const pinnedOrder = pinsManager.pinnedIdentifiers(); // Returns string[]
+
+        // Create a Map for quick lookup of pinned prompts
+        const pinnedPromptsMap = new Map<string, PromptProps>();
+        const unpinnedPrompts: PromptProps[] = [];
+
+        // Iterate through filtered prompts and group them based on pinsManager state
+        filteredPrompts.forEach(prompt => {
+            // Get the latest pinned state directly from pinsManager
+            if (pinnedOrder.includes(prompt.identifier)) {
+                prompt.pinned = true; // Ensure local state is synchronized
+                pinnedPromptsMap.set(prompt.identifier, prompt);
+            } else {
+                prompt.pinned = false; // Ensure local state is synchronized
+                unpinnedPrompts.push(prompt);
+            }
+        });
+
+        // Sort pinned prompts according to the pinnedOrder array (most recent first)
+        const sortedPinnedPrompts = pinnedOrder
+            .map(id => pinnedPromptsMap.get(id)) // Retrieve Prompts from the Map in order
+            .filter((p): p is PromptProps => p !== undefined); // Filter out potentially non-existent items (robustness)
+
+        // Combine results: sorted pinned prompts first, followed by all unpinned prompts
+        // Optionally apply secondary sorting to unpinned prompts, e.g., alphabetically
+        // unpinnedPrompts.sort((a, b) => a.title.localeCompare(b.title)); // Optional secondary sorting
+
+        const sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
+
+        // Apply truncation logic in search mode (unchanged)
         const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 9 : undefined);
         return sliced;
-    }, [filteredPrompts, searchMode, searchText]);
+    }, [filteredPrompts, searchMode, searchText, forceUpdateCounter]); // **** Add forceUpdateCounter as a dependency ****
 
     // Effect to handle pushing new list when space is entered in search mode
     useEffect(() => {
