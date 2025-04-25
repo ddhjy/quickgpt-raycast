@@ -123,6 +123,72 @@ describe("placeholderFormatter", () => {
     };
     expect(placeholderFormatter(text, replacements)).toBe("Content: {{input}}");
   });
+
+  it("should replace {{p:propertyName}} with property value from merged object", () => {
+    const text = "Title is {{p:title}}, Count: {{p:count}}";
+    const mergedReplacements = {
+      title: "My Awesome Prompt",
+      icon: "📎",
+      count: 123,
+      input: "user input",
+      clipboard: "clipboard data",
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Title is My Awesome Prompt, Count: 123");
+  });
+
+  it("should handle nested property paths with {{p:property.path}}", () => {
+    const text = "Nested property: {{p:nested.property}}";
+    const mergedReplacements = {
+      nested: {
+        property: "nested value"
+      }
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Nested property: nested value");
+  });
+
+  it("should handle array indices in property paths", () => {
+    const text = "Array item: {{p:items.1.name}}";
+    const mergedReplacements = {
+      items: [
+        { name: "First item" },
+        { name: "Second item" },
+        { name: "Third item" }
+      ]
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Array item: Second item");
+  });
+
+  it("should prioritize standard replacements over prompt properties with same name", () => {
+    const text = "Value is {{p:input}}";
+    const mergedReplacements = {
+      input: "standard user input",
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Value is standard user input");
+  });
+
+  it("should return {{p:propertyPath}} unchanged when property doesn't exist", () => {
+    const text = "Missing property: {{p:nonexistent.property}}";
+    const mergedReplacements = {
+      someOtherProperty: "value"
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Missing property: {{p:nonexistent.property}}");
+  });
+
+  it("should convert non-string values to strings", () => {
+    const text = "Number: {{p:number}}, Boolean: {{p:flag}}, Null: {{p:nullValue}}";
+    const mergedReplacements = {
+      number: 42,
+      flag: true,
+      nullValue: null
+    };
+    const result = placeholderFormatter(text, mergedReplacements);
+    expect(result).toBe("Number: 42, Boolean: true, Null: null");
+  });
 });
 
 describe("resolvePlaceholders", () => {

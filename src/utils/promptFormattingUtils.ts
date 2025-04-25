@@ -128,9 +128,9 @@ export function getQuickPrompt(selectionText: string, identifier?: string, fileP
 
 /**
  * Builds the final, fully formatted prompt content string.
- * 1. Applies prefix commands (e.g., language directives) to the base content.
- * 2. Ensures dynamic placeholders like `promptTitles` are up-to-date.
- * 3. Uses `placeholderFormatter` to substitute all standard and file/directory placeholders.
+ * 1. Merges prompt properties and standard replacements (standard ones take priority).
+ * 2. Applies prefix commands (e.g., language directives) to the base content.
+ * 3. Uses `placeholderFormatter` to substitute all placeholders, including {{p:promptProperty}} and {{file:...}}.
  *
  * @param prompt The PromptProps object containing the base content and configuration.
  * @param replacements An object containing the values for standard placeholders (clipboard, selection, etc.).
@@ -144,21 +144,24 @@ export function buildFormattedPromptContent(
 ): string {
     const currentContent = prompt.content || ""; // Ensure content is a string
 
-    // Step 1: Apply prefix commands (Changed order based on description)
-    const processedContent = applyPrefixCommandsToContent(currentContent, prompt.prefixCMD);
-
-    // Step 2: Update dynamic replacements like promptTitles (if necessary)
-    const updatedReplacements = {
-        ...replacements,
-        promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
+    // Step 1: Merge prompt properties and standard replacements.
+    // Standard replacements (like input, clipboard) should override prompt properties if names conflict.
+    const mergedReplacements = {
+        ...prompt, // Spread prompt properties first (lower priority)
+        ...replacements, // Spread standard replacements second (higher priority)
+        promptTitles: replacements.promptTitles || getIndentedPromptTitles(), // Ensure promptTitles is fresh
     };
 
-    // Step 3: Call the unified placeholderFormatter, passing relativeRootDir
-    const formattedContent = placeholderFormatter(processedContent, updatedReplacements, relativeRootDir, { resolveFile: true });
+    // Step 2: Apply prefix commands
+    const processedContent = applyPrefixCommandsToContent(currentContent, prompt.prefixCMD);
 
-    // Step 4: Remove the old {{file:filepath}} handling logic block
-    // const filePlaceholderPattern = /{{file:([^}]+)}}/g;
-    // formattedContent = formattedContent.replace(filePlaceholderPattern, (match, filePath) => { ... });
+    // Step 3: Call the unified placeholderFormatter with the merged replacements
+    const formattedContent = placeholderFormatter(
+        processedContent,
+        mergedReplacements,
+        relativeRootDir,
+        { resolveFile: true }
+    );
 
     return formattedContent;
 }
