@@ -108,12 +108,15 @@ describe("placeholderFormatter", () => {
     expect(placeholderFormatter(text, replacements)).toBe("Current app: VS Code");
   });
 
-  it("should use literal with prefix {{p:currentApp}}", () => {
+  it("should use literal with prefix {{p:currentApp}} under specific conditions", () => {
     const text = "Current app: {{p:currentApp}}";
     const replacements: SpecificReplacements = {
       currentApp: "VS Code",
     };
-    expect(placeholderFormatter(text, replacements)).toBe("Current app: <当前应用>");
+    expect(placeholderFormatter(text, replacements)).toBe("Current app: VS Code");
+
+    const noValueReplacements = {};
+    expect(placeholderFormatter(text, noValueReplacements)).toBe("Current app: <当前应用>");
   });
 
   it("should handle empty input replacements", () => {

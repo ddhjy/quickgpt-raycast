@@ -137,10 +137,11 @@ export function configureLogger(config: Partial<LoggerConfig>): void {
  * @param raw The raw replacement values to process
  * @returns A Map of valid placeholder keys to their replacement values
  */
-function buildEffectiveMap(raw: Partial<SpecificReplacements>) {
+function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<string, unknown>) {
     const m = new Map<PlaceholderKey, string>();
+    // 仅处理 SpecificReplacements 中定义的标准占位符键
     Object.entries(raw).forEach(([k, v]) => {
-        if (isNonEmpty(v)) m.set(k as PlaceholderKey, v.trim());
+        if (k in PLACEHOLDERS && isNonEmpty(v as string)) m.set(k as PlaceholderKey, (v as string).trim());
     });
     if (!m.has('now')) m.set('now', new Date().toLocaleString());
     return m;
@@ -257,14 +258,14 @@ function getPropertyByPath(obj: unknown, path: string): unknown {
  * Handles both regular placeholders and file content placeholders.
  * 
  * @param text The text containing placeholders to format
- * @param incoming The replacement values for placeholders
+ * @param incoming The replacement values for placeholders and any other properties for p: notation
  * @param root The root directory for file placeholder resolution
  * @param options Additional options for formatting
  * @returns The formatted text with all placeholders replaced
  */
 export function placeholderFormatter(
     text: string,
-    incoming: SpecificReplacements = {},
+    incoming: SpecificReplacements & Record<string, unknown> = {},
     root?: string,
     options: { resolveFile?: boolean; recursionLevel?: number; hasResolvedFile?: boolean } = { resolveFile: false, recursionLevel: 0, hasResolvedFile: false },
 ): string {
@@ -298,47 +299,7 @@ export function placeholderFormatter(
         }
 
         /* Regular placeholders */
-        let content = body;
-        const isPNotation = content.startsWith('p:');
-        if (isPNotation) {
-            // Extract property path after 'p:' prefix
-            const propertyPath = content.slice(2).trim();
-            // Get the property value using the path
-            const propValue = getPropertyByPath(incoming, propertyPath);
-
-            // If property exists and is a valid value, return it
-            if (propValue !== undefined) {
-                if (typeof propValue === 'string') {
-                    return propValue;
-                }
-                // Convert non-string values to string representation
-                return String(propValue);
-            }
-
-            // If property doesn't exist, continue with normal placeholder processing
-            content = content.slice(2);
-        }
-
-        for (const part of content.split('|')) {
-            const key = toPlaceholderKey(part.trim());
-            if (!key) continue;
-
-            const v = map.get(key);
-            if (v) {
-                const replacement = isPNotation ? PLACEHOLDERS[key].literal : v;
-
-                // Check if replacement text still contains placeholders, if so process recursively
-                if (PH_REG.test(replacement)) {
-                    // Reset regex state
-                    PH_REG.lastIndex = 0;
-                    return replacement;
-                }
-
-                return replacement;
-            }
-        }
-
-        return `{{${body}}}`;         // Unresolved: return as-is
+        return processPlaceholder(body, incoming, map);
     });
 
     // Process nested placeholders if no file has been resolved yet
@@ -364,12 +325,12 @@ export function placeholderFormatter(
  * during formatting with the given replacement values.
  * 
  * @param text The text to scan for placeholders
- * @param incoming The available replacement values
+ * @param incoming The available replacement values and any other properties for p: notation
  * @returns A Set of placeholder keys that would be used in formatting
  */
 export function resolvePlaceholders(
     text: string,
-    incoming: Partial<SpecificReplacements> = {},
+    incoming: Partial<SpecificReplacements> & Record<string, unknown> = {},
 ): Set<PlaceholderKey> {
     const used = new Set<PlaceholderKey>();
     const map = buildEffectiveMap(incoming);
@@ -440,14 +401,14 @@ async function resolveFilePlaceholderAsync(body: string, root?: string) {
  * Recommended for GUI/WebWorker scenarios to avoid blocking the main thread.
  * 
  * @param text The text containing placeholders to format
- * @param incoming The replacement values for placeholders
+ * @param incoming The replacement values for placeholders and any other properties for p: notation
  * @param root The root directory for file placeholder resolution
  * @param options Additional options for formatting
  * @returns Promise resolving to the formatted text
  */
 export async function placeholderFormatterAsync(
     text: string,
-    incoming: SpecificReplacements = {},
+    incoming: SpecificReplacements & Record<string, unknown> = {},
     root?: string,
     options: { resolveFile?: boolean; recursionLevel?: number; hasResolvedFile?: boolean } = { resolveFile: true, recursionLevel: 0, hasResolvedFile: false },
 ): Promise<string> {
@@ -486,45 +447,9 @@ export async function placeholderFormatterAsync(
             continue;
         }
 
-        let content = body;
-        const isPNotation = content.startsWith('p:');
-        if (isPNotation) {
-            // Extract property path after 'p:' prefix
-            const propertyPath = content.slice(2).trim();
-            // Get the property value using the path
-            const propValue = getPropertyByPath(incoming, propertyPath);
-
-            // If property exists and is a valid value, return it
-            if (propValue !== undefined) {
-                if (typeof propValue === 'string') {
-                    chunks.push(propValue);
-                } else {
-                    // Convert non-string values to string representation
-                    chunks.push(String(propValue));
-                }
-                continue; // Skip further processing for this placeholder
-            }
-
-            // If property doesn't exist, continue with normal placeholder processing
-            content = content.slice(2);
-        }
-
-        let replaced = false;
-        for (const part of content.split('|')) {
-            const key = toPlaceholderKey(part.trim());
-            if (!key) continue;
-
-            const v = map.get(key);
-            if (v) {
-                chunks.push(isPNotation ? PLACEHOLDERS[key].literal : v);
-                replaced = true;
-                break;
-            }
-        }
-
-        if (!replaced) {
-            chunks.push(`{{${body}}}`); // Unresolved: return as-is
-        }
+        // Process regular placeholder
+        const processedValue = processPlaceholder(body, incoming, map);
+        chunks.push(processedValue);
     }
 
     chunks.push(text.slice(lastIdx));
@@ -544,4 +469,81 @@ export async function placeholderFormatterAsync(
     }
 
     return result;
+}
+
+/**
+ * Helper function to process a single placeholder
+ * Used by both sync and async versions to maintain consistent logic
+ * 
+ * @param body The placeholder body text (without {{}})
+ * @param incoming The replacement values and properties object
+ * @param map The processed map of standard placeholders
+ * @returns The processed value for the placeholder
+ */
+function processPlaceholder(
+    body: string,
+    incoming: SpecificReplacements & Record<string, unknown>,
+    map: Map<PlaceholderKey, string>
+): string {
+    let content = body;
+    const isPNotation = content.startsWith('p:');
+
+    if (isPNotation) {
+        // Extract property path after 'p:' prefix
+        const propertyPath = content.slice(2).trim();
+
+        // First, try property path lookup (highest priority)
+        const propValue = getPropertyByPath(incoming, propertyPath);
+
+        // If property exists and is a valid value, return it
+        if (propValue !== undefined) {
+            if (typeof propValue === 'string') {
+                return propValue;
+            }
+            // Convert non-string values to string representation
+            return String(propValue);
+        }
+
+        // Next, check if this is a standard placeholder key (for backward compatibility)
+        const standardKey = toPlaceholderKey(propertyPath);
+        if (standardKey && PLACEHOLDERS[standardKey]) {
+            return PLACEHOLDERS[standardKey].literal;
+        }
+
+        // If property wasn't found, try special handling for complex predefined placeholders
+        // Split by | to handle cases like {{p:i|s|c}}
+        const parts = propertyPath.split('|');
+
+        for (const part of parts) {
+            const key = toPlaceholderKey(part.trim());
+            if (key && map.has(key)) {
+                // This is one of the predefined placeholders and it exists
+                return PLACEHOLDERS[key].literal;
+            }
+        }
+
+        // If still not found, continue with normal processing but remove p: prefix
+        content = content.slice(2);
+    }
+
+    // Process normal placeholders with fallback chain
+    for (const part of content.split('|')) {
+        const key = toPlaceholderKey(part.trim());
+        if (!key) continue;
+
+        const v = map.get(key);
+        if (v) {
+            // Check if replacement text still contains placeholders, if so process recursively
+            // (This was in the original synchronized version)
+            if (PH_REG.test(v)) {
+                // Reset regex state
+                PH_REG.lastIndex = 0;
+                return v;
+            }
+            return v;  // For normal placeholders we use the value directly
+        }
+    }
+
+    // No replacement found
+    return `{{${body}}}`;  // Unresolved: return as-is
 }
