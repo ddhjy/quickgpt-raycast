@@ -90,19 +90,39 @@ export function getQuickPrompt(selectionText: string, identifier?: string, fileP
             foundPrompt.filePath = filePath;
         }
     } else {
-        foundPrompt = promptManager.findPrompt(
-            (prompt) =>
-                !!prompt.identifier && selectionText.includes(`${IDENTIFIER_PREFIX}${prompt.identifier}`)
-        );
-        if (foundPrompt?.identifier) {
-            cleanedText = selectionText
-                .split(`${IDENTIFIER_PREFIX}${foundPrompt.identifier}`)
-                .slice(1)
-                .join("")
-                .trim();
+        const targetIdentifierPrefix = `${IDENTIFIER_PREFIX}`;
+        // 1. Remove leading whitespace from selectionText for checking
+        const trimmedSelectionText = selectionText.trimStart();
+        let identifierStartIndexInOriginal = -1; // Record the start index of the identifier in the original text
+
+        // 2. Find the first matching prompt
+        foundPrompt = promptManager.findPrompt((prompt) => {
+            if (prompt.identifier) {
+                const fullIdentifier = `${targetIdentifierPrefix}${prompt.identifier}`;
+                // 3. Use the trimmed text for startsWith check
+                if (trimmedSelectionText.startsWith(fullIdentifier)) {
+                    // 4. If matched, record the start position in the *original* selectionText
+                    //    Calculating leading whitespace length is more accurate than indexOf
+                    const leadingWhitespaceLength = selectionText.length - trimmedSelectionText.length;
+                    identifierStartIndexInOriginal = leadingWhitespaceLength; // Identifier starts right after whitespace
+                    return true; // Stop searching once found
+                }
+            }
+            return false;
+        });
+
+        // 5. If a matching prompt is found
+        if (foundPrompt?.identifier && identifierStartIndexInOriginal !== -1) {
+            const fullIdentifier = `${targetIdentifierPrefix}${foundPrompt.identifier}`;
+            // Extract substring from the end of the identifier in the original text, then trim the result
+            cleanedText = selectionText.substring(identifierStartIndexInOriginal + fullIdentifier.length).trim();
+        } else {
+            // If no match found, cleanedText remains the original selectionText
+            cleanedText = selectionText;
         }
     }
 
+    // Note: The return statement should be outside the if/else structure
     return [foundPrompt, cleanedText];
 }
 
