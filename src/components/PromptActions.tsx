@@ -175,9 +175,10 @@ export function generatePromptActions(
           icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
           onAction={async () => {
-            closeMainWindow();
             const finalContent = await getFinalContent();
+            // Must be done before closeMainWindow, otherwise copying may fail
             Clipboard.copy(finalContent);
+            closeMainWindow();
           }}
         />
       ),
