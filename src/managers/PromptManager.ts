@@ -39,7 +39,6 @@ const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
   'subprompts',
   'identifier',
   'path',
-  'filePath',
   'pinned',
   'options',
   'textInputs',
