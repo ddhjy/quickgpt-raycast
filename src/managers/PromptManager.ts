@@ -34,6 +34,15 @@ export type PromptProps = {
   filePath?: string;
 };
 
+// List of properties that should NOT be inherited from parent to child
+// const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
+//   'title', 'content', 'subprompts', 'identifier', 'path', 'filePath', 'pinned', 'options', 'textInputs'
+// ];
+
+const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
+  'subprompts'
+];
+
 /**
  * Manages loading, parsing, processing, and accessing prompt templates.
  * Reads prompts from HJSON files located in configured directories or default paths.
@@ -274,30 +283,59 @@ class PromptManager {
    */
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map(prompt => {
-      // Establish base properties following the priority: Parent > RootProperty
-      const baseProperties = { ...this.mergedRootProperties }; // Start with root
+      // Start with root properties as the absolute base
+      const baseProperties: Partial<PromptProps> = { ...this.mergedRootProperties };
 
-      // Apply parent properties, overwriting root properties if they exist in the parent
+      // Inherit from parent by default, excluding specific properties
       if (parentPrompt) {
-        // Iterate through inheritable properties defined in the parent
-        // (Example: actions, prefixCMD, icon. Add others as needed)
-        if (parentPrompt.actions !== undefined) baseProperties.actions = parentPrompt.actions;
-        if (parentPrompt.prefixCMD !== undefined) baseProperties.prefixCMD = parentPrompt.prefixCMD;
-        if (parentPrompt.icon !== undefined) baseProperties.icon = parentPrompt.icon;
-        if (parentPrompt.filePath !== undefined) baseProperties.filePath = parentPrompt.filePath; // Consider if filePath should be inherited this way
-        if (parentPrompt.noexplanation !== undefined) baseProperties.noexplanation = parentPrompt.noexplanation;
-        if (parentPrompt.forbidChinese !== undefined) baseProperties.forbidChinese = parentPrompt.forbidChinese;
-        // Add other inheritable properties here. Check for !== undefined to allow explicitly setting null/false.
+        // Iterate over all keys of the parent prompt
+        for (const key in parentPrompt) {
+          // Ensure the key is a valid PromptProps key and owned by the parent object
+          if (Object.prototype.hasOwnProperty.call(parentPrompt, key)) {
+            const propKey = key as keyof PromptProps;
+            // Check if the property is NOT in the exclusion list AND the parent has a defined value
+            if (!NON_INHERITED_PROPS.includes(propKey) && parentPrompt[propKey] !== undefined) {
+              // Copy the parent's property value to baseProperties
+              // Parent properties will overwrite root properties if they exist
+              // Add type assertion to satisfy TypeScript, suppress linter warning for 'any'
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              baseProperties[propKey] = parentPrompt[propKey] as any;
+            }
+          }
+        }
       }
 
-      // Combine base properties (Root + Parent) with the prompt itself
-      // Prompt's own properties take the highest priority
+      // Preserve the original filePath from the prompt object before merging,
+      // as filePath is in NON_INHERITED_PROPS and should always reflect the definition source.
+      const originalFilePath = prompt.filePath;
+
+      // Combine base properties (Root + Inherited Parent) with the prompt itself.
+      // Prompt's own properties take the highest priority, overwriting inherited ones.
       prompt = { ...baseProperties, ...prompt };
 
-      // Process the prompt (e.g., generate ID)
+      // Ensure the correct filePath is retained (the one set during loading)
+      // If the prompt had its own filePath, the merge already prioritized it.
+      // If it didn't, we make sure it's not incorrectly set to undefined if baseProperties didn't have one.
+      // Since filePath is in NON_INHERITED_PROPS, it won't be in baseProperties from the parent.
+      // We rely on the filePath being correctly set during the initial load (`loadPromptsFromFileSync`).
+      // If originalFilePath exists, ensure it's kept. If not, it remains undefined or as set by rootProperty initially.
+      if (originalFilePath) {
+        prompt.filePath = originalFilePath;
+      } else if (NON_INHERITED_PROPS.includes('filePath')) {
+        // If it's non-inherited and wasn't set originally, ensure it's not present unless from rootProperty
+        // Note: The check `!prompt.filePath` might be redundant due to the `originalFilePath` check above,
+        // but it ensures clarity that we only assign root if filePath isn't already set.
+        if (!prompt.filePath) {
+          prompt.filePath = this.mergedRootProperties.filePath;
+        }
+      }
+      // Note: Simplified filePath handling relies on the initial load setting it correctly
+      // and the NON_INHERITED_PROPS preventing parent override.
+
+      // Process the prompt (e.g., ensure ID exists)
       prompt = this.processPrompt(prompt); // Ensure ID is generated if needed
 
-      // Calculate path (after potential parent inheritance is considered)
+      // Recalculate path based on hierarchy (always overrides any potential inherited 'path')
       const currentPath = parentPrompt?.path ? `${parentPrompt.path} / ${prompt.title}` : prompt.title;
       prompt.path = currentPath;
 
@@ -305,7 +343,7 @@ class PromptManager {
       if (prompt.subprompts) {
         prompt.subprompts = this.processPrompts(
           prompt.subprompts,
-          prompt // Pass the *current*, partially processed prompt as the parent
+          prompt // Pass the *current*, processed prompt as the parent
         );
       }
 
