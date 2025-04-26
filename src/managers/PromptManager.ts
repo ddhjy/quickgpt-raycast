@@ -35,12 +35,14 @@ export type PromptProps = {
 };
 
 // List of properties that should NOT be inherited from parent to child
-// const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
-//   'title', 'content', 'subprompts', 'identifier', 'path', 'filePath', 'pinned', 'options', 'textInputs'
-// ];
-
 const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
-  'subprompts'
+  'subprompts',
+  'identifier',
+  'path',
+  'filePath',
+  'pinned',
+  'options',
+  'textInputs',
 ];
 
 /**
