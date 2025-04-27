@@ -17,7 +17,7 @@ import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
 import path from "path";
 import { generatePromptActions } from "./PromptActions";
-import { getPlaceholderIcons } from "../utils/promptFormattingUtils";
+import { getPlaceholderIcons, findOptionPlaceholders } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { AIProvider } from "../services/types";
 import { placeholderFormatter } from "../utils/placeholderFormatter";
@@ -145,9 +145,25 @@ export function PromptListItem({
             // Generate actions for regular prompts or those with options
             return (
                 <>
-                    {prompt.options && Object.keys(prompt.options).length > 0 ? (
+                    {/* 优先检查content中的option:xxx占位符，这些引用的是属性值作为选项 */}
+                    {findOptionPlaceholders(prompt).length > 0 ? (
                         <Action.Push
-                            title="Select Options"
+                            title="选择选项"
+                            icon={Icon.Gear}
+                            target={
+                                <PromptOptionsForm
+                                    prompt={prompt}
+                                    optionKeys={findOptionPlaceholders(prompt)}
+                                    baseReplacements={replacements}
+                                    promptSpecificRootDir={promptSpecificRootDir}
+                                    scripts={scripts}
+                                    aiProviders={aiProviders}
+                                />
+                            }
+                        />
+                    ) : prompt.options && Object.keys(prompt.options).length > 0 ? (
+                        <Action.Push
+                            title="选择选项"
                             icon={Icon.Gear}
                             target={
                                 <PromptOptionsForm
