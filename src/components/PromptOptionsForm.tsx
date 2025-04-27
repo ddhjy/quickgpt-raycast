@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, ActionPanel, Clipboard } from "@raycast/api";
+import { Form, ActionPanel } from "@raycast/api";
 import { generatePromptActions } from "./PromptActions";
-import { placeholderFormatter, getPropertyByPath } from "../utils/placeholderFormatter";
+import { getPropertyByPath } from "../utils/placeholderFormatter";
 import { PromptProps } from "../managers/PromptManager";
-import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { AIProvider } from "../services/types";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
-import { buildFormattedPromptContent } from "../utils/promptFormattingUtils";
 
 interface OptionsFormProps {
     prompt: PromptProps;
