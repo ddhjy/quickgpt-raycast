@@ -181,10 +181,11 @@ export function getPlaceholderIcons(
 ): List.Item.Accessory[] {
     if (!content) return [];
 
-    // Resolve placeholders *excluding* clipboard for icon generation
+    // Resolve placeholders *using only standard replacements* for icon generation
     const usedPlaceholders = resolvePlaceholders(content, replacements);
 
-    console.log("usedPlaceholders", usedPlaceholders);
+    // Remove debug log
+    // console.log("usedPlaceholders", usedPlaceholders);
 
     const placeholderIconsArray: List.Item.Accessory[] = [];
     usedPlaceholders.forEach((placeholder) => {

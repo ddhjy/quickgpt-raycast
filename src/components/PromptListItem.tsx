@@ -66,10 +66,16 @@ export function PromptListItem({
 }: PromptListItemProps) {
     // Format title (clipboard placeholder won't resolve here)
     const rawTitle = prompt.title || "";
+    // Merge prompt properties with standard replacements for title formatting
+    const mergedForTitle = {
+        ...prompt, // Include prompt properties
+        ...replacements, // Include standard replacements (input, selection, etc.)
+        now: new Date().toLocaleString() // Ensure 'now' is available
+    };
     // Apply placeholder formatting to the title
     const formattedTitleWithPlaceholders = placeholderFormatter(
         rawTitle,
-        { ...replacements, now: new Date().toLocaleString() },
+        mergedForTitle, // Pass the merged object
         promptSpecificRootDir,
         { resolveFile: false }
     );
