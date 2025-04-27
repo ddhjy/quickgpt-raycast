@@ -145,7 +145,7 @@ export function PromptListItem({
             // Generate actions for regular prompts or those with options
             return (
                 <>
-                    {/* 优先检查content中的option:xxx占位符，这些引用的是属性值作为选项 */}
+                    {/* Preferentially check for option:xxx placeholders in content, which refer to property values as options */}
                     {findOptionPlaceholders(prompt).length > 0 ? (
                         <Action.Push
                             title="选择选项"
