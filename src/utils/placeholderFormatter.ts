@@ -56,13 +56,13 @@ const LOG_LEVEL_WEIGHT: Record<LogLevel, number> = {
 };
 
 const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
-    input: { literal: '<输入文本>', alias: 'i' },
-    selection: { literal: '<选中文本>', alias: 's' },
-    clipboard: { literal: '<剪贴板文本>', alias: 'c' },
-    currentApp: { literal: '<当前应用>' },
-    browserContent: { literal: '<浏览器内容>' },
-    now: { literal: '<当前时间>', alias: 'n' },
-    promptTitles: { literal: '<提示词标题>', alias: 'pt' },
+    input: { literal: '<Input text>', alias: 'i' },
+    selection: { literal: '<Selected text>', alias: 's' },
+    clipboard: { literal: '<Clipboard text>', alias: 'c' },
+    currentApp: { literal: '<Current application>' },
+    browserContent: { literal: '<Browser content>' },
+    now: { literal: '<Current time>', alias: 'n' },
+    promptTitles: { literal: '<Prompt titles>', alias: 'pt' },
 };
 
 // alias ⇒ key
@@ -139,7 +139,7 @@ export function configureLogger(config: Partial<LoggerConfig>): void {
  */
 function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<string, unknown>) {
     const m = new Map<PlaceholderKey, string>();
-    // 仅处理 SpecificReplacements 中定义的标准占位符键
+    // Only process standard placeholder keys defined in SpecificReplacements
     Object.entries(raw).forEach(([k, v]) => {
         if (k in PLACEHOLDERS && isNonEmpty(v as string)) m.set(k as PlaceholderKey, (v as string).trim());
     });

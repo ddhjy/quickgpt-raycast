@@ -253,29 +253,29 @@ export function getIndentedPromptTitles(): string {
 }
 
 /**
- * 扫描prompt.content，查找有效的{{option:propertyName}}占位符
- * 仅返回prompt对象中实际存在的且为非空数组的属性名
- * 
- * @param prompt 要检查的Prompt对象
- * @returns 有效的选项属性名数组
+ * Scan prompt.content to find valid {{option:propertyName}} placeholders
+ * Only return property names that actually exist in the prompt object and are non-empty arrays
+ *
+ * @param prompt The Prompt object to check
+ * @returns Array of valid option property names
  */
 export function findOptionPlaceholders(prompt: PromptProps): string[] {
     const optionKeys: string[] = [];
     if (!prompt.content) return optionKeys;
 
-    // 简单的正则用于检测option占位符
+    // Simple regex to detect option placeholders
     const regex = /{{option:([^}]+)}}/g;
     let match;
 
     while ((match = regex.exec(prompt.content)) !== null) {
         const propertyName = match[1].trim();
-        // 检查prompt对象自身是否有这个属性，并且它是一个非空数组
+        // Check if the prompt object itself has this property and it is a non-empty array
         const propValue = getPropertyByPath(prompt, propertyName);
         if (Array.isArray(propValue) && propValue.length > 0) {
             optionKeys.push(propertyName);
         }
     }
 
-    // 去重后返回
+    // Return after deduplication
     return Array.from(new Set(optionKeys));
 } 

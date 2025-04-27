@@ -23,7 +23,7 @@ interface OptionsFormProps {
  *
  * @param props The component props.
  * @param props.prompt The prompt data, including defined options and text inputs.
- * @param props.optionKeys 选项属性名列表，用于动态生成选项（新增）
+ * @param props.optionKeys List of option property names, used for dynamic option generation (new)
  * @param props.baseReplacements Base replacements without clipboard.
  * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
  * @param props.scripts List of available scripts for the action panel.
@@ -48,20 +48,20 @@ export function PromptOptionsForm({
         };
     }, [prompt.title]);
 
-    // 初始化选项的默认值
+    // Initialize default values for options
     useEffect(() => {
         const initialOptions: { [key: string]: string } = {};
 
-        // 处理 option:xxx 引用的属性选项
+        // Handle options referenced by option:xxx
         optionKeys.forEach(key => {
             const values = getPropertyByPath(prompt, key);
             if (Array.isArray(values) && values.length > 0) {
-                // 默认选中第一个选项
+                // Select the first option by default
                 initialOptions[key] = String(values[0]);
             }
         });
 
-        // 处理传统 options 对象
+        // Handle the traditional options object
         if (prompt.options) {
             Object.entries(prompt.options).forEach(([key, values]) => {
                 if (values.length > 0 && !initialOptions[key]) {
@@ -114,11 +114,12 @@ export function PromptOptionsForm({
                 </ActionPanel>
             }
         >
-            {/* 动态生成来自 optionKeys 指定属性的下拉菜单 */}
+            {/* Dynamically generate dropdown menus from properties specified by optionKeys */}
             {optionKeys.map((key) => {
                 const values = getPropertyByPath(prompt, key);
                 if (!Array.isArray(values) || values.length === 0) {
-                    return null; // 跳过非数组或空数组
+                    // Skip non-array or empty array
+                    return null;
                 }
 
                 return (
@@ -140,7 +141,7 @@ export function PromptOptionsForm({
                 );
             })}
 
-            {/* 传统的 options 对象生成的下拉菜单 */}
+            {/* Dropdown menus generated from the traditional options object */}
             {Object.entries(prompt.options || {}).map(([key, values]) => (
                 <Form.Dropdown
                     key={key}
@@ -155,7 +156,7 @@ export function PromptOptionsForm({
                 </Form.Dropdown>
             ))}
 
-            {/* 文本输入框 */}
+            {/* Text input fields */}
             {Object.entries(prompt.textInputs || {}).map(([key, placeholder]) => (
                 <Form.TextField
                     key={key}
