@@ -74,7 +74,7 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 
 /* Utility Functions */
 
-const PH_REG = /{{(file:)?([^}]+)}}/g;     // Single regex for all placeholders
+const PH_REG = /{{(?:(file|option):)?([^}]+)}}/g;     // Modified: Single regex for all placeholders including option
 const isNonEmpty = (v: unknown): v is string =>
     typeof v === 'string' && v.trim() !== '';
 
@@ -220,7 +220,7 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
  * @param path The dot-notation path (e.g., "title", "subprompts.0.title")
  * @returns The property value, or undefined if the path doesn't resolve
  */
-function getPropertyByPath(obj: unknown, path: string): unknown {
+export function getPropertyByPath(obj: unknown, path: string): unknown {
     if (!obj || typeof obj !== 'object' || !path) {
         return undefined;
     }
@@ -285,9 +285,9 @@ export function placeholderFormatter(
 
     let hasResolvedFile = options.hasResolvedFile || false;
 
-    let result = text.replace(PH_REG, (_, fileFlag: string | undefined, body: string) => {
+    let result = text.replace(PH_REG, (_, directive: string | undefined, body: string) => {
         /* File placeholders */
-        if (fileFlag) {
+        if (directive === 'file') {
             // If file resolution is disabled, return placeholder as-is
             if (!options.resolveFile) {
                 return `{{file:${body}}}`;
@@ -299,7 +299,7 @@ export function placeholderFormatter(
         }
 
         /* Regular placeholders */
-        return processPlaceholder(body, incoming, map);
+        return processPlaceholder(directive, body, incoming, map);
     });
 
     // Process nested placeholders if no file has been resolved yet
@@ -340,8 +340,8 @@ export function resolvePlaceholders(
     // Reset regex state
     PH_REG.lastIndex = 0;
     while ((m = PH_REG.exec(text))) {
-        const [, fileFlag, rawBody] = m as unknown as [string, string | undefined, string];
-        if (fileFlag) continue;    // Skip file placeholders
+        const [, directive, rawBody] = m as unknown as [string, string | undefined, string];
+        if (directive === 'file') continue;    // Skip file placeholders
 
         const body = rawBody.trim();
 
@@ -440,11 +440,11 @@ export async function placeholderFormatterAsync(
     let hasResolvedFile = options.hasResolvedFile || false;
 
     for (let match; (match = PH_REG.exec(text));) {
-        const [whole, fileFlag, body] = match as unknown as [string, string | undefined, string];
+        const [whole, directive, body] = match as unknown as [string, string | undefined, string];
         chunks.push(text.slice(lastIdx, match.index));
         lastIdx = match.index + whole.length;
 
-        if (fileFlag) {
+        if (directive === 'file') {
             // If file resolution is disabled, return placeholder as-is
             if (!options.resolveFile) {
                 chunks.push(`{{file:${body}}}`);
@@ -457,7 +457,7 @@ export async function placeholderFormatterAsync(
         }
 
         // Process regular placeholder
-        const processedValue = processPlaceholder(body, incoming, map);
+        const processedValue = processPlaceholder(directive, body, incoming, map);
         chunks.push(processedValue);
     }
 
@@ -484,55 +484,61 @@ export async function placeholderFormatterAsync(
  * Helper function to process a single placeholder
  * Used by both sync and async versions to maintain consistent logic
  * 
+ * @param directive The directive (file, option, or undefined)
  * @param body The placeholder body text (without {{}})
  * @param incoming The replacement values and properties object
  * @param map The processed map of standard placeholders
  * @returns The processed value for the placeholder
  */
 function processPlaceholder(
+    directive: string | undefined,
     body: string,
     incoming: SpecificReplacements & Record<string, unknown>,
     map: Map<PlaceholderKey, string>
 ): string {
     const content = body.trim(); // Trim the placeholder body
 
-    // --- Priority 1: Standard Placeholders (input, clipboard, selection, etc.) ---
-    // Handle fallback chains first for standard placeholders
+    // --- Priority 1: Check incoming replacements first ---
+    const providedValue = getPropertyByPath(incoming, content);
+    if (providedValue !== undefined) {
+        // Check if it's a standard placeholder that has a value in the map
+        const standardKey = toPlaceholderKey(content);
+        if (standardKey && map.has(standardKey)) {
+            return map.get(standardKey)!;
+        }
+
+        // Otherwise use the provided value if it's a string
+        if (typeof providedValue === 'string') {
+            // Don't replace with empty strings
+            return providedValue.trim() !== '' ? providedValue : `{{${body}}}`;
+        }
+        // Convert non-string values to string representation
+        return String(providedValue);
+    }
+
+    // --- Priority 2: Handle 'option:' directive ---
+    if (directive === 'option') {
+        // Return the original placeholder - this will be detected by PromptListItem
+        return `{{option:${content}}}`;
+    }
+
+    // --- Priority 3: Handle 'file:' directive ---
+    if (directive === 'file') {
+        return `[Path not found: ${content}]`;
+    }
+
+    // --- Priority 4: Handle standard placeholder fallback chain ---
+    // e.g., {{input|selection}}
     for (const part of content.split('|')) {
         const key = toPlaceholderKey(part.trim());
         if (!key) continue;
 
         const standardValue = map.get(key);
-        if (standardValue !== undefined && standardValue !== '') { // Check for non-empty standard value
-            // Found a valid standard placeholder value
-            // Check if replacement text still contains placeholders recursively (optional, depends on desired behavior)
-            if (PH_REG.test(standardValue)) {
-                // Reset regex state
-                PH_REG.lastIndex = 0;
-                return standardValue;
-            }
+        if (standardValue !== undefined && standardValue !== '') {
             return standardValue;
         }
     }
 
-    // --- Priority 2: Prompt Property Placeholders ---
-    // If no standard placeholder was resolved, try interpreting 'content' as a property path
-    const propValue = getPropertyByPath(incoming, content);
-
-    if (propValue !== undefined) {
-        // Found a property value
-        if (typeof propValue === 'string') {
-            // Don't replace with empty strings
-            if (propValue.trim() === '') {
-                return `{{${body}}}`;
-            }
-            return propValue;
-        }
-        // Convert non-string values to string representation
-        return String(propValue);
-    }
-
     // --- Fallback: No replacement found ---
-    // If neither a standard placeholder nor a property was found, return the original placeholder
     return `{{${body}}}`;
 }
