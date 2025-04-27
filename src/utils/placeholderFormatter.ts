@@ -4,7 +4,7 @@
  * - Simple placeholders (input, clipboard, selection, etc.)
  * - File content placeholders for reading files/directories
  * - Fallback handling with alias support
- * - Property path placeholders (p:property.path) for accessing object properties
+ * - Property path access for referencing prompt object properties
  * 
  * The formatter processes all placeholders in a single RegExp scan for efficiency.
  */
@@ -321,46 +321,55 @@ export function placeholderFormatter(
 /* Placeholder Resolution */
 
 /**
- * Scans a template and returns the set of placeholder keys that would be used
- * during formatting with the given replacement values.
+ * Scans a template and returns the set of *standard* placeholder keys that would be used
+ * during formatting with the given replacement values. Ignores property placeholders.
  * 
  * @param text The text to scan for placeholders
- * @param incoming The available replacement values and any other properties for p: notation
- * @returns A Set of placeholder keys that would be used in formatting
+ * @param standardReplacements The available replacement values (standard placeholders only for icon resolution)
+ * @returns A Set of standard placeholder keys (e.g., 'input', 'clipboard') that would be used
  */
 export function resolvePlaceholders(
     text: string,
-    incoming: Partial<SpecificReplacements> & Record<string, unknown> = {},
+    standardReplacements: Partial<SpecificReplacements> = {} // Use only standard replacements for icon logic
 ): Set<PlaceholderKey> {
-    const used = new Set<PlaceholderKey>();
-    const map = buildEffectiveMap(incoming);
+    const usedStandardKeys = new Set<PlaceholderKey>();
+    // Use only standard replacements to build the map for icon determination
+    const map = buildEffectiveMap(standardReplacements);
 
     let m: RegExpExecArray | null;
+    // Reset regex state
+    PH_REG.lastIndex = 0;
     while ((m = PH_REG.exec(text))) {
         const [, fileFlag, rawBody] = m as unknown as [string, string | undefined, string];
         if (fileFlag) continue;    // Skip file placeholders
 
-        let body = rawBody;
-        if (body.startsWith('p:')) body = body.slice(2);
+        const body = rawBody.trim();
 
-        let chosen: PlaceholderKey | undefined;
-
+        // Check ONLY for standard placeholders and their fallbacks
+        let chosenStandardKey: PlaceholderKey | undefined;
         for (const part of body.split('|')) {
             const key = toPlaceholderKey(part.trim());
             if (!key) continue;
 
-            if (key === 'clipboard' && !chosen) {
-                chosen = 'clipboard';          // Rule 1.b
-                break;
+            // Check if it's a known standard placeholder AND has a non-empty value in the map
+            if (key in PLACEHOLDERS && map.has(key)) {
+                chosenStandardKey = key;
+                break; // Found the first valid standard placeholder in the chain
             }
-            if (map.has(key)) {             // Rule 1.a
-                chosen = key;
+            // Special case: If clipboard is in the chain, always consider it potentially used,
+            // even if empty, because its value is fetched later dynamically in some actions
+            if (key === 'clipboard' && !chosenStandardKey) {
+                chosenStandardKey = 'clipboard';
                 break;
             }
         }
-        if (chosen) used.add(chosen);
+
+        if (chosenStandardKey) {
+            usedStandardKeys.add(chosenStandardKey);
+        }
+        // IMPORTANT: Do NOT check for property paths here, as this function is for standard placeholder icons
     }
-    return used;
+    return usedStandardKeys;
 }
 
 /* Asynchronous Implementation */
@@ -485,65 +494,45 @@ function processPlaceholder(
     incoming: SpecificReplacements & Record<string, unknown>,
     map: Map<PlaceholderKey, string>
 ): string {
-    let content = body;
-    const isPNotation = content.startsWith('p:');
+    const content = body.trim(); // Trim the placeholder body
 
-    if (isPNotation) {
-        // Extract property path after 'p:' prefix
-        const propertyPath = content.slice(2).trim();
-
-        // First, try property path lookup (highest priority)
-        const propValue = getPropertyByPath(incoming, propertyPath);
-
-        // If property exists and is a valid value, return it
-        if (propValue !== undefined) {
-            if (typeof propValue === 'string') {
-                return propValue;
-            }
-            // Convert non-string values to string representation
-            return String(propValue);
-        }
-
-        // Next, check if this is a standard placeholder key (for backward compatibility)
-        const standardKey = toPlaceholderKey(propertyPath);
-        if (standardKey && PLACEHOLDERS[standardKey]) {
-            return PLACEHOLDERS[standardKey].literal;
-        }
-
-        // If property wasn't found, try special handling for complex predefined placeholders
-        // Split by | to handle cases like {{p:i|s|c}}
-        const parts = propertyPath.split('|');
-
-        for (const part of parts) {
-            const key = toPlaceholderKey(part.trim());
-            if (key && map.has(key)) {
-                // This is one of the predefined placeholders and it exists
-                return PLACEHOLDERS[key].literal;
-            }
-        }
-
-        // If still not found, continue with normal processing but remove p: prefix
-        content = content.slice(2);
-    }
-
-    // Process normal placeholders with fallback chain
+    // --- Priority 1: Standard Placeholders (input, clipboard, selection, etc.) ---
+    // Handle fallback chains first for standard placeholders
     for (const part of content.split('|')) {
         const key = toPlaceholderKey(part.trim());
         if (!key) continue;
 
-        const v = map.get(key);
-        if (v) {
-            // Check if replacement text still contains placeholders, if so process recursively
-            // (This was in the original synchronized version)
-            if (PH_REG.test(v)) {
+        const standardValue = map.get(key);
+        if (standardValue !== undefined && standardValue !== '') { // Check for non-empty standard value
+            // Found a valid standard placeholder value
+            // Check if replacement text still contains placeholders recursively (optional, depends on desired behavior)
+            if (PH_REG.test(standardValue)) {
                 // Reset regex state
                 PH_REG.lastIndex = 0;
-                return v;
+                return standardValue;
             }
-            return v;  // For normal placeholders we use the value directly
+            return standardValue;
         }
     }
 
-    // No replacement found
-    return `{{${body}}}`;  // Unresolved: return as-is
+    // --- Priority 2: Prompt Property Placeholders ---
+    // If no standard placeholder was resolved, try interpreting 'content' as a property path
+    const propValue = getPropertyByPath(incoming, content);
+
+    if (propValue !== undefined) {
+        // Found a property value
+        if (typeof propValue === 'string') {
+            // Don't replace with empty strings
+            if (propValue.trim() === '') {
+                return `{{${body}}}`;
+            }
+            return propValue;
+        }
+        // Convert non-string values to string representation
+        return String(propValue);
+    }
+
+    // --- Fallback: No replacement found ---
+    // If neither a standard placeholder nor a property was found, return the original placeholder
+    return `{{${body}}}`;
 }

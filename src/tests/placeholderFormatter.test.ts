@@ -65,27 +65,6 @@ describe("placeholderFormatter", () => {
     expect(placeholderFormatter(text, replacements3)).toBe("Content: Clipboard text");
   });
 
-  it("should use literals with prefix {{p:i|s|c}}", () => {
-    const text = "Content: {{p:i|s|c}}";
-    const replacements: SpecificReplacements = {
-      input: "Input text",
-      selection: "Selected text",
-      clipboard: "Clipboard text",
-    };
-    expect(placeholderFormatter(text, replacements)).toBe("Content: <输入文本>");
-
-    const replacements2: SpecificReplacements = {};
-    expect(placeholderFormatter(text, replacements2)).toBe("Content: {{p:i|s|c}}");
-  });
-
-  it("should use literals with prefix {{p:i|c}}", () => {
-    const text = "Content: {{p:i|c}}";
-    const replacements: SpecificReplacements = {
-      clipboard: "Clipboard text",
-    };
-    expect(placeholderFormatter(text, replacements)).toBe("Content: <剪贴板文本>");
-  });
-
   it("should handle unknown placeholders", () => {
     const text = "Hello {{unknown}}";
     const replacements: SpecificReplacements = {};
@@ -108,17 +87,6 @@ describe("placeholderFormatter", () => {
     expect(placeholderFormatter(text, replacements)).toBe("Current app: VS Code");
   });
 
-  it("should use literal with prefix {{p:currentApp}} under specific conditions", () => {
-    const text = "Current app: {{p:currentApp}}";
-    const replacements: SpecificReplacements = {
-      currentApp: "VS Code",
-    };
-    expect(placeholderFormatter(text, replacements)).toBe("Current app: VS Code");
-
-    const noValueReplacements = {};
-    expect(placeholderFormatter(text, noValueReplacements)).toBe("Current app: <当前应用>");
-  });
-
   it("should handle empty input replacements", () => {
     const text = "Content: {{input}}";
     const replacements: SpecificReplacements = {
@@ -127,8 +95,8 @@ describe("placeholderFormatter", () => {
     expect(placeholderFormatter(text, replacements)).toBe("Content: {{input}}");
   });
 
-  it("should replace {{p:propertyName}} with property value from merged object", () => {
-    const text = "Title is {{p:title}}, Count: {{p:count}}";
+  it("should replace {{title}} with property value from prompt object", () => {
+    const text = "Title is {{title}}, Count: {{count}}";
     const mergedReplacements = {
       title: "My Awesome Prompt",
       icon: "📎",
@@ -140,8 +108,8 @@ describe("placeholderFormatter", () => {
     expect(result).toBe("Title is My Awesome Prompt, Count: 123");
   });
 
-  it("should handle nested property paths with {{p:property.path}}", () => {
-    const text = "Nested property: {{p:nested.property}}";
+  it("should handle nested property paths with {{property.path}}", () => {
+    const text = "Nested property: {{nested.property}}";
     const mergedReplacements = {
       nested: {
         property: "nested value"
@@ -152,7 +120,7 @@ describe("placeholderFormatter", () => {
   });
 
   it("should handle array indices in property paths", () => {
-    const text = "Array item: {{p:items.1.name}}";
+    const text = "Array item: {{items.1.name}}";
     const mergedReplacements = {
       items: [
         { name: "First item" },
@@ -165,25 +133,37 @@ describe("placeholderFormatter", () => {
   });
 
   it("should prioritize standard replacements over prompt properties with same name", () => {
-    const text = "Value is {{p:input}}";
+    const text = "Value is {{input}}";
     const mergedReplacements = {
-      input: "standard user input",
+      input: "prompt default input"
     };
-    const result = placeholderFormatter(text, mergedReplacements);
-    expect(result).toBe("Value is standard user input");
+    const standardReplacements = {
+      input: "user input"
+    };
+    const result = placeholderFormatter(text, { ...mergedReplacements, ...standardReplacements });
+    expect(result).toBe("Value is user input");
   });
 
-  it("should return {{p:propertyPath}} unchanged when property doesn't exist", () => {
-    const text = "Missing property: {{p:nonexistent.property}}";
+  it("should use prompt.input property if standard {{input}} is empty or missing", () => {
+    const text = "Input value: {{input}}";
+    const promptData = { title: "Test", input: "prompt default input" };
+    const replacements = { clipboard: "some data" };
+    const merged = { ...promptData, ...replacements };
+    const result = placeholderFormatter(text, merged);
+    expect(result).toBe("Input value: prompt default input");
+  });
+
+  it("should return {{propertyName}} unchanged if property doesn't exist and is not a standard placeholder", () => {
+    const text = "Missing property: {{nonexistent.property}}";
     const mergedReplacements = {
       someOtherProperty: "value"
     };
     const result = placeholderFormatter(text, mergedReplacements);
-    expect(result).toBe("Missing property: {{p:nonexistent.property}}");
+    expect(result).toBe("Missing property: {{nonexistent.property}}");
   });
 
   it("should convert non-string values to strings", () => {
-    const text = "Number: {{p:number}}, Boolean: {{p:flag}}, Null: {{p:nullValue}}";
+    const text = "Number: {{number}}, Boolean: {{flag}}, Null: {{nullValue}}";
     const mergedReplacements = {
       number: 42,
       flag: true,
@@ -191,6 +171,13 @@ describe("placeholderFormatter", () => {
     };
     const result = placeholderFormatter(text, mergedReplacements);
     expect(result).toBe("Number: 42, Boolean: true, Null: null");
+  });
+
+  it("should handle standard placeholders when no value is provided", () => {
+    const text = "Input: {{input}}, Selection: {{selection}}";
+    const replacements = {};
+    const result = placeholderFormatter(text, replacements);
+    expect(result).toBe("Input: {{input}}, Selection: {{selection}}");
   });
 });
 
@@ -246,8 +233,8 @@ describe("resolvePlaceholders", () => {
     expect(usedPlaceholders.has("clipboard")).toBe(true);
   });
 
-  it("should handle p: prefix placeholders", () => {
-    const text = "Content: {{p:input|selection|clipboard}}";
+  it("should handle placeholders without p: prefix", () => {
+    const text = "Content: {{input|selection|clipboard}}";
     const replacements: SpecificReplacements = {
       input: "Input text",
     };
@@ -331,5 +318,17 @@ describe("resolvePlaceholders", () => {
     expect(usedPlaceholders.size).toBe(1);
     expect(usedPlaceholders.has("input")).toBe(false);
     expect(usedPlaceholders.has("selection")).toBe(true);
+  });
+
+  it("should ignore property placeholders in resolvePlaceholders", () => {
+    const text = "Content: {{input|selection|clipboard}}, Properties: {{title}} {{icon}}";
+    const replacements: SpecificReplacements = {
+      input: "Input text",
+    };
+    const usedPlaceholders = resolvePlaceholders(text, replacements);
+    expect(usedPlaceholders.size).toBe(1);
+    expect(usedPlaceholders.has("input")).toBe(true);
+    expect(usedPlaceholders.has("title" as never)).toBe(false);
+    expect(usedPlaceholders.has("icon" as never)).toBe(false);
   });
 });
