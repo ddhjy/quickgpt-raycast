@@ -193,10 +193,11 @@ export function generatePromptActions(
           icon={Icon.Document}
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
           onAction={async () => {
-            closeMainWindow();
             const finalContent = await getFinalContent();
+            // Must be done before closeMainWindow, otherwise pasting may fail
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
+            closeMainWindow();
           }}
         />
       ),
