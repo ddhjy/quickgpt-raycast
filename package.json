@@ -13,49 +13,49 @@
     {
       "name": "prompt-lab",
       "title": "Prompt Lab",
-      "description": "运行quickgpt工具，该工具用于为 chatgpt 提供提示词。需要一个视图，并接受三个可选参数：剪贴板文本、选择文本和动作。",
+      "description": "Runs the quickgpt tool, which provides prompts for chatgpt. Requires a view and accepts three optional arguments: clipboard text, selected text, and action.",
       "mode": "view",
       "preferences": [
         {
           "name": "customPromptsDirectory",
           "title": "Custom Prompts",
           "required": false,
-          "description": "使用自定义提示词目录",
+          "description": "Use a custom prompts directory",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory1",
           "title": "Custom Prompts 1",
           "required": false,
-          "description": "使用第一个自定义提示词目录",
+          "description": "Use the first custom prompts directory",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory2",
           "title": "Custom Prompts 2",
           "required": false,
-          "description": "使用第二个自定义提示词目录",
+          "description": "Use the second custom prompts directory",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory3",
           "title": "Custom Prompts 3",
           "required": false,
-          "description": "使用第三个自定义提示词目录",
+          "description": "Use the third custom prompts directory",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory4",
           "title": "Custom Prompts 4",
           "required": false,
-          "description": "使用第四个自定义提示词目录",
+          "description": "Use the fourth custom prompts directory",
           "type": "directory"
         },
         {
           "name": "primaryAction",
           "title": "Actions",
           "required": false,
-          "description": "设置优先执行的操作,多个操作用逗号分隔。例如: ChatGPT, Copy, Paste, Cerebras",
+          "description": "Set the primary action(s) to execute, separated by commas. Example: ChatGPT, Copy, Paste, Cerebras",
           "type": "textfield"
         },
         {
@@ -69,7 +69,7 @@
           "name": "scriptsDirectory",
           "title": "Scripts Directory",
           "required": false,
-          "description": "存放 AppleScript 脚本的目录。目录下所有的 .applescript 和 .scpt 文件都会被加载为可执行脚本。",
+          "description": "Directory containing AppleScript scripts. All .applescript and .scpt files in this directory will be loaded as executable scripts.",
           "type": "directory"
         }
       ]
