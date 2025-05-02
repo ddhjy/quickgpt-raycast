@@ -192,7 +192,7 @@ export function PromptList({
                     selection: selectionText,
                     currentApp,
                     browserContent,
-                    input: searchMode ? searchText : activeSearchText,
+                    input: searchMode ? "" : activeSearchText,
                 }}
                 searchMode={searchMode}
                 promptSpecificRootDir={promptSpecificRootDir}
