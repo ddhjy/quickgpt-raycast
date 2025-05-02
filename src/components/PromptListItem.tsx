@@ -288,13 +288,21 @@ export function PromptListItem({
       );
     } else {
       // Default actions for regular prompts
-      if (findOptionPlaceholders(prompt).length > 0) {
+      const optionKeys = findOptionPlaceholders(prompt);
+      if (optionKeys.length > 0) {
         // Action for prompts with option placeholders (needs options form)
         return (
           <Action.Push
             title="Configure Options"
             icon={Icon.Gear}
-            target={<PromptOptionsForm prompt={prompt} baseReplacements={replacements} scripts={scripts} />}
+            target={
+              <PromptOptionsForm
+                prompt={prompt}
+                optionKeys={optionKeys}
+                baseReplacements={replacements}
+                scripts={scripts}
+              />
+            }
           />
         );
       } else if (prompt.options && Object.keys(prompt.options).length > 0) {
@@ -353,22 +361,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-              ...accessory,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            }
+            ...accessory,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-            {
-              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            },
-          ]
+          {
+            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          },
+        ]
         : []),
     ];
   };
