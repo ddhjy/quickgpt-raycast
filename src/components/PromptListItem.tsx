@@ -21,7 +21,6 @@ import path from "path";
 import { generatePromptActions } from "./PromptActions";
 import { getPlaceholderIcons, findOptionPlaceholders } from "../utils/promptFormattingUtils";
 import { ScriptInfo } from "../utils/scriptUtils";
-import { AIProvider } from "../services/types";
 import { placeholderFormatter } from "../utils/placeholderFormatter";
 import { PromptList } from "./PromptList";
 import { PromptOptionsForm } from "./PromptOptionsForm";
@@ -45,7 +44,6 @@ interface PromptListItemProps {
     onPinToggle: (prompt: PromptProps) => void;
     activeSearchText?: string;
     scripts: ScriptInfo[];
-    aiProviders: AIProvider[];
     onRefreshNeeded: () => void;
 }
 
@@ -63,7 +61,6 @@ interface PromptListItemProps {
  * @param props.onPinToggle Callback function to handle pinning/unpinning.
  * @param props.activeSearchText The current text in the search bar (if not in search mode).
  * @param props.scripts List of available scripts.
- * @param props.aiProviders List of available AI providers.
  * @param props.onRefreshNeeded Callback function to refresh the prompt list.
  */
 export function PromptListItem({
@@ -77,7 +74,6 @@ export function PromptListItem({
     allowedActions,
     onPinToggle,
     scripts,
-    aiProviders,
     onRefreshNeeded
 }: PromptListItemProps) {
     // Use temporary directory list with expiration time information
@@ -243,71 +239,67 @@ export function PromptListItem({
                 />
             );
         } else if (prompt.subprompts) {
+            // Action for folder prompts
             return (
                 <Action.Push
                     title="Open"
                     icon={prompt.icon ?? "🔖"}
                     target={
                         <PromptList
-                            searchMode={false}
                             prompts={prompt.subprompts}
-                            selectionText={replacements.selection as string}
-                            currentApp={replacements.currentApp as string}
-                            browserContent={replacements.browserContent as string}
-                            allowedActions={allowedActions}
+                            // Provide default empty strings for potentially undefined replacements
+                            selectionText={replacements.selection ?? ""}
+                            currentApp={replacements.currentApp ?? ""}
+                            browserContent={replacements.browserContent ?? ""}
+                            allowedActions={allowedActions || prompt.actions}
                             initialScripts={scripts}
-                            initialAiProviders={aiProviders}
                         />
                     }
                 />
             );
         } else {
-            // Generate actions for regular prompts or those with options
-            return (
-                <>
-                    {/* Preferentially check for option:xxx placeholders in content, which refer to property values as options */}
-                    {findOptionPlaceholders(prompt).length > 0 ? (
-                        <Action.Push
-                            title="Select Option"
-                            icon={Icon.Gear}
-                            target={
-                                <PromptOptionsForm
-                                    prompt={prompt}
-                                    optionKeys={findOptionPlaceholders(prompt)}
-                                    baseReplacements={replacements}
-                                    promptSpecificRootDir={promptSpecificRootDir}
-                                    scripts={scripts}
-                                    aiProviders={aiProviders}
-                                />
-                            }
+            // Default actions for regular prompts
+            if (findOptionPlaceholders(prompt).length > 0) {
+                // Action for prompts with option placeholders (needs options form)
+                return <Action.Push
+                    title="Configure Options"
+                    icon={Icon.Gear}
+                    target={
+                        <PromptOptionsForm
+                            prompt={prompt}
+                            baseReplacements={replacements}
+                            scripts={scripts}
                         />
-                    ) : prompt.options && Object.keys(prompt.options).length > 0 ? (
-                        <Action.Push
-                            title="Select Option"
-                            icon={Icon.Gear}
-                            target={
-                                <PromptOptionsForm
-                                    prompt={prompt}
-                                    baseReplacements={replacements}
-                                    promptSpecificRootDir={promptSpecificRootDir}
-                                    scripts={scripts}
-                                    aiProviders={aiProviders}
-                                />
-                            }
+                    }
+                />;
+            } else if (prompt.options && Object.keys(prompt.options).length > 0) {
+                // Action for prompts defined with options object (needs options form)
+                return <Action.Push
+                    title="Configure Options"
+                    icon={Icon.Gear}
+                    target={
+                        <PromptOptionsForm
+                            prompt={prompt}
+                            baseReplacements={replacements}
+                            scripts={scripts}
                         />
-                    ) : (
-                        // Pass necessary data to generatePromptActions
-                        generatePromptActions(
-                            prompt,
-                            replacements,
-                            promptSpecificRootDir,
-                            allowedActions || prompt.actions,
-                            scripts,
-                            aiProviders
-                        )
-                    )}
-                </>
-            );
+                    }
+                />;
+            } else {
+                // Generate standard actions
+                // Wrap the result in a fragment
+                const generated = generatePromptActions(
+                    prompt,
+                    replacements,
+                    promptSpecificRootDir,
+                    allowedActions || prompt.actions,
+                    scripts,
+                );
+                // Ensure generated is always an array before wrapping in ActionPanel
+                // If generatePromptActions can return a single element, handle that case.
+                // Assuming it always returns an array or null/undefined based on previous structure:
+                return generated ? <>{generated}</> : null;
+            }
         }
     }, [
         prompt,
@@ -315,10 +307,9 @@ export function PromptListItem({
         promptSpecificRootDir,
         allowedActions,
         scripts,
-        aiProviders,
+        onRefreshNeeded,
         temporaryDirs,
-        refreshTimer,
-        onRefreshNeeded
+        refreshTimer
     ]);
 
     // Create accessories to display remaining time

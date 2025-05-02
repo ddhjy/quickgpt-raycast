@@ -1,11 +1,8 @@
-import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD, KeyEquivalent, showToast, Toast } from "@raycast/api";
+import { Detail, ActionPanel, Action, Icon, Clipboard, closeMainWindow, showHUD, KeyEquivalent, showToast, Toast, getPreferenceValues } from "@raycast/api";
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import MarkdownIt from "markdown-it";
-import { AIService } from "../services/AIService"; // Import AIService
-import { ChatOptions } from "../services/types"; // Import ChatOptions if needed
-import { PromptProps } from "../managers/PromptManager";
-import { SpecificReplacements } from "../utils/placeholderFormatter";
-import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
+import { AIService } from "../services/AIService";
+import { ChatOptions } from "../services/types"; // Keep if options are passed through
 
 // Initialize Markdown parser
 const md = new MarkdownIt();
@@ -74,59 +71,41 @@ const getCodeBlockSummary = (block: string, maxLength: number = 30): string => {
   return summary.length > maxLength ? `${summary.slice(0, maxLength)}...` : summary;
 };
 
-// Update props for ChatResultView
+// Update props for ResultView
 interface ResultViewProps {
-  prompt: PromptProps;
-  baseReplacements: Omit<SpecificReplacements, 'clipboard'>;
-  promptSpecificRootDir?: string;
-  options?: ChatOptions;
-  providerName?: string;
-  systemPrompt?: string;
+  initialPromptContent: string;       // Renamed and required
+  initialSystemPrompt?: string;      // Renamed
+  initialProviderName?: string;      // Renamed
+  // Remove prompt, baseReplacements, promptSpecificRootDir, options
 }
 
 /**
- * Component to display the result of an AI chat interaction.
- * Handles fetching the response, displaying streaming updates, calculating tokens/duration,
+ * Component to display the result of an AI chat interaction triggered by deeplink.
+ * Handles fetching the response using the provided content and provider,
+ * displaying streaming updates, calculating tokens/duration,
  * and providing relevant actions (copy, paste, copy/paste code blocks).
  *
  * @param props The component props.
- * @param props.prompt The prompt object.
- * @param props.baseReplacements Base replacements without clipboard.
- * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
- * @param props.options Optional configuration for the AI chat request (e.g., model, temperature).
- * @param props.providerName Optional name of the AI provider to use (overrides the default).
- * @param props.systemPrompt Optional system prompt to guide the AI's behavior.
+ * @param props.initialPromptContent The final prompt content received from the trigger.
+ * @param props.initialSystemPrompt Optional system prompt received from the trigger.
+ * @param props.initialProviderName Optional name of the AI provider to use, received from the trigger.
  */
-export function ChatResultView({
-  prompt,
-  baseReplacements,
-  promptSpecificRootDir,
-  options,
-  providerName,
-  systemPrompt,
-}: ResultViewProps) {
-  // Internal state for AI response
+export function ResultView({ initialPromptContent, initialSystemPrompt, initialProviderName }: ResultViewProps) {
   const [response, setResponse] = useState<string>('');
   const [duration, setDuration] = useState<string>();
-  const [isLoading, setIsLoading] = useState(true); // Start loading initially
+  const [isLoading, setIsLoading] = useState(true);
   const [model, setModel] = useState<string>();
 
-  // Refs for streaming and timing (from ChatResponseView)
   const startTimeRef = useRef<number>(0);
   const contentRef = useRef<string>('');
   const updatingRef = useRef<boolean>(false);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Throttling logic (from ChatResponseView)
-  /**
-   * Schedules a state update for the response content using throttling.
-   * This prevents excessive re-renders during rapid streaming updates.
-   * Updates are buffered and applied at a maximum frequency (e.g., every 500ms).
-   */
   const scheduleUpdate = useCallback(() => {
     if (!updatingRef.current) {
       updatingRef.current = true;
       updateTimerRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return; // Check if component is still mounted
         setResponse(contentRef.current);
         const currentDuration = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
         setDuration(currentDuration);
@@ -135,50 +114,72 @@ export function ChatResultView({
     }
   }, []);
 
-  // Effect to fetch AI response (logic from ChatResponseView)
+  // Ref to track component mount status
+  const isMountedRef = useRef(true);
   useEffect(() => {
-    let toast: Toast;
-    let isMounted = true;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Effect to fetch AI response
+  useEffect(() => {
+    let toast: Toast | undefined;
 
     async function fetchResponse() {
+      // No need to read clipboard or build final content here, it's already provided
+      setIsLoading(true);
+      setResponse('');
+      contentRef.current = '';
+      setModel(undefined); // Reset model name
+      setDuration(undefined); // Reset duration
+      startTimeRef.current = Date.now();
+
+      toast = await showToast(Toast.Style.Animated, "Thinking...");
+
       try {
-        // Read clipboard and build final content here
-        setIsLoading(true);
-        setResponse('');
-        contentRef.current = '';
-        startTimeRef.current = Date.now();
-
-        toast = await showToast(Toast.Style.Animated, "Thinking...");
-
-        const currentClipboard = await Clipboard.readText() ?? "";
-        const finalReplacements: SpecificReplacements = {
-          ...baseReplacements,
-          clipboard: currentClipboard,
-          now: new Date().toLocaleString(),
-          promptTitles: getIndentedPromptTitles()
-        };
-        const finalContent = buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
-
         const aiService = AIService.getInstance();
-        if (providerName) {
-          aiService.setCurrentProvider(providerName);
-        }
 
-        // Send finalContent to AI
+        // Set Provider if specified
+        if (initialProviderName) {
+          try {
+            aiService.setCurrentProvider(initialProviderName);
+            await toast?.hide(); // Hide previous toast before showing potential provider error
+            toast = await showToast(Toast.Style.Animated, `Using ${aiService.getCurrentProvider().name}...`);
+            // console.log(`Provider set to: ${initialProviderName}`);
+          } catch (providerError) {
+            console.error("[ResultView] Error setting provider:", providerError);
+            await showToast(Toast.Style.Failure, "Provider Error", String(providerError));
+            setIsLoading(false);
+            if (toast) toast.hide();
+            return; // Stop execution if provider is invalid
+          }
+        }
+        // else: Use AIService's default provider
+
+        // console.log(`Sending to AI (${aiService.getCurrentProvider().name}):`, {
+        //   content: initialPromptContent.substring(0, 100) + '...',
+        //   system: initialSystemPrompt,
+        // });
+
+        // Directly use the provided prompt content and system prompt
         const result = await aiService.chat(
-          finalContent,
+          initialPromptContent,
           {
-            ...options,
-            systemPrompt: systemPrompt || options?.systemPrompt,
+            // Pass systemPrompt directly. AIService will handle merging with defaults if necessary.
+            systemPrompt: initialSystemPrompt,
+            // Note: We don't pass 'options' here anymore. AIService uses its loaded config.
+            // If needed, 'options' could be another argument in the deeplink and passed here.
             onStream: (text: string) => {
-              if (!isMounted) return;
+              if (!isMountedRef.current) return;
               contentRef.current += text;
               scheduleUpdate();
             }
           }
         );
 
-        if (!isMounted) return;
+        if (!isMountedRef.current) return;
 
         setModel(result.model);
 
@@ -187,19 +188,23 @@ export function ChatResultView({
         setDuration(durationSeconds);
         setIsLoading(false);
 
+        // Ensure final update captures all content
+        if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
         setResponse(contentRef.current);
 
         if (toast) {
           toast.style = Toast.Style.Success;
           toast.title = `Done (${durationSeconds}s)`;
+          // Hide success toast after a delay
+          setTimeout(() => toast?.hide(), 2000);
         }
       } catch (error) {
-        if (!isMounted) return;
-        console.error("[ChatResultView] Error fetching response:", error);
+        if (!isMountedRef.current) return;
+        console.error("[ResultView] Error fetching AI response:", error);
         setIsLoading(false);
-        await showToast(Toast.Style.Failure, "Error", String(error));
+        await showToast(Toast.Style.Failure, "AI Error", String(error));
         if (toast) {
-          toast.hide();
+          toast.hide(); // Hide thinking toast
         }
       }
     }
@@ -208,15 +213,17 @@ export function ChatResultView({
 
     // Cleanup function
     return () => {
-      isMounted = false;
+      // isMountedRef is handled by its own effect
       if (toast) {
         toast.hide();
       }
       if (updateTimerRef.current) {
         clearTimeout(updateTimerRef.current);
+        updatingRef.current = false; // Reset update flag on unmount
       }
     };
-  }, [prompt, baseReplacements, promptSpecificRootDir, options, providerName, systemPrompt, scheduleUpdate]);
+    // Update dependencies: only trigger when initial inputs change
+  }, [initialPromptContent, initialSystemPrompt, initialProviderName, scheduleUpdate]);
 
   // Use internal state for calculations and rendering
   const codeBlocks = useMemo(() => extractCodeBlocks(response, 10), [response]);
@@ -357,16 +364,19 @@ export function ChatResultView({
 
   return (
     <Detail
-      markdown={response || "*Thinking...*"}
-      actions={
-        <ActionPanel>
-          {actions}
-        </ActionPanel>
-      }
       isLoading={isLoading}
-      metadata={metadata ? <Detail.Metadata.TagList title="Stats">
-        <Detail.Metadata.TagList.Item text={metadata} color="#eed535" />
-      </Detail.Metadata.TagList> : undefined}
+      markdown={response}
+      actions={actions}
+      metadata={
+        !isLoading ? (
+          <Detail.Metadata>
+            {model && <Detail.Metadata.Label title="Model" text={model} />}
+            {duration && <Detail.Metadata.Label title="Duration" text={`${duration}s`} />}
+            <Detail.Metadata.Separator />
+            <Detail.Metadata.Label title="Tokens (approx.)" text={`${countTokens(response)}`} />
+          </Detail.Metadata>
+        ) : null
+      }
     />
   );
 }

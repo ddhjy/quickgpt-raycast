@@ -7,12 +7,15 @@ import {
   Toast,
   closeMainWindow,
   showToast,
+  open,
+  ActionPanel,
+  launchCommand,
+  LaunchType,
+  environment
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
-import { ChatResultView } from "./ResultView";
-import { ChatOptions, AIProvider } from "../services/types";
 import { ScriptInfo } from "../utils/scriptUtils";
 import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
@@ -23,6 +26,8 @@ interface Preferences {
   openURL?: string;
   primaryAction: string;
   scriptsDirectory?: string;
+  aiCallerExtensionTarget?: string;
+  aiProviderNames?: string;
 }
 
 // Define a more specific type for Action props we might access
@@ -39,16 +44,13 @@ interface ActionItem {
 
 /**
  * Generates a sorted list of Raycast Action elements based on the prompt definition,
- * global preferences, available scripts, and AI providers.
+ * global preferences, and available scripts. AI actions now trigger a deeplink.
  *
  * @param prompt The prompt object to generate actions for
  * @param baseReplacements Base replacements without clipboard
  * @param promptSpecificRootDir Root directory for file placeholder resolution
  * @param actions An optional array of action names specified in the prompt definition.
  * @param scripts An array of available script information.
- * @param aiProviders An array of available AI providers.
- * @param options Optional chat options for AI provider actions.
- * @param systemPrompt Optional system prompt for AI provider actions.
  * @returns An array of React elements representing the sorted Raycast Actions.
  */
 export function generatePromptActions(
@@ -57,28 +59,19 @@ export function generatePromptActions(
   promptSpecificRootDir: string | undefined,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
-  aiProviders: AIProvider[],
-  options?: ChatOptions,
-  systemPrompt?: string
 ) {
   const preferences = getPreferenceValues<Preferences>();
-  // Combine actions from prompt definition and global preferences
   const configuredActions =
     preferences.primaryAction?.split(",").map((action) => action.trim()).filter(Boolean) || [];
-
   const promptDefinedActions = actions || [];
-  // Use Set to ensure uniqueness and maintain order (prompt actions first, then global)
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
-  // Wrap action handlers to update temporary directory usage time
   const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void)) => {
     return async () => {
       if (prompt.isTemporary) {
         if (prompt.temporaryDirSource) {
-          // If source directory is known, only update that directory
           updateTemporaryDirectoryUsage(prompt.temporaryDirSource);
         } else {
-          // If source directory is unknown, update all temporary directories
           updateAnyTemporaryDirectoryUsage();
         }
       }
@@ -93,7 +86,6 @@ export function generatePromptActions(
     };
   };
 
-  // Helper function to get final content with clipboard
   const getFinalContent = async (): Promise<string> => {
     const currentClipboard = await Clipboard.readText() ?? "";
     const finalReplacements: SpecificReplacements = {
@@ -105,29 +97,10 @@ export function generatePromptActions(
     return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
   };
 
-  /**
-   * Creates a configured Action.OpenInBrowser component.
-   * Copies the formatted description to the clipboard when the URL is opened.
-   *
-   * @param title The title for the action.
-   * @param url The URL to open.
-   * @returns A React element for the Action.OpenInBrowser.
-   */
-  const createRaycastOpenInBrowser = (
-    title: string | undefined,
-    url: string
-  ): ActionWithPossibleProps => (
-    <Action.OpenInBrowser
-      title={title}
-      url={url}
-      onOpen={async () => {
-        const finalContent = await getFinalContent();
-        await Clipboard.copy(finalContent);
-      }}
-    />
-  );
+  const getSystemPrompt = (prompt: PromptProps): string | undefined => {
+    return (prompt as any).systemPrompt;
+  };
 
-  // Use the passed-in scripts directly
   const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
     name: `script_${scriptName}`,
     displayName: scriptName,
@@ -140,48 +113,107 @@ export function generatePromptActions(
           try {
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
-            closeMainWindow();
+            await closeMainWindow({ clearRootSearch: true });
             const scriptContent = fs.readFileSync(scriptPath, "utf8");
-            await runAppleScript(scriptContent, scriptName.endsWith("ChatGPT") ? [finalContent] : []);
+            const args = scriptName.endsWith("ChatGPT") ? [finalContent] : [];
+            await runAppleScript(scriptContent, args);
           } catch (error) {
-            console.error(`Failed to execute script: ${error}`);
-            await showToast(Toast.Style.Failure, "Error", String(error));
+            console.error(`Failed to execute script ${scriptName}:`, error);
+            await showToast(Toast.Style.Failure, "Script Error", `Failed to run ${scriptName}: ${String(error)}`);
           }
         })}
       />
     ),
   }));
 
-  // Use the passed-in aiProviders directly
-  const providerActions: ActionItem[] = aiProviders.map(provider => {
-    const displayName = `${provider.name}`;
-    return {
-      name: provider.name.toLowerCase(),
-      displayName,
-      condition: true,
-      action: (
-        <Action.Push
-          title={displayName}
-          icon={Icon.Network}
-          target={
-            <ChatResultView
-              prompt={prompt}
-              baseReplacements={baseReplacements}
-              promptSpecificRootDir={promptSpecificRootDir}
-              providerName={provider.name}
-              options={options}
-              systemPrompt={systemPrompt}
-            />
-          }
-          onPush={wrapActionHandler(() => {
-            // Only need to trigger usage update here, ChatResultView will handle the AI call
-          })}
-        />
-      ),
-    } as ActionItem;
-  });
+  const aiCallerActions: ActionItem[] = [];
+  if (preferences.aiCallerExtensionTarget) {
+    const target = preferences.aiCallerExtensionTarget.trim();
+    const targetParts = target.split('.');
 
-  // Define all possible base actions
+    if (targetParts.length === 3) {
+      const [author, extensionName, commandName] = targetParts;
+      const providerNames = preferences.aiProviderNames?.split(',').map(name => name.trim()).filter(Boolean) ?? [];
+
+      const createAICallerAction = (providerName?: string): ActionItem => {
+        const name = providerName ? providerName.toLowerCase() : "ai_caller_default";
+        const title = providerName ? `Send to ${providerName}` : "Send to AI";
+
+        return {
+          name: name,
+          displayName: title,
+          condition: true,
+          action: (
+            <Action
+              title={title}
+              icon={Icon.Bolt}
+              onAction={wrapActionHandler(async () => {
+                try {
+                  const finalContent = await getFinalContent();
+                  const effectiveSystemPrompt = getSystemPrompt(prompt);
+                  const args: { promptContent: string; systemPrompt?: string; providerName?: string } = {
+                    promptContent: finalContent,
+                  };
+                  if (effectiveSystemPrompt) {
+                    args.systemPrompt = effectiveSystemPrompt;
+                  }
+                  if (providerName) {
+                    args.providerName = providerName;
+                  }
+
+                  const deeplink = `raycast://extensions/${author}/${extensionName}/${commandName}?arguments=${encodeURIComponent(JSON.stringify(args))}`;
+                  await open(deeplink);
+                } catch (error) {
+                  console.error("Failed to construct or open AI Caller deeplink:", error);
+                  await showToast(Toast.Style.Failure, "Deeplink Error", String(error));
+                }
+              })}
+            />
+          ),
+        };
+      };
+
+      if (providerNames.length === 0) {
+        aiCallerActions.push(createAICallerAction());
+      } else {
+        providerNames.forEach(providerName => {
+          aiCallerActions.push(createAICallerAction(providerName));
+        });
+      }
+    } else if (target) {
+      console.warn("Invalid aiCallerExtensionTarget format in preferences. Expected 'author.extension_name.command_name'. AI Actions disabled.");
+
+      const configureUrl = `raycast://configure-extension?name=${environment.extensionName}`;
+
+      aiCallerActions.push({
+        name: "configure_ai_caller",
+        displayName: "Configure Extension Settings",
+        condition: true,
+        action: <Action.OpenInBrowser
+          title="Configure Extension Settings"
+          icon={Icon.Gear}
+          url={configureUrl}
+        />
+      });
+    }
+  } else {
+  }
+
+  const createRaycastOpenInBrowser = (
+    title: string | undefined,
+    url: string
+  ): ActionWithPossibleProps => (
+    <Action.OpenInBrowser
+      title={title}
+      url={url}
+      onOpen={wrapActionHandler(async () => {
+        const finalContent = await getFinalContent();
+        await Clipboard.copy(finalContent);
+        await showToast(Toast.Style.Success, "Copied Prompt", "Opened URL");
+      })}
+    />
+  );
+
   const baseActionItems: ActionItem[] = [
     {
       name: "openURL",
@@ -203,9 +235,8 @@ export function generatePromptActions(
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
           onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
-            // Must be done before closeMainWindow, otherwise copying may fail
-            Clipboard.copy(finalContent);
-            closeMainWindow();
+            await Clipboard.copy(finalContent);
+            await showToast(Toast.Style.Success, "Copied");
           })}
         />
       ),
@@ -221,85 +252,66 @@ export function generatePromptActions(
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
           onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
-            // Must be done before closeMainWindow, otherwise pasting may fail
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
-            closeMainWindow();
+            await showToast(Toast.Style.Success, "Pasted");
           })}
         />
       ),
     },
   ];
 
-  // Combine all potential actions
   const allActionItems: ActionItem[] = [
+    ...aiCallerActions,
     ...scriptActions,
-    ...providerActions,
     ...baseActionItems
   ];
 
-  // Filter actions based ONLY on their condition first
   const eligibleActions = allActionItems.filter((item) => item.condition);
 
-  // Now, sort eligibleActions. Use finalActions for priority sorting.
   eligibleActions.sort((a, b) => {
-    const getNameForSort = (name: string) => name.toLowerCase().replace(/^script_/, '');
+    const getNameForSort = (name: string) => name.toLowerCase().replace(/^(script_|ai_caller_)/, '');
     const nameA = getNameForSort(a.name);
     const nameB = getNameForSort(b.name);
 
     const indexA = finalActions.findIndex(name => name.toLowerCase() === nameA);
     const indexB = finalActions.findIndex(name => name.toLowerCase() === nameB);
 
-    // Both are in finalActions: sort by their index in finalActions
-    if (indexA !== -1 && indexB !== -1) {
-      return indexA - indexB;
-    }
-    // Only A is in finalActions: A comes first
-    if (indexA !== -1) {
-      return -1;
-    }
-    // Only B is in finalActions: B comes first
-    if (indexB !== -1) {
-      return 1;
-    }
-    // Neither is in finalActions: sort alphabetically by display name
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
     return a.displayName.localeCompare(b.displayName);
   });
 
-  // Find and prioritize the default action from the sorted eligible list
   const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
   let defaultActionItem: ActionItem | undefined;
   if (defaultActionPreference) {
-    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+)/, '');
-    // Find based on the eligible and sorted list
+    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+|ai_caller_)/, '');
     defaultActionItem = eligibleActions.find((item) =>
-      item.name.toLowerCase().replace(/^script_/, '') === preferenceBaseName.toLowerCase()
+      item.name.toLowerCase().replace(/^(script_|ai_caller_)/, '') === preferenceBaseName.toLowerCase()
     );
   }
 
-  // Prepare the final list of action elements based on the sorted eligible list
   let resultActions: React.ReactElement[] = [];
+  const actionNames = new Set<string>();
 
   if (defaultActionItem) {
-    const defaultAction = defaultActionItem.action;
-    // The original onAction from the definition above is already async
-    const handleAction = defaultAction.props.onAction;
-    resultActions.push(React.cloneElement(defaultAction, {
-      key: defaultActionItem.name, // Use name as key
-      title: `${defaultActionItem.displayName}`,
-      onAction: handleAction, // Use the async handler directly
-    }));
-    // Add other actions, excluding the default one
-    resultActions = resultActions.concat(
-      eligibleActions // Use eligibleActions here
-        .filter((item) => item.name !== defaultActionItem?.name)
-        .map((item) => React.cloneElement(item.action, { key: item.name, title: `${item.displayName}` }))
-    );
-  } else {
-    // If no default action, just use the sorted eligible list
-    resultActions = eligibleActions.map((item) =>
-      React.cloneElement(item.action, { key: item.name, title: `${item.displayName}` })
-    );
+    resultActions.push(React.cloneElement(defaultActionItem.action, { key: defaultActionItem.name }));
+    actionNames.add(defaultActionItem.name);
+  }
+
+  eligibleActions.forEach((item) => {
+    if (!actionNames.has(item.name)) {
+      resultActions.push(React.cloneElement(item.action, { key: item.name }));
+      actionNames.add(item.name);
+    }
+  });
+
+  if (resultActions.length === 0) {
+    const copyAction = baseActionItems.find(a => a.name === 'copyToClipboard');
+    if (copyAction) {
+      resultActions.push(React.cloneElement(copyAction.action, { key: copyAction.name }));
+    }
   }
 
   return resultActions;
