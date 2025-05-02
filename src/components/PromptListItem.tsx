@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
     List,
     ActionPanel,
@@ -11,6 +11,8 @@ import {
     openExtensionPreferences,
     getPreferenceValues,
     Clipboard,
+    getSelectedFinderItems,
+    Image
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/PromptManager";
@@ -23,6 +25,15 @@ import { AIProvider } from "../services/types";
 import { placeholderFormatter } from "../utils/placeholderFormatter";
 import { PromptList } from "./PromptList";
 import { PromptOptionsForm } from "./PromptOptionsForm";
+import {
+    addTemporaryDirectory,
+    removeTemporaryDirectory,
+    removeAllTemporaryDirectories,
+    getActiveTemporaryDirectoriesWithExpiry,
+    TemporaryDirectoryWithExpiry
+} from '../stores/TemporaryPromptDirectoryStore';
+import promptManager from "../managers/PromptManager";
+import fs from "fs";
 
 interface PromptListItemProps {
     prompt: PromptProps;
@@ -35,6 +46,7 @@ interface PromptListItemProps {
     activeSearchText?: string;
     scripts: ScriptInfo[];
     aiProviders: AIProvider[];
+    onRefreshNeeded: () => void;
 }
 
 /**
@@ -52,9 +64,12 @@ interface PromptListItemProps {
  * @param props.activeSearchText The current text in the search bar (if not in search mode).
  * @param props.scripts List of available scripts.
  * @param props.aiProviders List of available AI providers.
+ * @param props.onRefreshNeeded Callback function to refresh the prompt list.
  */
 export function PromptListItem({
     prompt,
+    // index parameter not used, but kept for interface consistency
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     index,
     replacements,
     searchMode = false,
@@ -62,8 +77,28 @@ export function PromptListItem({
     allowedActions,
     onPinToggle,
     scripts,
-    aiProviders
+    aiProviders,
+    onRefreshNeeded
 }: PromptListItemProps) {
+    // Use temporary directory list with expiration time information
+    const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
+    const [refreshTimer, setRefreshTimer] = useState(0);
+
+    // Update directory information every second to refresh remaining time
+    useEffect(() => {
+        // Initial loading
+        setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
+
+        // Set timer to update every second
+        const timer = setInterval(() => {
+            setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
+            setRefreshTimer(prev => prev + 1);
+        }, 1000);
+
+        // Clean up timer when component unmounts
+        return () => clearInterval(timer);
+    }, []);
+
     // Format title (clipboard placeholder won't resolve here)
     const rawTitle = prompt.title || "";
     // Merge prompt properties with standard replacements for title formatting
@@ -83,13 +118,98 @@ export function PromptListItem({
         ? `${prompt.path.replace(rawTitle, '')}${formattedTitleWithPlaceholders}`.trim()
         : formattedTitleWithPlaceholders;
 
+    // Dynamic title and icon
+    let displayTitle = formattedTitle;
+    let displayIcon: string | Image.Asset = prompt.icon ?? "";
+
+    if (prompt.identifier === "manage-temporary-directory") {
+        if (temporaryDirs.length > 0) {
+            displayTitle = `Manage temporary directory (${temporaryDirs.length})`;
+            displayIcon = Icon.Folder;
+        } else {
+            displayTitle = "Add temporary directory";
+            displayIcon = Icon.Plus;
+        }
+    }
+
     // Memoize placeholder icons
     const placeholderIcons = useMemo(() => getPlaceholderIcons(prompt.content, replacements), [prompt.content, replacements]);
 
     // Memoize prompt actions
     const promptActions = useMemo(() => {
-        // Determine the actions to generate based on context
-        if (prompt.identifier === "open-custom-prompts-dir") {
+        if (prompt.identifier === "manage-temporary-directory") {
+            const handleAdd = async () => {
+                try {
+                    const selectedItems = await getSelectedFinderItems();
+                    if (selectedItems.length === 0) {
+                        await showToast({
+                            title: "Error",
+                            message: "Please select a directory in Finder",
+                            style: Toast.Style.Failure
+                        });
+                        return;
+                    }
+
+                    const selectedPath = selectedItems[0].path;
+                    const stats = fs.statSync(selectedPath);
+                    if (!stats.isDirectory()) {
+                        await showToast({
+                            title: "Error",
+                            message: "Please select a directory instead of a file",
+                            style: Toast.Style.Failure
+                        });
+                        return;
+                    }
+
+                    addTemporaryDirectory(selectedPath);
+                    promptManager.reloadPrompts();
+                    onRefreshNeeded();
+                } catch (error) {
+                    console.error("Failed to add temporary directory:", error);
+                    await showToast({
+                        title: "Error",
+                        message: `Failed to add temporary directory: ${error}`,
+                        style: Toast.Style.Failure
+                    });
+                }
+            };
+
+            if (temporaryDirs.length > 0) {
+                const removeActions = temporaryDirs.map((dir) => (
+                    <Action
+                        key={dir.path}
+                        title={`Remove: ${path.basename(dir.path)}`}
+                        icon={Icon.Trash}
+                        onAction={() => {
+                            removeTemporaryDirectory(dir.path);
+                            promptManager.reloadPrompts();
+                            onRefreshNeeded();
+                        }}
+                    />
+                ));
+
+                return (
+                    <>
+                        <Action title="Add temporary directory" icon={Icon.Plus} onAction={handleAdd} />
+                        {removeActions}
+                        {temporaryDirs.length > 1 && (
+                            <Action
+                                title="Remove all temporary directories"
+                                icon={Icon.Trash}
+                                style={Action.Style.Destructive}
+                                onAction={() => {
+                                    removeAllTemporaryDirectories();
+                                    promptManager.reloadPrompts();
+                                    onRefreshNeeded();
+                                }}
+                            />
+                        )}
+                    </>
+                );
+            } else {
+                return <Action title="Add selected directory" icon={Icon.Plus} onAction={handleAdd} />;
+            }
+        } else if (prompt.identifier === "open-custom-prompts-dir") {
             return handleCustomPromptsDirectoryActions();
         } else if (prompt.identifier === "open-scripts-dir") {
             return (
@@ -148,7 +268,7 @@ export function PromptListItem({
                     {/* Preferentially check for option:xxx placeholders in content, which refer to property values as options */}
                     {findOptionPlaceholders(prompt).length > 0 ? (
                         <Action.Push
-                            title="选择选项"
+                            title="Select option"
                             icon={Icon.Gear}
                             target={
                                 <PromptOptionsForm
@@ -163,7 +283,7 @@ export function PromptListItem({
                         />
                     ) : prompt.options && Object.keys(prompt.options).length > 0 ? (
                         <Action.Push
-                            title="选择选项"
+                            title="Select option"
                             icon={Icon.Gear}
                             target={
                                 <PromptOptionsForm
@@ -195,82 +315,105 @@ export function PromptListItem({
         promptSpecificRootDir,
         allowedActions,
         scripts,
-        aiProviders
+        aiProviders,
+        temporaryDirs,
+        refreshTimer,
+        onRefreshNeeded
     ]);
 
-    return (
-        <List.Item
-            key={index}
-            title={formattedTitle.replace(/\n/g, " ")}
-            icon={prompt.icon ?? "🔖"}
-            accessories={[
-                prompt.pinned
-                    ? { tag: { value: "PIN", color: Color.SecondaryText } }
-                    : {},
-                ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
-                    i === arr.length - 1
-                        ? {
-                            ...accessory,
-                            tooltip: prompt.content ?? prompt.subprompts
-                                ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
-                                .join("\n")
-                        }
-                        : accessory
-                ),
-                ...(placeholderIcons.length === 0
-                    ? [{
-                        icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+    // Create accessories to display remaining time
+    const getAccessories = () => {
+        if (prompt.identifier === "manage-temporary-directory" && temporaryDirs.length > 0) {
+            return temporaryDirs.map(dir => ({
+                tag: {
+                    value: `${path.basename(dir.path)}: ${dir.remainingText}`,
+                    color: dir.remainingMs < 3600000 ? Color.Red : Color.SecondaryText // Less than 1 hour shows red
+                }
+            }));
+        }
+
+        if (prompt.identifier === "manage-temporary-directory") {
+            return [];
+        }
+
+        return [
+            prompt.pinned
+                ? { tag: { value: "PIN", color: Color.SecondaryText } }
+                : {},
+            ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
+                i === arr.length - 1
+                    ? {
+                        ...accessory,
                         tooltip: prompt.content ?? prompt.subprompts
                             ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
                             .join("\n")
-                    }]
-                    : [])
-            ]}
+                    }
+                    : accessory
+            ),
+            ...(placeholderIcons.length === 0
+                ? [{
+                    icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+                    tooltip: prompt.content ?? prompt.subprompts
+                        ?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `)
+                        .join("\n")
+                }]
+                : [])
+        ];
+    };
+
+    return (
+        <List.Item
+            key={prompt.identifier || prompt.title}
+            icon={displayIcon}
+            title={displayTitle.replace(/\n/g, " ")}
+            accessories={getAccessories()}
             actions={
                 <ActionPanel>
                     {promptActions}
-                    <Action
-                        title={prompt.pinned ? "Unpin" : "Pin"}
-                        icon={Icon.Pin}
-                        onAction={() => onPinToggle(prompt)}
-                        shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
-                    />
-                    <>
-                        <Action.CopyToClipboard
-                            title="Copy Identifier"
-                            content={`quickgpt-${prompt.identifier}`}
-                            icon={Icon.Document}
-                        />
-                        <Action.CopyToClipboard
-                            title="Copy Deeplink"
-                            content={`raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments=${encodeURIComponent(
-                                JSON.stringify({
-                                    target: `quickgpt-${prompt.identifier}`,
-                                    actions: prompt.actions?.join(','),
-                                    filePath: prompt.filePath
-                                })
-                            )}`}
-                            icon={Icon.Link}
-                        />
-                        {prompt.filePath && (
+                    {prompt.identifier !== "manage-temporary-directory" && (
+                        <>
                             <Action
-                                title="Edit with Cursor"
-                                icon={Icon.Code}
-                                onAction={async () => {
-                                    if (!prompt.filePath) return;
-                                    await Clipboard.copy(prompt.title);
-                                    const configDir = path.dirname(prompt.filePath);
-                                    await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
-                                    await closeMainWindow();
-                                    await showToast({
-                                        title: "复制标题",
-                                        message: prompt.title,
-                                        style: Toast.Style.Success,
-                                    });
-                                }}
+                                title={prompt.pinned ? "Unpin" : "Pin"}
+                                icon={Icon.Pin}
+                                onAction={() => onPinToggle(prompt)}
+                                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                             />
-                        )}
-                    </>
+                            <Action.CopyToClipboard
+                                title="Copy Identifier"
+                                content={`quickgpt-${prompt.identifier}`}
+                                icon={Icon.Document}
+                            />
+                            <Action.CopyToClipboard
+                                title="Copy Deeplink"
+                                content={`raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments=${encodeURIComponent(
+                                    JSON.stringify({
+                                        target: `quickgpt-${prompt.identifier}`,
+                                        actions: prompt.actions?.join(','),
+                                        filePath: prompt.filePath
+                                    })
+                                )}`}
+                                icon={Icon.Link}
+                            />
+                            {prompt.filePath && (
+                                <Action
+                                    title="Edit with Cursor"
+                                    icon={Icon.Code}
+                                    onAction={async () => {
+                                        if (!prompt.filePath) return;
+                                        await Clipboard.copy(prompt.title);
+                                        const configDir = path.dirname(prompt.filePath);
+                                        await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
+                                        await closeMainWindow();
+                                        await showToast({
+                                            title: "Copied title",
+                                            message: prompt.title,
+                                            style: Toast.Style.Success,
+                                        });
+                                    }}
+                                />
+                            )}
+                        </>
+                    )}
                 </ActionPanel>
             }
         />

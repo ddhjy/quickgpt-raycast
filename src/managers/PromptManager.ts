@@ -3,6 +3,7 @@ import * as path from "path";
 import md5 from "md5";
 import { getPreferenceValues } from "@raycast/api";
 import * as hjson from 'hjson';
+import * as temporaryDirectoryStore from '../stores/TemporaryPromptDirectoryStore';
 
 type Preferences = {
   customPrompts?: string;
@@ -32,6 +33,8 @@ export type PromptProps = {
   textInputs?: { [key: string]: string };
   path?: string;
   filePath?: string;
+  isTemporary?: boolean;
+  temporaryDirSource?: string;
 };
 
 // List of properties that should NOT be inherited from parent to child
@@ -54,6 +57,7 @@ class PromptManager {
   private promptFilePaths: string[];
   private prompts: PromptProps[] = [];
   private mergedRootProperties: Partial<PromptProps> = {}; // Stores merged root properties
+  private temporaryDirectoryPaths: string[] = []; // Modified to store multiple temporary directory paths
 
   /**
    * Initializes the PromptManager by determining prompt file paths based on preferences
@@ -90,13 +94,25 @@ class PromptManager {
     const defaultPromptsPath = path.join(__dirname, "assets/prompts.hjson");
     const promptFiles = customPromptDirectories.length > 0 ? [] : [defaultPromptsPath];
 
-    // Load default/user files/directories first, then append system prompts
-    return [
+    // Get list of temporary directories
+    const tempDirs = temporaryDirectoryStore.getActiveTemporaryDirectories();
+    this.temporaryDirectoryPaths = tempDirs.map(dir => dir.path);
+
+    const allPaths = [
       ...promptFiles,
       ...customPromptFiles,
-      ...customPromptDirectories,
-      systemPromptsPath // Append system prompts path at the end
+      ...customPromptDirectories
     ];
+
+    // Add all temporary directories to the path list
+    if (this.temporaryDirectoryPaths.length > 0) {
+      allPaths.push(...this.temporaryDirectoryPaths);
+    }
+
+    // Finally add the system prompts path
+    allPaths.push(systemPromptsPath);
+
+    return Array.from(new Set(allPaths));
   }
 
   /**
@@ -170,10 +186,33 @@ class PromptManager {
       const prompts = promptsData.filter(p => typeof p.title === 'string') as PromptProps[];
 
       const baseDir = path.dirname(filePath);
+      // Check if it comes from any temporary directory
+      const isTemporarySource = this.temporaryDirectoryPaths.some(tempDir =>
+        filePath.startsWith(tempDir)
+      );
+
+      // If it's from a temporary directory, record which one it belongs to for updating usage time
+      let tempDirSource = '';
+      if (isTemporarySource) {
+        for (const tempDir of this.temporaryDirectoryPaths) {
+          if (filePath.startsWith(tempDir)) {
+            tempDirSource = tempDir;
+            break;
+          }
+        }
+      }
+
       return prompts.map((prompt: PromptProps) => {
         // loadPromptContentFromFileSync remains largely unchanged unless content needs file loading
         const processedPrompt = this.loadPromptContentFromFileSync(prompt, baseDir);
         processedPrompt.filePath = filePath; // Assign the file path
+
+        // Add temporary directory flag and source directory
+        if (isTemporarySource) {
+          processedPrompt.isTemporary = true;
+          processedPrompt.temporaryDirSource = tempDirSource; // Add temporary directory source to prompt properties
+        }
+
         return processedPrompt;
       });
 
@@ -474,6 +513,9 @@ class PromptManager {
    * This clears the current prompts and re-runs the loading and processing steps.
    */
   public reloadPrompts(): void {
+    console.log("Reloading prompts...");
+    const preferences = getPreferenceValues<Preferences>();
+    this.promptFilePaths = this.getPromptFilePaths(preferences);
     this.loadAllPrompts();
   }
 }
