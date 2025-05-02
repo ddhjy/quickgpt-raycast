@@ -38,9 +38,7 @@ describe("placeholderFormatter", () => {
       clipboard: "Clipboard text",
     };
     const result = placeholderFormatter(text, replacements);
-    expect(result).toBe(
-      "Input: Input text, Selection: Selected text, Clipboard: Clipboard text"
-    );
+    expect(result).toBe("Input: Input text, Selection: Selected text, Clipboard: Clipboard text");
   });
 
   it("should prioritize replacements in {{i|s|c}}", () => {
@@ -112,8 +110,8 @@ describe("placeholderFormatter", () => {
     const text = "Nested property: {{nested.property}}";
     const mergedReplacements = {
       nested: {
-        property: "nested value"
-      }
+        property: "nested value",
+      },
     };
     const result = placeholderFormatter(text, mergedReplacements);
     expect(result).toBe("Nested property: nested value");
@@ -122,11 +120,7 @@ describe("placeholderFormatter", () => {
   it("should handle array indices in property paths", () => {
     const text = "Array item: {{items.1.name}}";
     const mergedReplacements = {
-      items: [
-        { name: "First item" },
-        { name: "Second item" },
-        { name: "Third item" }
-      ]
+      items: [{ name: "First item" }, { name: "Second item" }, { name: "Third item" }],
     };
     const result = placeholderFormatter(text, mergedReplacements);
     expect(result).toBe("Array item: Second item");
@@ -135,10 +129,10 @@ describe("placeholderFormatter", () => {
   it("should prioritize standard replacements over prompt properties with same name", () => {
     const text = "Value is {{input}}";
     const mergedReplacements = {
-      input: "prompt default input"
+      input: "prompt default input",
     };
     const standardReplacements = {
-      input: "user input"
+      input: "user input",
     };
     const result = placeholderFormatter(text, { ...mergedReplacements, ...standardReplacements });
     expect(result).toBe("Value is user input");
@@ -156,7 +150,7 @@ describe("placeholderFormatter", () => {
   it("should return {{propertyName}} unchanged if property doesn't exist and is not a standard placeholder", () => {
     const text = "Missing property: {{nonexistent.property}}";
     const mergedReplacements = {
-      someOtherProperty: "value"
+      someOtherProperty: "value",
     };
     const result = placeholderFormatter(text, mergedReplacements);
     expect(result).toBe("Missing property: {{nonexistent.property}}");
@@ -167,7 +161,7 @@ describe("placeholderFormatter", () => {
     const mergedReplacements = {
       number: 42,
       flag: true,
-      nullValue: null
+      nullValue: null,
     };
     const result = placeholderFormatter(text, mergedReplacements);
     expect(result).toBe("Number: 42, Boolean: true, Null: null");

@@ -8,10 +8,7 @@ import {
   closeMainWindow,
   showToast,
   open,
-  ActionPanel,
-  launchCommand,
-  LaunchType,
-  environment
+  environment,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -20,7 +17,10 @@ import { ScriptInfo } from "../utils/scriptUtils";
 import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
 import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
-import { updateTemporaryDirectoryUsage, updateAnyTemporaryDirectoryUsage } from '../stores/TemporaryPromptDirectoryStore';
+import {
+  updateTemporaryDirectoryUsage,
+  updateAnyTemporaryDirectoryUsage,
+} from "../stores/TemporaryPromptDirectoryStore";
 
 interface Preferences {
   openURL?: string;
@@ -55,14 +55,17 @@ interface ActionItem {
  */
 export function generatePromptActions(
   prompt: PromptProps,
-  baseReplacements: Omit<SpecificReplacements, 'clipboard'>,
+  baseReplacements: Omit<SpecificReplacements, "clipboard">,
   promptSpecificRootDir: string | undefined,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
 ) {
   const preferences = getPreferenceValues<Preferences>();
   const configuredActions =
-    preferences.primaryAction?.split(",").map((action) => action.trim()).filter(Boolean) || [];
+    preferences.primaryAction
+      ?.split(",")
+      .map((action) => action.trim())
+      .filter(Boolean) || [];
   const promptDefinedActions = actions || [];
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
@@ -87,18 +90,18 @@ export function generatePromptActions(
   };
 
   const getFinalContent = async (): Promise<string> => {
-    const currentClipboard = await Clipboard.readText() ?? "";
+    const currentClipboard = (await Clipboard.readText()) ?? "";
     const finalReplacements: SpecificReplacements = {
       ...baseReplacements,
       clipboard: currentClipboard,
       now: new Date().toLocaleString(),
-      promptTitles: getIndentedPromptTitles()
+      promptTitles: getIndentedPromptTitles(),
     };
     return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
   };
 
   const getSystemPrompt = (prompt: PromptProps): string | undefined => {
-    return (prompt as any).systemPrompt;
+    return "systemPrompt" in prompt ? (prompt as { systemPrompt?: string }).systemPrompt : undefined;
   };
 
   const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
@@ -129,11 +132,15 @@ export function generatePromptActions(
   const aiCallerActions: ActionItem[] = [];
   if (preferences.aiCallerExtensionTarget) {
     const target = preferences.aiCallerExtensionTarget.trim();
-    const targetParts = target.split('.');
+    const targetParts = target.split(".");
 
     if (targetParts.length === 3) {
       const [author, extensionName, commandName] = targetParts;
-      const providerNames = preferences.aiProviderNames?.split(',').map(name => name.trim()).filter(Boolean) ?? [];
+      const providerNames =
+        preferences.aiProviderNames
+          ?.split(",")
+          .map((name) => name.trim())
+          .filter(Boolean) ?? [];
 
       const createAICallerAction = (providerName?: string): ActionItem => {
         const name = providerName ? providerName.toLowerCase() : "ai_caller_default";
@@ -176,12 +183,14 @@ export function generatePromptActions(
       if (providerNames.length === 0) {
         aiCallerActions.push(createAICallerAction());
       } else {
-        providerNames.forEach(providerName => {
+        providerNames.forEach((providerName) => {
           aiCallerActions.push(createAICallerAction(providerName));
         });
       }
     } else if (target) {
-      console.warn("Invalid aiCallerExtensionTarget format in preferences. Expected 'author.extension_name.command_name'. AI Actions disabled.");
+      console.warn(
+        "Invalid aiCallerExtensionTarget format in preferences. Expected 'author.extension_name.command_name'. AI Actions disabled.",
+      );
 
       const configureUrl = `raycast://configure-extension?name=${environment.extensionName}`;
 
@@ -189,20 +198,12 @@ export function generatePromptActions(
         name: "configure_ai_caller",
         displayName: "Configure Extension Settings",
         condition: true,
-        action: <Action.OpenInBrowser
-          title="Configure Extension Settings"
-          icon={Icon.Gear}
-          url={configureUrl}
-        />
+        action: <Action.OpenInBrowser title="Configure Extension Settings" icon={Icon.Gear} url={configureUrl} />,
       });
     }
-  } else {
   }
 
-  const createRaycastOpenInBrowser = (
-    title: string | undefined,
-    url: string
-  ): ActionWithPossibleProps => (
+  const createRaycastOpenInBrowser = (title: string | undefined, url: string): ActionWithPossibleProps => (
     <Action.OpenInBrowser
       title={title}
       url={url}
@@ -219,10 +220,7 @@ export function generatePromptActions(
       name: "openURL",
       displayName: "Open URL",
       condition: Boolean(preferences.openURL),
-      action: createRaycastOpenInBrowser(
-        "Open URL",
-        preferences.openURL ?? ""
-      ),
+      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? ""),
     },
     {
       name: "copyToClipboard",
@@ -237,6 +235,7 @@ export function generatePromptActions(
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
             await showToast(Toast.Style.Success, "Copied");
+            await closeMainWindow({ clearRootSearch: true });
           })}
         />
       ),
@@ -261,21 +260,17 @@ export function generatePromptActions(
     },
   ];
 
-  const allActionItems: ActionItem[] = [
-    ...aiCallerActions,
-    ...scriptActions,
-    ...baseActionItems
-  ];
+  const allActionItems: ActionItem[] = [...aiCallerActions, ...scriptActions, ...baseActionItems];
 
   const eligibleActions = allActionItems.filter((item) => item.condition);
 
   eligibleActions.sort((a, b) => {
-    const getNameForSort = (name: string) => name.toLowerCase().replace(/^(script_|ai_caller_)/, '');
+    const getNameForSort = (name: string) => name.toLowerCase().replace(/^(script_|ai_caller_)/, "");
     const nameA = getNameForSort(a.name);
     const nameB = getNameForSort(b.name);
 
-    const indexA = finalActions.findIndex(name => name.toLowerCase() === nameA);
-    const indexB = finalActions.findIndex(name => name.toLowerCase() === nameB);
+    const indexA = finalActions.findIndex((name) => name.toLowerCase() === nameA);
+    const indexB = finalActions.findIndex((name) => name.toLowerCase() === nameB);
 
     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
     if (indexA !== -1) return -1;
@@ -286,13 +281,13 @@ export function generatePromptActions(
   const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
   let defaultActionItem: ActionItem | undefined;
   if (defaultActionPreference) {
-    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+|ai_caller_)/, '');
-    defaultActionItem = eligibleActions.find((item) =>
-      item.name.toLowerCase().replace(/^(script_|ai_caller_)/, '') === preferenceBaseName.toLowerCase()
+    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+|ai_caller_)/, "");
+    defaultActionItem = eligibleActions.find(
+      (item) => item.name.toLowerCase().replace(/^(script_|ai_caller_)/, "") === preferenceBaseName.toLowerCase(),
     );
   }
 
-  let resultActions: React.ReactElement[] = [];
+  const resultActions: React.ReactElement[] = [];
   const actionNames = new Set<string>();
 
   if (defaultActionItem) {
@@ -308,7 +303,7 @@ export function generatePromptActions(
   });
 
   if (resultActions.length === 0) {
-    const copyAction = baseActionItems.find(a => a.name === 'copyToClipboard');
+    const copyAction = baseActionItems.find((a) => a.name === "copyToClipboard");
     if (copyAction) {
       resultActions.push(React.cloneElement(copyAction.action, { key: copyAction.name }));
     }

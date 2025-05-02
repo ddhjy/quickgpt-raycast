@@ -1,7 +1,7 @@
 import path from "path";
 import fsPromises from "fs/promises";
 import fs from "fs";
-import ignore from 'ignore';
+import ignore from "ignore";
 
 /**
  * This file provides utility functions for interacting with the file system,
@@ -10,22 +10,42 @@ import ignore from 'ignore';
  */
 
 export const BINARY_MEDIA_EXTENSIONS = new Set([
-    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
-    '.mp3', '.wav', '.flac', '.mp4', '.avi', '.mkv',
-    '.exe', '.dll', '.bin', '.iso', '.zip', '.rar',
-    '.xcodeproj', '.xcworkspace', '.tiktoken', '.svg', '.webp', '.ico'
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".bmp",
+  ".tiff",
+  ".mp3",
+  ".wav",
+  ".flac",
+  ".mp4",
+  ".avi",
+  ".mkv",
+  ".exe",
+  ".dll",
+  ".bin",
+  ".iso",
+  ".zip",
+  ".rar",
+  ".xcodeproj",
+  ".xcworkspace",
+  ".tiktoken",
+  ".svg",
+  ".webp",
+  ".ico",
 ]);
 
 export const IGNORED_PATTERNS = [
-    /^(node_modules|dist|build|coverage|tmp|logs|public|assets|vendor)$/,
-    /^\..+/,
-    /^(package-lock\.json|yarn\.lock)$/,
-    /^\.vscode$/,
-    /^\.idea$/,
-    /^\.env(\.local)?$/,
-    /^\.cache$/,
-    /^(bower_components|jspm_packages)$/,
-    /^\.DS_Store$/
+  /^(node_modules|dist|build|coverage|tmp|logs|public|assets|vendor)$/,
+  /^\..+/,
+  /^(package-lock\.json|yarn\.lock)$/,
+  /^\.vscode$/,
+  /^\.idea$/,
+  /^\.env(\.local)?$/,
+  /^\.cache$/,
+  /^(bower_components|jspm_packages)$/,
+  /^\.DS_Store$/,
 ];
 
 /**
@@ -36,8 +56,8 @@ export const IGNORED_PATTERNS = [
  * @returns True if the extension is in the predefined set, false otherwise.
  */
 export const isBinaryOrMediaFile = (fileName: string): boolean => {
-    const ext = path.extname(fileName).toLowerCase();
-    return BINARY_MEDIA_EXTENSIONS.has(ext);
+  const ext = path.extname(fileName).toLowerCase();
+  return BINARY_MEDIA_EXTENSIONS.has(ext);
 };
 
 /**
@@ -48,7 +68,7 @@ export const isBinaryOrMediaFile = (fileName: string): boolean => {
  * @returns True if the name matches any of the ignore patterns, false otherwise.
  */
 export const isIgnoredItem = (itemName: string): boolean => {
-    return IGNORED_PATTERNS.some(pattern => pattern.test(itemName));
+  return IGNORED_PATTERNS.some((pattern) => pattern.test(itemName));
 };
 
 /**
@@ -61,30 +81,30 @@ export const isIgnoredItem = (itemName: string): boolean => {
  * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
  * @returns A promise resolving to a string containing the formatted directory contents.
  */
-export const readDirectoryContents = async (dirPath: string, basePath: string = ''): Promise<string> => {
-    let content = "";
-    const items = await fsPromises.readdir(dirPath, { withFileTypes: true });
+export const readDirectoryContents = async (dirPath: string, basePath: string = ""): Promise<string> => {
+  let content = "";
+  const items = await fsPromises.readdir(dirPath, { withFileTypes: true });
 
-    for (const item of items) {
-        const itemName = item.name;
-        const itemPath = path.join(dirPath, itemName);
-        const relativePath = path.join(basePath, itemName);
+  for (const item of items) {
+    const itemName = item.name;
+    const itemPath = path.join(dirPath, itemName);
+    const relativePath = path.join(basePath, itemName);
 
-        if (isIgnoredItem(itemName) || isBinaryOrMediaFile(itemName)) {
-            content += `File: ${relativePath} (content ignored)\n\n`;
-        } else if (item.isDirectory()) {
-            content += await readDirectoryContents(itemPath, relativePath);
-        } else {
-            try {
-                const fileContent = await fsPromises.readFile(itemPath, 'utf-8');
-                content += `File: ${relativePath}\n${fileContent}\n\n`;
-            } catch {
-                content += `File: ${relativePath} (read failed)\n\n`;
-            }
-        }
+    if (isIgnoredItem(itemName) || isBinaryOrMediaFile(itemName)) {
+      content += `File: ${relativePath} (content ignored)\n\n`;
+    } else if (item.isDirectory()) {
+      content += await readDirectoryContents(itemPath, relativePath);
+    } else {
+      try {
+        const fileContent = await fsPromises.readFile(itemPath, "utf-8");
+        content += `File: ${relativePath}\n${fileContent}\n\n`;
+      } catch {
+        content += `File: ${relativePath} (read failed)\n\n`;
+      }
     }
+  }
 
-    return content;
+  return content;
 };
 
 /**
@@ -97,67 +117,67 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
  * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
  * @returns A string containing the formatted directory contents.
  */
-export const readDirectoryContentsSync = (dirPath: string, basePath: string = ''): string => {
-    let content = "";
-    const ig = ignore();
+export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""): string => {
+  let content = "";
+  const ig = ignore();
 
-    const gitignorePath = path.join(dirPath, '.gitignore');
-    if (fs.existsSync(gitignorePath)) {
-        try {
-            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
-            ig.add(gitignoreContent);
-        } catch (error) {
-            console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}:`, error);
-        }
-    }
-
+  const gitignorePath = path.join(dirPath, ".gitignore");
+  if (fs.existsSync(gitignorePath)) {
     try {
-        const items = fs.readdirSync(dirPath, { withFileTypes: true });
-
-        for (const item of items) {
-            const itemName = item.name;
-            const itemPath = path.join(dirPath, itemName);
-            const relativePath = path.join(basePath, itemName);
-
-            // Check if item is ignored by .gitignore first
-            if (ig.ignores(itemName)) {
-                // Add a note indicating it's ignored by .gitignore, then skip further processing
-                if (item.isDirectory()) {
-                    content += `Directory: ${relativePath} (ignored by .gitignore)\n\n`;
-                } else if (item.isFile()) {
-                    content += `File: ${relativePath} (ignored by .gitignore)\n\n`;
-                } else {
-                    // Handle other types like symlinks if necessary, or just a generic message
-                    content += `Item: ${relativePath} (ignored by .gitignore)\n\n`;
-                }
-                continue; // Continue to the next item
-            }
-
-            if (isIgnoredItem(itemName)) {
-                continue;
-            }
-
-            try {
-                if (item.isDirectory()) {
-                    content += `Directory: ${relativePath}${path.sep}\n`;
-                    content += readDirectoryContentsSync(itemPath, relativePath);
-                } else if (item.isFile()) {
-                    if (isBinaryOrMediaFile(itemName)) {
-                        content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
-                    } else {
-                        const fileContent = fs.readFileSync(itemPath, 'utf-8');
-                        content += `File: ${relativePath}\n${fileContent}\n\n`;
-                    }
-                }
-            } catch (readError) {
-                console.warn(`Warning: Could not read item ${itemPath}:`, readError);
-                content += `Item: ${relativePath} (read failed)\n\n`;
-            }
-        }
+      const gitignoreContent = fs.readFileSync(gitignorePath, "utf-8");
+      ig.add(gitignoreContent);
     } catch (error) {
-        console.error(`Error reading directory ${dirPath}:`, error);
-        content += `Error reading directory: ${basePath || dirPath}\n\n`;
+      console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}:`, error);
     }
+  }
 
-    return content;
-}; 
+  try {
+    const items = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const item of items) {
+      const itemName = item.name;
+      const itemPath = path.join(dirPath, itemName);
+      const relativePath = path.join(basePath, itemName);
+
+      // Check if item is ignored by .gitignore first
+      if (ig.ignores(itemName)) {
+        // Add a note indicating it's ignored by .gitignore, then skip further processing
+        if (item.isDirectory()) {
+          content += `Directory: ${relativePath} (ignored by .gitignore)\n\n`;
+        } else if (item.isFile()) {
+          content += `File: ${relativePath} (ignored by .gitignore)\n\n`;
+        } else {
+          // Handle other types like symlinks if necessary, or just a generic message
+          content += `Item: ${relativePath} (ignored by .gitignore)\n\n`;
+        }
+        continue; // Continue to the next item
+      }
+
+      if (isIgnoredItem(itemName)) {
+        continue;
+      }
+
+      try {
+        if (item.isDirectory()) {
+          content += `Directory: ${relativePath}${path.sep}\n`;
+          content += readDirectoryContentsSync(itemPath, relativePath);
+        } else if (item.isFile()) {
+          if (isBinaryOrMediaFile(itemName)) {
+            content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
+          } else {
+            const fileContent = fs.readFileSync(itemPath, "utf-8");
+            content += `File: ${relativePath}\n${fileContent}\n\n`;
+          }
+        }
+      } catch (readError) {
+        console.warn(`Warning: Could not read item ${itemPath}:`, readError);
+        content += `Item: ${relativePath} (read failed)\n\n`;
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${dirPath}:`, error);
+    content += `Error reading directory: ${basePath || dirPath}\n\n`;
+  }
+
+  return content;
+};

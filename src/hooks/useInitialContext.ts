@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-    getSelectedText,
-    getFrontmostApplication,
-    BrowserExtension,
-    getSelectedFinderItems,
-} from "@raycast/api";
+import { getSelectedText, getFrontmostApplication, BrowserExtension, getSelectedFinderItems } from "@raycast/api";
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -17,114 +12,108 @@ import {
  * @returns An object containing the fetched context data and a loading state indicator:
  *          { selectionText, currentApp, browserContent, isLoading }
  */
-export function useInitialContext(
-    initialSelectionText?: string,
-    target?: string,
-) {
-    const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
-    const [currentApp, setCurrentApp] = useState("");
-    const [browserContent, setBrowserContent] = useState("");
+export function useInitialContext(initialSelectionText?: string, target?: string) {
+  const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
+  const [currentApp, setCurrentApp] = useState("");
+  const [browserContent, setBrowserContent] = useState("");
 
-    useEffect(() => {
-        /**
-         * Fetches the currently selected text or selected Finder items.
-         * Uses initial value if provided.
-         * Prioritizes selected Finder items, formatting them as `{{file:path}}` placeholders.
-         * Falls back to `getSelectedText()`.
-         * Handles potential errors gracefully by returning an empty string.
-         *
-         * @returns A promise resolving to the selected text/Finder items or an empty string.
-         */
-        const fetchSelectedText = async (): Promise<string> => {
-            if (initialSelectionText && initialSelectionText.length > 0) {
-                return initialSelectionText;
+  useEffect(() => {
+    /**
+     * Fetches the currently selected text or selected Finder items.
+     * Uses initial value if provided.
+     * Prioritizes selected Finder items, formatting them as `{{file:path}}` placeholders.
+     * Falls back to `getSelectedText()`.
+     * Handles potential errors gracefully by returning an empty string.
+     *
+     * @returns A promise resolving to the selected text/Finder items or an empty string.
+     */
+    const fetchSelectedText = async (): Promise<string> => {
+      if (initialSelectionText && initialSelectionText.length > 0) {
+        return initialSelectionText;
+      }
+
+      try {
+        try {
+          const selectedItems = await getSelectedFinderItems();
+          if (selectedItems.length > 0) {
+            let content = "";
+            for (const item of selectedItems) {
+              content += `{{file:${item.path}}}` + "\n";
             }
+            return content.trim();
+          }
+        } catch (finderError) {
+          // Continue execution
+        }
 
-            try {
-                try {
-                    const selectedItems = await getSelectedFinderItems();
-                    if (selectedItems.length > 0) {
-                        let content = '';
-                        for (const item of selectedItems) {
-                            content += `{{file:${item.path}}}` + "\n";
-                        }
-                        return content.trim();
-                    }
-                } catch (finderError) {
-                    // Continue execution
-                }
+        const text = await getSelectedText();
+        if (text) {
+          return text;
+        }
 
-                const text = await getSelectedText();
-                if (text) {
-                    return text;
-                }
-
-                return "";
-            } catch (error) {
-                console.info("No text selected");
-                return "";
-            }
-        };
-
-        /**
-         * Fetches the name of the frontmost application.
-         *
-         * @returns A promise resolving to the application name.
-         */
-        const fetchFrontmostApp = async (): Promise<string> => {
-            const app = await getFrontmostApplication();
-            return app.name;
-        };
-
-        /**
-         * Fetches the content (Markdown format) of the active browser tab using BrowserExtension API.
-         * Handles potential errors (e.g., no browser active, extension not available) gracefully
-         * by returning an empty string.
-         *
-         * @returns A promise resolving to the browser tab content (Markdown) or an empty string.
-         */
-        const fetchBrowserContent = async (): Promise<string> => {
-            try {
-                const content = await BrowserExtension.getContent({ format: "markdown" });
-                return content;
-            } catch (error) {
-                console.info("Failed to fetch browser content:", error);
-                return "";
-            }
-        };
-
-        const fetchData = async () => {
-            // Get frontmost app and selected text first
-            const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([
-                fetchFrontmostApp(),
-                fetchSelectedText(),
-            ]);
-
-            // Only fetch browser content if the frontmost app is a browser
-            let fetchedBrowserContent = "";
-            const browserNames = ["Arc"];
-            if (browserNames.some(browser => fetchedFrontmostApp.includes(browser))) {
-                fetchedBrowserContent = await fetchBrowserContent();
-            }
-
-            setSelectionText(fetchedSelectedText);
-            setCurrentApp(fetchedFrontmostApp);
-            setBrowserContent(fetchedBrowserContent);
-        };
-
-        const timer = setTimeout(() => {
-            fetchData();
-        }, 10); // Add a small delay
-
-        // Cleanup function to clear the timeout
-        return () => {
-            clearTimeout(timer);
-        };
-    }, [initialSelectionText, target]);
-
-    return {
-        selectionText,
-        currentApp,
-        browserContent,
+        return "";
+      } catch (error) {
+        console.info("No text selected");
+        return "";
+      }
     };
-} 
+
+    /**
+     * Fetches the name of the frontmost application.
+     *
+     * @returns A promise resolving to the application name.
+     */
+    const fetchFrontmostApp = async (): Promise<string> => {
+      const app = await getFrontmostApplication();
+      return app.name;
+    };
+
+    /**
+     * Fetches the content (Markdown format) of the active browser tab using BrowserExtension API.
+     * Handles potential errors (e.g., no browser active, extension not available) gracefully
+     * by returning an empty string.
+     *
+     * @returns A promise resolving to the browser tab content (Markdown) or an empty string.
+     */
+    const fetchBrowserContent = async (): Promise<string> => {
+      try {
+        const content = await BrowserExtension.getContent({ format: "markdown" });
+        return content;
+      } catch (error) {
+        console.info("Failed to fetch browser content:", error);
+        return "";
+      }
+    };
+
+    const fetchData = async () => {
+      // Get frontmost app and selected text first
+      const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([fetchFrontmostApp(), fetchSelectedText()]);
+
+      // Only fetch browser content if the frontmost app is a browser
+      let fetchedBrowserContent = "";
+      const browserNames = ["Arc"];
+      if (browserNames.some((browser) => fetchedFrontmostApp.includes(browser))) {
+        fetchedBrowserContent = await fetchBrowserContent();
+      }
+
+      setSelectionText(fetchedSelectedText);
+      setCurrentApp(fetchedFrontmostApp);
+      setBrowserContent(fetchedBrowserContent);
+    };
+
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 10); // Add a small delay
+
+    // Cleanup function to clear the timeout
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [initialSelectionText, target]);
+
+  return {
+    selectionText,
+    currentApp,
+    browserContent,
+  };
+}

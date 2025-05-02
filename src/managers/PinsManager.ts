@@ -26,7 +26,7 @@ class PinsManager {
   pin(identifier: string): void {
     let pinned = this.pinnedIdentifiers(); // Get the current ordered array
     // Remove the identifier if it already exists to move it to the front
-    pinned = pinned.filter(id => id !== identifier);
+    pinned = pinned.filter((id) => id !== identifier);
     // Add the new identifier to the beginning of the array
     pinned.unshift(identifier);
     this.cache.set(this.key, JSON.stringify(pinned));
@@ -39,7 +39,7 @@ class PinsManager {
   unpin(identifier: string): void {
     let pinned = this.pinnedIdentifiers();
     // Filter out the identifier to remove it
-    pinned = pinned.filter(id => id !== identifier);
+    pinned = pinned.filter((id) => id !== identifier);
     this.cache.set(this.key, JSON.stringify(pinned));
   }
 
