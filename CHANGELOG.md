@@ -2,6 +2,10 @@
 
 ## [Next Version] - YYYY-MM-DD
 
+### Fixed
+
+- 修复了当 Prompt 中使用 `{{option:key}}` 占位符时，跳转到的选项配置页面内容为空的问题。现在可以正确显示基于 Prompt 属性数组生成的下拉选项。
+
 ### Removed
 
 - 移除了 "Open URL" 功能及其相关配置。
