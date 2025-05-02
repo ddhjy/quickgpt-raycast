@@ -23,5 +23,11 @@
       identifier: "open-scripts-dir"
       actions: ["open-scripts-dir"] // Action to open the scripts directory
     }
+    {
+      title: "Manage Temporary Prompt Directory"
+      icon: "⏱️"
+      identifier: "manage-temporary-directory"
+      // No content, actions handled specially in PromptListItem
+    }
   ]
 } 
