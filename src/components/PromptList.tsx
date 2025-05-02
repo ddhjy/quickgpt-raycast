@@ -105,24 +105,65 @@ export function PromptList({
   const displayPrompts = useMemo(() => {
     const pinnedOrder = pinsManager.pinnedIdentifiers();
 
-    const pinnedPromptsMap = new Map<string, PromptProps>();
-    const unpinnedPrompts: PromptProps[] = [];
+    let sorted: PromptProps[];
 
-    filteredPrompts.forEach((prompt) => {
-      if (pinnedOrder.includes(prompt.identifier)) {
-        prompt.pinned = true;
-        pinnedPromptsMap.set(prompt.identifier, prompt);
-      } else {
-        prompt.pinned = false;
-        unpinnedPrompts.push(prompt);
-      }
-    });
+    if (searchMode && searchText.trim().length > 0) {
+      const matchingPrompts: PromptProps[] = [];
+      const matchingFolders: PromptProps[] = [];
 
-    const sortedPinnedPrompts = pinnedOrder
-      .map((id) => pinnedPromptsMap.get(id))
-      .filter((p): p is PromptProps => p !== undefined);
+      filteredPrompts.forEach((prompt) => {
+        if (prompt.subprompts && prompt.subprompts.length > 0) {
+          matchingFolders.push(prompt);
+        } else {
+          matchingPrompts.push(prompt);
+        }
+      });
 
-    const sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
+      const sortGroup = (group: PromptProps[]): PromptProps[] => {
+        const pinnedMap = new Map<string, PromptProps>();
+        const unpinnedItems: PromptProps[] = [];
+
+        group.forEach((prompt) => {
+          if (pinnedOrder.includes(prompt.identifier)) {
+            prompt.pinned = true;
+            pinnedMap.set(prompt.identifier, prompt);
+          } else {
+            prompt.pinned = false;
+            unpinnedItems.push(prompt);
+          }
+        });
+
+        const sortedPinned = pinnedOrder
+          .map((id) => pinnedMap.get(id))
+          .filter((p): p is PromptProps => p !== undefined);
+
+        return [...sortedPinned, ...unpinnedItems];
+      };
+
+      const sortedMatchingPrompts = sortGroup(matchingPrompts);
+      const sortedMatchingFolders = sortGroup(matchingFolders);
+
+      sorted = [...sortedMatchingPrompts, ...sortedMatchingFolders];
+    } else {
+      const pinnedPromptsMap = new Map<string, PromptProps>();
+      const unpinnedPrompts: PromptProps[] = [];
+
+      filteredPrompts.forEach((prompt) => {
+        if (pinnedOrder.includes(prompt.identifier)) {
+          prompt.pinned = true;
+          pinnedPromptsMap.set(prompt.identifier, prompt);
+        } else {
+          prompt.pinned = false;
+          unpinnedPrompts.push(prompt);
+        }
+      });
+
+      const sortedPinnedPrompts = pinnedOrder
+        .map((id) => pinnedPromptsMap.get(id))
+        .filter((p): p is PromptProps => p !== undefined);
+
+      sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
+    }
 
     const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 9 : undefined);
     return sliced;
