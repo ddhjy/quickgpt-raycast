@@ -19,7 +19,7 @@ QuickGPT is a powerful prompt management tool designed for Raycast. It enhances 
 1.  **Prerequisites:** Ensure you have [Raycast](https://www.raycast.com/) installed on your macOS.
 2.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/ddhjy/quickgpt-raycast.git](https://github.com/ddhjy/quickgpt-raycast.git)
+    git clone https://github.com/ddhjy/quickgpt-raycast.git
     cd quickgpt-raycast
     ```
 3.  **Install Dependencies:**
@@ -46,14 +46,9 @@ Configure QuickGPT through Raycast's preferences (`Raycast Settings -> Extension
 1.  **Prompt Directories (`Custom Prompts`, `Custom Prompts 1-4`):**
     * **Required:** Set at least one directory containing your `.hjson` prompt definition files. QuickGPT will load prompts from these locations.
     * Multiple directories allow for better organization (e.g., separating personal, work, or project-specific prompts).
-    * **Note:** QuickGPT now exclusively uses the HJSON format (`.hjson`) for prompts. JSON files are no longer supported.
-2.  **AI Caller Integration (Optional, but Required for AI Actions):**
-    * QuickGPT can delegate AI calls to a separate "AI Caller" Raycast extension. You need to install and configure such an extension separately.
-    * **`AI Caller Extension Target`:** Enter the target deeplink identifier for your AI Caller extension's command (e.g., `author-name.ai-caller-extension.ai-call`). Find this in the AI Caller extension's details or documentation.
-    * **`AI Provider Action Names`:** Enter a comma-separated list of AI provider names (e.g., `OpenAI,Claude,Azure`) that you want to appear as direct actions in QuickGPT. These names **must** exactly match the provider names configured in your AI Caller extension.
-3.  **Scripts Directory (Optional):**
+2.  **Scripts Directory (Optional):**
     * Set a directory containing AppleScript files (`.applescript`, `.scpt`). These scripts will appear as executable actions in QuickGPT.
-4.  **Default Actions (`Actions`):**
+3.  **Default Actions (`Actions`):**
     * Define a comma-separated list of action names (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) that should appear first in the Action Panel or be triggered by `⌘ + Enter`.
 
 ## Usage
@@ -84,7 +79,7 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
 // Example HJSON prompt definition
 {
   // Title displayed in Raycast. Can include placeholders.
-  title: "Translate {{selection|clipboard}} to {{option:languages}}"
+  title: "Translate"
   // Unique identifier (optional but recommended for pinning and deeplinks)
   identifier: "translate_example_v1"
   // Icon shown in the list (Emoji or SF Symbol name)
@@ -95,27 +90,8 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
 
   {{selection|clipboard}}
   '''
-  // Pin this prompt to the top of the list (optional)
-  pinned: false
-  // Suggests a model for the AI Caller extension (optional)
-  model: "gpt-4o"
-  // Suggests a temperature for the AI Caller extension (optional)
-  temperature: 0.7
-  // Provides a system message for the AI Caller extension (optional)
-  systemPrompt: "You are a professional translator."
   // Prioritize specific actions for this prompt (optional)
-  actions: ["OpenAI", "Copy"]
-  // Define dropdown options for the user to select before execution (optional)
-  options: {
-    // Key 'outputFormat' becomes a placeholder {{outputFormat}}
-    outputFormat: ["bullet points", "paragraph", "JSON"]
-  }
-  // Define text input fields for the user (optional)
-  textInputs: {
-    // Key 'audience' becomes a placeholder {{audience}}
-    audience: "Describe the target audience" // Value is the placeholder text
-  }
-  // --- Alternative way to define options using top-level properties ---
+  actions: ["ChatGPT", "Copy"]
   // Define an array property
   languages: ["French", "Spanish", "German", "Japanese"]
   // Use {{option:languages}} in title or content to create a dropdown
@@ -173,7 +149,7 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
 ```
 
 * Refer to `prompt.schema.hjson` (if available in the project) for the complete schema definition.
-* Properties like `icon`, `actions`, `prefixCMD`, `model`, `temperature`, `systemPrompt` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
+* Properties like `icon`, `actions`, `prefixCMD` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
 
 ## Placeholders
 
@@ -209,9 +185,7 @@ QuickGPT executes actions on the final formatted prompt content:
 
 * **`Copy`:** Copies the formatted content to the clipboard.
 * **`Paste`:** Pastes the formatted content into the frontmost application.
-* **`Send to [ProviderName]` / `Send to AI`:** (Requires AI Caller setup) Triggers the configured AI Caller extension via deeplink, sending the formatted prompt content (and `systemPrompt` if defined) to the specified AI provider. Provider names are based on the `AI Provider Action Names` preference and the AI Caller's configuration.
 * **Scripts (`YourScriptName`):** (Requires `Scripts Directory` setup) Executes the corresponding AppleScript file found in the configured directory. The formatted prompt content is usually copied to the clipboard before script execution.
-* **`Open URL`:** (If `openURL` preference is set) Opens the configured URL in the default browser, copying the formatted content first.
 
 Actions can be prioritized per-prompt using the `actions` array in the `.hjson` file or globally via the `Actions` preference.
 
