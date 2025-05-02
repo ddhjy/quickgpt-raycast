@@ -56,8 +56,7 @@ export function PromptList({
     initialAiProviders
 }: PromptListProps) {
     const [searchText, setSearchText] = useState<string>("");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+    const [refreshKey, setRefreshKey] = useState(0);
     const preferences = getPreferenceValues<{
         customPromptsDirectory?: string;
         customPromptsDirectory1?: string;
@@ -79,18 +78,9 @@ export function PromptList({
         };
     }, []);
 
-    // Function to force component update
-    const forceUpdate = () => setForceUpdateCounter((prev: number) => prev + 1);
+    const forceUpdate = () => setRefreshKey(prev => prev + 1);
 
-    // Callback to handle Pin/Unpin operations
-    /**
-     * Handles the logic when the user clicks the Pin/Unpin button for a prompt.
-     * Updates the pin status in the PinsManager and forces a component re-render.
-     *
-     * @param prompt The prompt object being pinned or unpinned.
-     */
     const handlePinToggle = (prompt: PromptProps) => {
-        // Toggle the pinned state using PinsManager
         const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
         if (isCurrentlyPinned) {
             pinsManager.unpin(prompt.identifier);
@@ -98,11 +88,9 @@ export function PromptList({
             pinsManager.pin(prompt.identifier);
         }
 
-        // Force the component to re-render to re-calculate displayPrompts
         forceUpdate();
     };
 
-    // Get all configured, non-empty custom prompt directories
     const configuredRootDirs = [
         preferences.customPromptsDirectory1,
         preferences.customPromptsDirectory,
@@ -111,7 +99,6 @@ export function PromptList({
         preferences.customPromptsDirectory4
     ].filter((dir): dir is string => typeof dir === 'string' && dir.trim() !== '');
 
-    // Filter prompts only in search mode
     const filteredPrompts = useMemo(() => {
         let result;
         const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : prompts;
@@ -128,44 +115,32 @@ export function PromptList({
         return result;
     }, [prompts, searchMode, searchText]);
 
-    // Sort and slice the prompt list
     const displayPrompts = useMemo(() => {
-        // Get the latest order of pinned identifiers (most recent first)
-        const pinnedOrder = pinsManager.pinnedIdentifiers(); // Returns string[]
+        const pinnedOrder = pinsManager.pinnedIdentifiers();
 
-        // Create a Map for quick lookup of pinned prompts
         const pinnedPromptsMap = new Map<string, PromptProps>();
         const unpinnedPrompts: PromptProps[] = [];
 
-        // Iterate through filtered prompts and group them based on pinsManager state
         filteredPrompts.forEach(prompt => {
-            // Get the latest pinned state directly from pinsManager
             if (pinnedOrder.includes(prompt.identifier)) {
-                prompt.pinned = true; // Ensure local state is synchronized
+                prompt.pinned = true;
                 pinnedPromptsMap.set(prompt.identifier, prompt);
             } else {
-                prompt.pinned = false; // Ensure local state is synchronized
+                prompt.pinned = false;
                 unpinnedPrompts.push(prompt);
             }
         });
 
-        // Sort pinned prompts according to the pinnedOrder array (most recent first)
         const sortedPinnedPrompts = pinnedOrder
-            .map(id => pinnedPromptsMap.get(id)) // Retrieve Prompts from the Map in order
-            .filter((p): p is PromptProps => p !== undefined); // Filter out potentially non-existent items (robustness)
-
-        // Combine results: sorted pinned prompts first, followed by all unpinned prompts
-        // Optionally apply secondary sorting to unpinned prompts, e.g., alphabetically
-        // unpinnedPrompts.sort((a, b) => a.title.localeCompare(b.title)); // Optional secondary sorting
+            .map(id => pinnedPromptsMap.get(id))
+            .filter((p): p is PromptProps => p !== undefined);
 
         const sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
 
-        // Apply truncation logic in search mode (unchanged)
         const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 9 : undefined);
         return sliced;
-    }, [filteredPrompts, searchMode, searchText, forceUpdateCounter]); // **** Add forceUpdateCounter as a dependency ****
+    }, [filteredPrompts, searchMode, searchText, refreshKey]);
 
-    // Effect to handle pushing new list when space is entered in search mode
     useEffect(() => {
         if (searchMode && searchText.endsWith(" ") && searchText.trim().length > 0) {
             const promptsToShow = displayPrompts;
@@ -196,9 +171,18 @@ export function PromptList({
 
     const activeSearchText = searchMode ? "" : searchText;
 
-    // OPTIMIZATION 1: Calculate scripts and providers once using useMemo
     const scripts = useMemo(() => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory), [initialScripts, preferences.scriptsDirectory]);
-    const aiProviders = useMemo(() => initialAiProviders ?? aiService.getAllProviders(), [initialAiProviders, aiService]);
+    const aiProviders = useMemo(() => {
+        const providers = initialAiProviders ?? aiService.getAllProviders();
+
+        const preferredProvider = selectedAction ? selectedAction : "openai";
+
+        return providers.sort((a: AIProvider, b: AIProvider) => {
+            if (a.name.toLowerCase() === preferredProvider.toLowerCase()) return -1;
+            if (b.name.toLowerCase() === preferredProvider.toLowerCase()) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    }, [initialAiProviders, selectedAction]);
 
     const replacements: Omit<SpecificReplacements, 'clipboard'> = {
         input: activeSearchText,
@@ -208,7 +192,6 @@ export function PromptList({
         promptTitles: getIndentedPromptTitles(),
     };
 
-    // Find the specific root directory for each prompt
     const promptItems = displayPrompts.map((prompt, index) => {
         let promptSpecificRootDir: string | undefined = undefined;
         if (prompt.filePath) {
@@ -230,10 +213,15 @@ export function PromptList({
 
         return (
             <MemoizedPromptListItem
-                key={`${prompt.identifier || prompt.title}-${index}`}
+                key={`${prompt.identifier || prompt.title}-${index}-${refreshKey}`}
                 prompt={prompt}
                 index={index}
-                replacements={replacements}
+                replacements={{
+                    selection: selectionText,
+                    currentApp,
+                    browserContent,
+                    input: searchMode ? searchText : activeSearchText,
+                }}
                 searchMode={searchMode}
                 promptSpecificRootDir={promptSpecificRootDir}
                 allowedActions={allowedActions}
@@ -241,6 +229,7 @@ export function PromptList({
                 activeSearchText={activeSearchText}
                 scripts={scripts}
                 aiProviders={aiProviders}
+                onRefreshNeeded={forceUpdate}
             />
         );
     }).filter(Boolean);

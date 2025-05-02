@@ -17,6 +17,7 @@ import { ScriptInfo } from "../utils/scriptUtils";
 import { PromptProps } from "../managers/PromptManager";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
 import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
+import { updateTemporaryDirectoryUsage, updateAnyTemporaryDirectoryUsage } from '../stores/TemporaryPromptDirectoryStore';
 
 interface Preferences {
   openURL?: string;
@@ -69,6 +70,29 @@ export function generatePromptActions(
   // Use Set to ensure uniqueness and maintain order (prompt actions first, then global)
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
+  // Wrap action handlers to update temporary directory usage time
+  const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void)) => {
+    return async () => {
+      if (prompt.isTemporary) {
+        if (prompt.temporaryDirSource) {
+          // If source directory is known, only update that directory
+          updateTemporaryDirectoryUsage(prompt.temporaryDirSource);
+        } else {
+          // If source directory is unknown, update all temporary directories
+          updateAnyTemporaryDirectoryUsage();
+        }
+      }
+
+      if (originalHandler) {
+        if (originalHandler.constructor.name === "AsyncFunction") {
+          await (originalHandler as () => Promise<void>)();
+        } else {
+          (originalHandler as () => void)();
+        }
+      }
+    };
+  };
+
   // Helper function to get final content with clipboard
   const getFinalContent = async (): Promise<string> => {
     const currentClipboard = await Clipboard.readText() ?? "";
@@ -112,7 +136,7 @@ export function generatePromptActions(
       <Action
         title={scriptName}
         icon={Icon.Terminal}
-        onAction={async () => {
+        onAction={wrapActionHandler(async () => {
           try {
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
@@ -123,7 +147,7 @@ export function generatePromptActions(
             console.error(`Failed to execute script: ${error}`);
             await showToast(Toast.Style.Failure, "Error", String(error));
           }
-        }}
+        })}
       />
     ),
   }));
@@ -149,6 +173,9 @@ export function generatePromptActions(
               systemPrompt={systemPrompt}
             />
           }
+          onPush={wrapActionHandler(() => {
+            // Only need to trigger usage update here, ChatResultView will handle the AI call
+          })}
         />
       ),
     } as ActionItem;
@@ -174,12 +201,12 @@ export function generatePromptActions(
           title="Copy"
           icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          onAction={async () => {
+          onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
             // Must be done before closeMainWindow, otherwise copying may fail
             Clipboard.copy(finalContent);
             closeMainWindow();
-          }}
+          })}
         />
       ),
     },
@@ -192,13 +219,13 @@ export function generatePromptActions(
           title="Paste"
           icon={Icon.Document}
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
-          onAction={async () => {
+          onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
             // Must be done before closeMainWindow, otherwise pasting may fail
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
             closeMainWindow();
-          }}
+          })}
         />
       ),
     },
