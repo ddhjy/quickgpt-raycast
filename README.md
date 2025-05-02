@@ -1,23 +1,77 @@
-# QuickGPT – Raycast 智能提示管理工具
+# QuickGPT for Raycast
 
-QuickGPT 是一款专门为 Raycast 设计的高效提示模板管理工具，致力于为用户提供快速的提示访问与自动化内容生成能力。通过灵活配置的提示结构和丰富的动态占位符机制，QuickGPT 能够优化你的工作流程并显著提升生产力，特别适合于开发、文档撰写、日常办公以及其他需要频繁内容重复输入的场景。
+QuickGPT enhances your workflow by allowing you to quickly apply pre-defined or custom prompts to selected text, clipboard content, or direct input. It integrates seamlessly with Raycast's interface.
 
-## 核心功能
+**Core Functionality:**
 
-- **自定义 Prompt 模板**  
-  使用简单的 JSON 格式文件，自由创建和管理符合你特定需求的提示模板，一次设置持续受用。
+- **Prompt Management:** Define and organize prompts in JSON or HJSON format within specified directories.
+- **Dynamic Placeholders:** Utilize placeholders like `{input}`, `{selection}`, `{clipboard}`, `{currentApp}`, `{browserContent}`, `{promptTitles}`, `{now}`, and file content (`{file:path/to/file.txt}`) within your prompts for context-aware text generation.
+- **Option Placeholders:** Define dropdown options directly within prompt files using property paths (e.g., `{{option:models}}`) or a dedicated `options` object.
+- **Action Integration:** Execute actions like Copy, Paste, running AppleScripts, or triggering other applications/extensions via deeplinks.
+- **AI Integration (via AI Caller Extension):** Send processed prompt content to various AI providers by leveraging a separate **AI Caller** extension (installation required).
 
-- **动态占位符替换能力**  
-  提供强大的占位符引擎，可自动插入剪贴板内容、选中文本、应用程序信息、当前时间等动态数据，避免重复劳动。
+## Setup
 
-- **快捷键与操作整合**  
-  深度集成 Raycast，支持一键快速复制提示内容、粘贴到指定位置以及调用自定义脚本，实现自动化操作闭环。
+1.  **Install QuickGPT:** Install this extension from the Raycast Store or manually.
+2.  **Configure Prompt Directories:**
+    - Go to QuickGPT's preferences in Raycast (`Raycast Settings -> Extensions -> QuickGPT`).
+    - Set the `Custom Prompts` directory (and optionally `Custom Prompts 1-4`) to point to folders containing your `.json` or `.hjson` prompt definition files.
+    - Refer to the `prompt.schema.json` for the structure of prompt files.
+3.  **(Required for AI Features) Install and Configure AI Caller Extension:**
+    - You **must** install a separate extension designed to handle AI API calls (e.g., `ai-caller-extension` or a similar one you create/find).
+    - **Configure the AI Caller extension:** Follow its specific instructions to set up API keys and provider details (usually involves setting an `AI Provider Config Path` preference pointing to a `config.json` file).
+    - **Link QuickGPT to AI Caller:**
+      - In QuickGPT's preferences, find the `AI Caller Extension Target` setting.
+      - Enter the target deeplink identifier for your AI Caller extension's command. This usually follows the format `author-name.extension-name.command-name` (e.g., `zengkai.ai-caller-extension.ai-call`). Find the correct value in the AI Caller extension's details or documentation.
+      - (Optional) In the `AI Provider Action Names` setting, enter a comma-separated list of AI provider names (e.g., `OpenAI,Claude,Azure`) that you want to appear as direct actions in QuickGPT. These names **must** match the provider names configured in your AI Caller extension's `config.json`.
+4.  **(Optional) Configure Scripts Directory:**
+    - Set the `Scripts Directory` preference to a folder containing `.applescript` or `.scpt` files you want to use as actions.
+5.  **(Optional) Configure Default Actions:**
+    - Set the `Actions` preference to define which actions (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) should appear first or be the default action (⌘+Enter).
 
-- **提示持久保存与管理**  
-  所有用户定义的提示模板都会自动保存并永久可用，便于长期和重复调用。
+## How it Works
 
-- **国际化语言支持**  
-  原生支持中文及其他多语言，方便不同语言环境下的高效提示管理。
+1.  Launch QuickGPT via its Raycast command (`prompt-lab`).
+2.  A list of available prompts appears, sourced from your configured directories.
+3.  **Search Mode:** Initially, you can search through all prompts by title.
+4.  **Input Mode:** After selecting a prompt (or by typing text and pressing Space if search ends with a space), you enter Input Mode.
+5.  Type your input text (becomes the `{input}` placeholder).
+6.  Press `⌘+K` to open the Action Panel.
+7.  Choose an action:
+    - **Copy/Paste:** Copies or pastes the final formatted prompt content.
+    - **Scripts:** Executes an AppleScript from your configured directory. The formatted prompt content is usually copied to the clipboard first.
+    - **Send to [ProviderName] / Send to AI:** (Requires AI Caller setup) Triggers the configured AI Caller extension via deeplink, sending the formatted prompt content (and potentially a system prompt from the definition) to the specified AI provider.
+    - **Open URL:** (If configured) Opens a predefined URL, copying the formatted prompt content first.
+8.  The chosen action is executed.
+
+## Prompt File Structure (`.json` or `.hjson`)
+
+```json
+{
+  "title": "My Awesome Prompt {input}", // Title shown in Raycast, can use placeholders
+  "content": "Translate the following text to French: {selection}", // The core prompt text, uses placeholders
+  "icon": "🇫🇷", // Optional emoji or SF Symbol name
+  "pinned": false, // Optional: Set to true to pin to the top
+  "model": "gpt-4", // Optional: Suggests a model (used by AI Caller)
+  "temperature": 0.8, // Optional: Suggests temperature (used by AI Caller)
+  "systemPrompt": "You are a professional translator.", // Optional: System message for AI (used by AI Caller)
+  "actions": ["OpenAI", "Copy"], // Optional: Prioritize specific actions for this prompt
+  "options": {
+    // Optional: Define dropdown choices
+    "Tone": ["Formal", "Informal", "Humorous"],
+    "Format": ["Paragraph", "Bullet Points"]
+  },
+  "textInputs": {
+    // Optional: Define text input fields
+    "Audience": "Specify the target audience"
+  },
+  // You can also define options via properties and use {{option:propertyName}}
+  "models": ["gpt-4", "gpt-3.5-turbo"],
+  "exampleUsage": "Translate this {{option:models}} snippet."
+}
+```
+
+See `prompt.schema.json` for full details.
 
 ## 安装方法
 

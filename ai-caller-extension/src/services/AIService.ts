@@ -87,28 +87,41 @@ export class AIService {
    * @throws Error if the configuration path is not set, the file is not found, or the config is invalid.
    */
   private loadConfig(): Config {
+    const preferences = getPreferenceValues<Preferences>();
+    this.log('Attempting to load AI config. Preferences:', preferences);
+
+    if (!preferences.aiConfigPath) {
+      this.log('Error: AI Provider Config Path preference is not set.');
+      throw new Error("AI Provider Config Path preference is not set. Please configure it in the extension settings.");
+    }
+
+    const configPath = preferences.aiConfigPath.replace(/^~/, process.env.HOME || '');
+    this.log('Resolved config path:', configPath);
+
+    if (!fs.existsSync(configPath)) {
+      this.log('Error: Config file not found at path:', configPath);
+      throw new Error(`AI configuration file not found at the specified path: ${configPath}. Please check the path in preferences.`);
+    }
+
     try {
-      const preferences = getPreferenceValues<Preferences>();
+      this.log('Loading config from:', configPath);
+      const configData = fs.readFileSync(configPath, "utf-8");
+      const config = JSON.parse(configData) as Config;
 
-      if (!preferences.aiConfigPath) {
-        return {
-          providers: {}
-        };
+      if (!this.validateConfig(config)) {
+        this.log('Error: Invalid config file structure.');
+        throw new Error(`Invalid configuration file structure in ${configPath}. Ensure it has a top-level 'providers' object.`);
       }
 
-      if (fs.existsSync(preferences.aiConfigPath)) {
-        this.log('Loading config from:', preferences.aiConfigPath);
-        const configData = fs.readFileSync(preferences.aiConfigPath, "utf-8");
-        const config = JSON.parse(configData) as Config;
-        if (this.validateConfig(config)) {
-          return config;
-        }
-      }
-
-      throw new Error("No valid config file found");
+      this.log('Config loaded successfully:', Object.keys(config.providers));
+      return config;
     } catch (error) {
-      this.log("Failed to load config.json", error);
-      throw error;
+      this.log("Failed to read or parse config file:", configPath, error);
+      if (error instanceof SyntaxError) {
+        throw new Error(`Failed to parse AI configuration file at ${configPath}. Ensure it is valid JSON. Error: ${error.message}`);
+      } else {
+        throw new Error(`Failed to load AI configuration from ${configPath}. Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
 
