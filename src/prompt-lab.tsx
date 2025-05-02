@@ -1,6 +1,4 @@
-import {
-  LaunchProps,
-} from "@raycast/api";
+import { LaunchProps } from "@raycast/api";
 import pinsManager from "./managers/PinsManager";
 import promptManager from "./managers/PromptManager";
 import { getQuickPrompt } from "./utils/promptFormattingUtils";
@@ -24,21 +22,12 @@ interface ExtendedArguments extends Arguments.PromptLab {
  * @param props.arguments Launch arguments, including potential initial text, target prompt identifier, and allowed actions.
  */
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
-  const {
-    initialSelectionText,
-    target,
-    actions,
-    filePath,
-  } = props.arguments;
+  const { initialSelectionText, target, actions, filePath } = props.arguments;
 
   // Convert actions string to array
-  const allowedActions = actions?.split(',').filter(Boolean);
+  const allowedActions = actions?.split(",").filter(Boolean);
 
-  const {
-    selectionText,
-    currentApp,
-    browserContent,
-  } = useInitialContext(initialSelectionText, target);
+  const { selectionText, currentApp, browserContent } = useInitialContext(initialSelectionText, target);
 
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
@@ -55,18 +44,13 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     ? quickPrompt.subprompts
     : quickPrompt
       ? [quickPrompt]
-      : [
-        ...pinnedPrompts,
-        ...promptManager.getRootPrompts(),
-      ];
+      : [...pinnedPrompts, ...promptManager.getRootPrompts()];
 
   // Determine the effective selected text
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
   // Deduplicate the prompt list
-  const uniquePrompts = Array.from(
-    new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title))
-  )
+  const uniquePrompts = Array.from(new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title)))
     .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
     .filter(Boolean) as PromptProps[];
 
