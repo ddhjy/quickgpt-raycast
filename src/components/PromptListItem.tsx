@@ -110,13 +110,38 @@ export function PromptListItem({
     promptSpecificRootDir,
     { resolveFile: false },
   );
-  const formattedTitle =
-    searchMode && prompt.path
-      ? `${prompt.path.replace(rawTitle, "")}${formattedTitleWithPlaceholders}`.trim()
-      : formattedTitleWithPlaceholders;
+
+  // Apply placeholder formatting to the actual prompt title
+  const formattedActualTitle = formattedTitleWithPlaceholders;
+
+  // Initialize displayTitle with the formatted actual title
+  let displayTitle = formattedActualTitle;
+
+  // Apply special formatting only in searchMode and if the prompt has a path (is nested)
+  if (searchMode && prompt.path) {
+    const pathComponents = prompt.path.split(" / ");
+    // pathComponents includes the final title, e.g., ["一级", "二级", "Prompt B"]
+    const hierarchyDepth = pathComponents.length; // Total depth including the title
+
+    if (hierarchyDepth > 1) {
+      // Only add prefix if there's at least one parent directory
+      const topLevelDirectory = pathComponents[0];
+      let prefix = topLevelDirectory;
+
+      // Add "..." if original depth was 3 or more (e.g., Top/Mid/Title)
+      if (hierarchyDepth >= 3) {
+        prefix += " ...";
+      }
+
+      // Combine prefix and the actual formatted title
+      displayTitle = `${prefix} / ${formattedActualTitle}`;
+    }
+    // If hierarchyDepth is 1, it means no parent directory, so displayTitle remains formattedActualTitle
+  } else {
+    displayTitle = formattedTitleWithPlaceholders;
+  }
 
   // Dynamic title and icon
-  let displayTitle = formattedTitle;
   let displayIcon: string | Image.Asset = prompt.icon ?? "";
 
   if (prompt.identifier === "manage-temporary-directory") {
