@@ -23,7 +23,6 @@ import {
 } from "../stores/TemporaryPromptDirectoryStore";
 
 interface Preferences {
-  openURL?: string;
   primaryAction: string;
   scriptsDirectory?: string;
   aiCallerExtensionTarget?: string;
@@ -203,25 +202,7 @@ export function generatePromptActions(
     }
   }
 
-  const createRaycastOpenInBrowser = (title: string | undefined, url: string): ActionWithPossibleProps => (
-    <Action.OpenInBrowser
-      title={title}
-      url={url}
-      onOpen={wrapActionHandler(async () => {
-        const finalContent = await getFinalContent();
-        await Clipboard.copy(finalContent);
-        await showToast(Toast.Style.Success, "Copied Prompt", "Opened URL");
-      })}
-    />
-  );
-
   const baseActionItems: ActionItem[] = [
-    {
-      name: "openURL",
-      displayName: "Open URL",
-      condition: Boolean(preferences.openURL),
-      action: createRaycastOpenInBrowser("Open URL", preferences.openURL ?? ""),
-    },
     {
       name: "copyToClipboard",
       displayName: "Copy",
