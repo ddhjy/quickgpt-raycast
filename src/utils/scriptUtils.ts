@@ -10,8 +10,8 @@ import path from "path";
  * Interface for script information.
  */
 export interface ScriptInfo {
-    path: string;
-    name: string;
+  path: string;
+  name: string;
 }
 
 /**
@@ -24,36 +24,36 @@ export interface ScriptInfo {
  * @param result An array to accumulate the found ScriptInfo objects (used internally for recursion).
  * @returns An array of ScriptInfo objects, each containing the full path and the display name (filename without extension) of a found script.
  */
-export function scanScriptsDirectory(dir: string, relativePath = '', result: ScriptInfo[] = []): ScriptInfo[] {
-    try {
-        const items = fs.readdirSync(dir);
+export function scanScriptsDirectory(dir: string, relativePath = "", result: ScriptInfo[] = []): ScriptInfo[] {
+  try {
+    const items = fs.readdirSync(dir);
 
-        for (const item of items) {
-            // Ignore files and directories starting with #
-            if (item.startsWith('#')) continue;
+    for (const item of items) {
+      // Ignore files and directories starting with #
+      if (item.startsWith("#")) continue;
 
-            const itemPath = path.join(dir, item);
-            const itemStat = fs.statSync(itemPath);
+      const itemPath = path.join(dir, item);
+      const itemStat = fs.statSync(itemPath);
 
-            if (itemStat.isDirectory()) {
-                // Recursively scan subdirectories
-                scanScriptsDirectory(itemPath, path.join(relativePath, item), result);
-            } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
-                // Use only the filename as display name, without the path
-                const displayName = path.basename(item, path.extname(item));
+      if (itemStat.isDirectory()) {
+        // Recursively scan subdirectories
+        scanScriptsDirectory(itemPath, path.join(relativePath, item), result);
+      } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
+        // Use only the filename as display name, without the path
+        const displayName = path.basename(item, path.extname(item));
 
-                result.push({
-                    path: itemPath,
-                    name: displayName
-                });
-            }
-        }
-
-        return result;
-    } catch (error) {
-        console.error("Failed to scan scripts directory:", error);
-        return result;
+        result.push({
+          path: itemPath,
+          name: displayName,
+        });
+      }
     }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to scan scripts directory:", error);
+    return result;
+  }
 }
 
 /**
@@ -64,17 +64,17 @@ export function scanScriptsDirectory(dir: string, relativePath = '', result: Scr
  * @returns An array of ScriptInfo objects for all discovered scripts. Returns an empty array if the directory is not set or an error occurs.
  */
 export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
-    const scripts: ScriptInfo[] = [];
+  const scripts: ScriptInfo[] = [];
 
-    // Get user-defined scripts
-    if (scriptsDirectory) {
-        try {
-            const userScripts = scanScriptsDirectory(scriptsDirectory);
-            scripts.push(...userScripts);
-        } catch (error) {
-            console.error("Failed to read scripts directory:", error);
-        }
+  // Get user-defined scripts
+  if (scriptsDirectory) {
+    try {
+      const userScripts = scanScriptsDirectory(scriptsDirectory);
+      scripts.push(...userScripts);
+    } catch (error) {
+      console.error("Failed to read scripts directory:", error);
     }
+  }
 
-    return scripts;
-} 
+  return scripts;
+}
