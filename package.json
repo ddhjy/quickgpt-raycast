@@ -55,15 +55,8 @@
           "name": "primaryAction",
           "title": "Actions",
           "required": false,
-          "description": "Set the primary action(s) to execute, separated by commas. Example: ChatGPT, Copy, Paste, Cerebras",
+          "description": "Set the primary action(s) to execute, separated by commas. Example: Copy, Paste, MyScript",
           "type": "textfield"
-        },
-        {
-          "name": "aiConfigPath",
-          "title": "API Provider",
-          "description": "The API provider to use for AI services",
-          "type": "file",
-          "required": false
         },
         {
           "name": "scriptsDirectory",
@@ -71,6 +64,21 @@
           "required": false,
           "description": "Directory containing AppleScript scripts. All .applescript and .scpt files in this directory will be loaded as executable scripts.",
           "type": "directory"
+        },
+        {
+          "name": "aiCallerExtensionTarget",
+          "title": "AI Caller Extension Target",
+          "description": "Target for the AI Caller extension deeplink (e.g., author-name.ai-caller-extension.ai-call). Find this in the AI Caller extension's details.",
+          "type": "textfield",
+          "required": false,
+          "placeholder": "author.extension_name.command_name"
+        },
+        {
+          "name": "aiProviderNames",
+          "title": "AI Provider Action Names",
+          "description": "Comma-separated list of AI provider names to show as actions (must match names configured in AI Caller). E.g., OpenAI,Azure,Claude",
+          "type": "textfield",
+          "required": false
         }
       ]
     }
@@ -82,7 +90,6 @@
     "ignore": "^5.3.1",
     "markdown-it": "^14.1.0",
     "md5": "^2.3.0",
-    "openai": "^4.86.2",
     "pinyin-pro": "^3.16.3"
   },
   "devDependencies": {

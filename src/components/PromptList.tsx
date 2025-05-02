@@ -12,13 +12,9 @@ import path from "path";
 import { PromptProps } from "../managers/PromptManager";
 import promptManager from "../managers/PromptManager";
 import pinsManager from "../managers/PinsManager";
-import { SpecificReplacements } from "../utils/placeholderFormatter";
 import { MemoizedPromptListItem } from "./PromptListItem";
-import { getIndentedPromptTitles } from "../utils/promptFormattingUtils";
-import { AIService } from "../services/AIService";
 import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
 import { getAvailableScripts, ScriptInfo } from "../utils/scriptUtils";
-import { AIProvider } from "../services/types";
 
 interface PromptListProps {
     prompts: PromptProps[];
@@ -28,7 +24,6 @@ interface PromptListProps {
     browserContent: string;
     allowedActions?: string[];
     initialScripts?: ScriptInfo[];
-    initialAiProviders?: AIProvider[];
 }
 
 /**
@@ -43,7 +38,6 @@ interface PromptListProps {
  * @param props.browserContent Content fetched from the active browser tab.
  * @param props.allowedActions Optional list of allowed action names for the prompts.
  * @param props.initialScripts Optional initial list of scripts (avoids re-fetching).
- * @param props.initialAiProviders Optional initial list of AI providers (avoids re-fetching).
  */
 export function PromptList({
     prompts,
@@ -53,7 +47,6 @@ export function PromptList({
     browserContent,
     allowedActions,
     initialScripts,
-    initialAiProviders
 }: PromptListProps) {
     const [searchText, setSearchText] = useState<string>("");
     const [refreshKey, setRefreshKey] = useState(0);
@@ -65,7 +58,6 @@ export function PromptList({
         customPromptsDirectory4?: string;
         scriptsDirectory?: string;
     }>();
-    const aiService = AIService.getInstance();
     const [selectedAction, setSelectedAction] = useState<string>(() => defaultActionPreferenceStore.getDefaultActionPreference() || "");
     const { push } = useNavigation();
 
@@ -156,14 +148,13 @@ export function PromptList({
                     browserContent={browserContent}
                     allowedActions={allowedActions}
                     initialScripts={initialScripts}
-                    initialAiProviders={initialAiProviders}
                     prompts={promptsToShow}
                     searchMode={false}
                 />
             );
             return;
         }
-    }, [searchMode, searchText, push, displayPrompts, selectionText, currentApp, browserContent, allowedActions, initialScripts, initialAiProviders]);
+    }, [searchMode, searchText, push, displayPrompts, selectionText, currentApp, browserContent, allowedActions, initialScripts]);
 
     const handleSearchTextChange = (text: string) => {
         setSearchText(text);
@@ -172,25 +163,6 @@ export function PromptList({
     const activeSearchText = searchMode ? "" : searchText;
 
     const scripts = useMemo(() => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory), [initialScripts, preferences.scriptsDirectory]);
-    const aiProviders = useMemo(() => {
-        const providers = initialAiProviders ?? aiService.getAllProviders();
-
-        const preferredProvider = selectedAction ? selectedAction : "openai";
-
-        return providers.sort((a: AIProvider, b: AIProvider) => {
-            if (a.name.toLowerCase() === preferredProvider.toLowerCase()) return -1;
-            if (b.name.toLowerCase() === preferredProvider.toLowerCase()) return 1;
-            return a.name.localeCompare(b.name);
-        });
-    }, [initialAiProviders, selectedAction]);
-
-    const replacements: Omit<SpecificReplacements, 'clipboard'> = {
-        input: activeSearchText,
-        selection: selectionText,
-        currentApp: currentApp,
-        browserContent: browserContent,
-        promptTitles: getIndentedPromptTitles(),
-    };
 
     const promptItems = displayPrompts.map((prompt, index) => {
         let promptSpecificRootDir: string | undefined = undefined;
@@ -228,7 +200,6 @@ export function PromptList({
                 onPinToggle={handlePinToggle}
                 activeSearchText={activeSearchText}
                 scripts={scripts}
-                aiProviders={aiProviders}
                 onRefreshNeeded={forceUpdate}
             />
         );
@@ -267,6 +238,7 @@ export function PromptList({
                                 title: "Set preferred action",
                                 message: newValue,
                             });
+                            forceUpdate();
                         }}
                     >
                         <List.Dropdown.Item key="" title="Off" value="" />
@@ -274,24 +246,17 @@ export function PromptList({
                             <List.Dropdown.Item key="copyToClipboard" title="Copy" value="copyToClipboard" />
                             <List.Dropdown.Item key="paste" title="Paste" value="paste" />
                         </List.Dropdown.Section>
-                        <List.Dropdown.Section title="AI Providers">
-                            {aiProviders.map((provider) => (
-                                <List.Dropdown.Item
-                                    key={provider.name.toLowerCase()}
-                                    title={provider.name}
-                                    value={provider.name.toLowerCase()}
-                                />
-                            ))}
-                        </List.Dropdown.Section>
-                        <List.Dropdown.Section title="Scripts">
-                            {scripts.map(({ name }) => (
-                                <List.Dropdown.Item
-                                    key={`script_${name}`}
-                                    title={name}
-                                    value={`script_${name}`}
-                                />
-                            ))}
-                        </List.Dropdown.Section>
+                        {scripts.length > 0 && (
+                            <List.Dropdown.Section title="Scripts">
+                                {scripts.map(({ name }) => (
+                                    <List.Dropdown.Item
+                                        key={`script_${name}`}
+                                        title={name}
+                                        value={`script_${name}`}
+                                    />
+                                ))}
+                            </List.Dropdown.Section>
+                        )}
                     </List.Dropdown>
                 ) : null
             }

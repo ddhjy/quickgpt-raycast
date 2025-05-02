@@ -4,7 +4,6 @@ import { generatePromptActions } from "./PromptActions";
 import { getPropertyByPath } from "../utils/placeholderFormatter";
 import { PromptProps } from "../managers/PromptManager";
 import { ScriptInfo } from "../utils/scriptUtils";
-import { AIProvider } from "../services/types";
 import { SpecificReplacements } from "../utils/placeholderFormatter";
 
 interface OptionsFormProps {
@@ -13,7 +12,6 @@ interface OptionsFormProps {
     baseReplacements: Omit<SpecificReplacements, 'clipboard'>;
     promptSpecificRootDir?: string;
     scripts: ScriptInfo[];
-    aiProviders: AIProvider[];
 }
 
 /**
@@ -25,7 +23,6 @@ interface OptionsFormProps {
  * @param props.baseReplacements Base replacements without clipboard.
  * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
  * @param props.scripts List of available scripts for the action panel.
- * @param props.aiProviders List of available AI providers for the action panel.
  */
 export function PromptOptionsForm({
     prompt,
@@ -33,7 +30,6 @@ export function PromptOptionsForm({
     baseReplacements,
     promptSpecificRootDir,
     scripts,
-    aiProviders
 }: OptionsFormProps) {
     const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
     const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
@@ -106,7 +102,6 @@ export function PromptOptionsForm({
                             promptSpecificRootDir,
                             prompt.actions,
                             scripts,
-                            aiProviders
                         )}
                     </>
                 </ActionPanel>

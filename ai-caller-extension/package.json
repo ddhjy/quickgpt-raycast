@@ -1,0 +1,72 @@
+{
+  "name": "ai-caller-extension",
+  "title": "AI Caller",
+  "description": "Handles AI requests triggered from other extensions.",
+  "icon": "assets/command-icon.png",
+  "author": "zengkai",
+  "license": "MIT",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "publish": "ray publish"
+  },
+  "dependencies": {
+    "@raycast/api": "^1.78.0",
+    "@raycast/utils": "^1.19.0",
+    "openai": "^4.86.2",
+    "markdown-it": "^14.1.0",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.8",
+    "@types/markdown-it": "^14.1.1",
+    "@types/node": "~20.14.2",
+    "@types/react": "^18.3.3",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5",
+    "raycast-cli": "^1.18.0"
+  },
+  "commands": [
+    {
+      "name": "ai-call",
+      "title": "Send to AI",
+      "description": "Receives prompt content and sends it to the configured AI provider.",
+      "mode": "view",
+      "icon": "assets/command-icon.png",
+      "arguments": [
+        {
+          "name": "promptContent",
+          "type": "text",
+          "required": true,
+          "placeholder": "Prompt Content"
+        },
+        {
+          "name": "systemPrompt",
+          "type": "text",
+          "required": false,
+          "placeholder": "System Prompt (Optional)"
+        },
+        {
+          "name": "providerName",
+          "type": "text",
+          "required": false,
+          "placeholder": "Provider Name (Optional)"
+        }
+      ],
+      "preferences": [
+        {
+          "name": "aiConfigPath",
+          "title": "AI Provider Config Path",
+          "description": "Path to the JSON configuration file for AI providers (e.g., API keys, models). Example: /path/to/your/config.json or ~/config.json",
+          "type": "file",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
