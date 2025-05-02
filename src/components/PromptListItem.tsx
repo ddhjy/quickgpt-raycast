@@ -190,11 +190,11 @@ export function PromptListItem({
 
                 return (
                     <>
-                        <Action title="Add temporary directory" icon={Icon.Plus} onAction={handleAdd} />
+                        <Action title="Add Temporary Directory" icon={Icon.Plus} onAction={handleAdd} />
                         {removeActions}
                         {temporaryDirs.length > 1 && (
                             <Action
-                                title="Remove all temporary directories"
+                                title="Remove All Temporary Directories"
                                 icon={Icon.Trash}
                                 style={Action.Style.Destructive}
                                 onAction={() => {
@@ -207,7 +207,7 @@ export function PromptListItem({
                     </>
                 );
             } else {
-                return <Action title="Add selected directory" icon={Icon.Plus} onAction={handleAdd} />;
+                return <Action title="Add Selected Directory" icon={Icon.Plus} onAction={handleAdd} />;
             }
         } else if (prompt.identifier === "open-custom-prompts-dir") {
             return handleCustomPromptsDirectoryActions();
@@ -268,7 +268,7 @@ export function PromptListItem({
                     {/* Preferentially check for option:xxx placeholders in content, which refer to property values as options */}
                     {findOptionPlaceholders(prompt).length > 0 ? (
                         <Action.Push
-                            title="Select option"
+                            title="Select Option"
                             icon={Icon.Gear}
                             target={
                                 <PromptOptionsForm
@@ -283,7 +283,7 @@ export function PromptListItem({
                         />
                     ) : prompt.options && Object.keys(prompt.options).length > 0 ? (
                         <Action.Push
-                            title="Select option"
+                            title="Select Option"
                             icon={Icon.Gear}
                             target={
                                 <PromptOptionsForm
