@@ -20,35 +20,35 @@
           "name": "customPromptsDirectory",
           "title": "Custom Prompts",
           "required": false,
-          "description": "Use a custom prompts directory",
+          "description": "Use a custom prompts directory containing your .hjson prompt definition files",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory1",
           "title": "Custom Prompts 1",
           "required": false,
-          "description": "Use the first custom prompts directory",
+          "description": "Use the first custom prompts directory containing your .hjson prompt definition files",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory2",
           "title": "Custom Prompts 2",
           "required": false,
-          "description": "Use the second custom prompts directory",
+          "description": "Use the second custom prompts directory containing your .hjson prompt definition files",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory3",
           "title": "Custom Prompts 3",
           "required": false,
-          "description": "Use the third custom prompts directory",
+          "description": "Use the third custom prompts directory containing your .hjson prompt definition files",
           "type": "directory"
         },
         {
           "name": "customPromptsDirectory4",
           "title": "Custom Prompts 4",
           "required": false,
-          "description": "Use the fourth custom prompts directory",
+          "description": "Use the fourth custom prompts directory containing your .hjson prompt definition files",
           "type": "directory"
         },
         {

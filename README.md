@@ -4,7 +4,7 @@ QuickGPT enhances your workflow by allowing you to quickly apply pre-defined or 
 
 **Core Functionality:**
 
-- **Prompt Management:** Define and organize prompts in JSON or HJSON format within specified directories.
+- **Prompt Management:** Define and organize prompts in HJSON format (`.hjson` files) within specified directories.
 - **Dynamic Placeholders:** Utilize placeholders like `{input}`, `{selection}`, `{clipboard}`, `{currentApp}`, `{browserContent}`, `{promptTitles}`, `{now}`, and file content (`{file:path/to/file.txt}`) within your prompts for context-aware text generation.
 - **Option Placeholders:** Define dropdown options directly within prompt files using property paths (e.g., `{{option:models}}`) or a dedicated `options` object.
 - **Action Integration:** Execute actions like Copy, Paste, running AppleScripts, or triggering other applications/extensions via deeplinks.
@@ -15,8 +15,8 @@ QuickGPT enhances your workflow by allowing you to quickly apply pre-defined or 
 1.  **Install QuickGPT:** Install this extension from the Raycast Store or manually.
 2.  **Configure Prompt Directories:**
     - Go to QuickGPT's preferences in Raycast (`Raycast Settings -> Extensions -> QuickGPT`).
-    - Set the `Custom Prompts` directory (and optionally `Custom Prompts 1-4`) to point to folders containing your `.json` or `.hjson` prompt definition files.
-    - Refer to the `prompt.schema.json` for the structure of prompt files.
+    - Set the `Custom Prompts` directory (and optionally `Custom Prompts 1-4`) to point to folders containing your `.hjson` prompt definition files.
+    - Refer to the `prompt.schema.hjson` for the structure of prompt files.
 3.  **(Required for AI Features) Install and Configure AI Caller Extension:**
     - You **must** install a separate extension designed to handle AI API calls (e.g., `ai-caller-extension` or a similar one you create/find).
     - **Configure the AI Caller extension:** Follow its specific instructions to set up API keys and provider details (usually involves setting an `AI Provider Config Path` preference pointing to a `config.json` file).
@@ -44,7 +44,7 @@ QuickGPT enhances your workflow by allowing you to quickly apply pre-defined or 
     - **Open URL:** (If configured) Opens a predefined URL, copying the formatted prompt content first.
 8.  The chosen action is executed.
 
-## Prompt File Structure (`.json` or `.hjson`)
+## Prompt File Structure (`.hjson`)
 
 ```json
 {
@@ -71,7 +71,7 @@ QuickGPT enhances your workflow by allowing you to quickly apply pre-defined or 
 }
 ```
 
-See `prompt.schema.json` for full details.
+See `prompt.schema.hjson` for full details.
 
 ## 安装方法
 
@@ -96,7 +96,7 @@ npm run dev
 
 ### 创建与管理 Prompt 模板
 
-在默认路径（`assets/prompts.pm.json`）下添加新的提示模板数据：
+在你的提示词目录中创建或修改 `.hjson` 文件来添加新的提示模板数据：
 
 ```json
 {
