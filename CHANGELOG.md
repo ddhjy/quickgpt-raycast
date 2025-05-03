@@ -6,6 +6,10 @@
 
 - 修复了当 Prompt 中使用 `{{option:key}}` 占位符时，跳转到的选项配置页面内容为空的问题。现在可以正确显示基于 Prompt 属性数组生成的下拉选项。
 
+### Changed
+
+- 将 HJSON 配置中的 `prefixCMD` 属性重命名为 `prefix`。请更新您的自定义 HJSON 提示文件以使用新的属性名 `prefix` 来定义前缀占位符键。旧的 `prefixCMD` 将不再生效。
+
 ### Removed
 
 - 移除了 "Open URL" 功能及其相关配置。
