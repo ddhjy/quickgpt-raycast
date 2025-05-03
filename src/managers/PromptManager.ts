@@ -24,7 +24,7 @@ export type PromptProps = {
   icon?: string;
   subprompts?: PromptProps[];
   pinned?: boolean;
-  prefixCMD?: string;
+  prefix?: string;
   noexplanation?: boolean;
   forbidChinese?: boolean;
   ref?: { [key: string]: string | string[] };
@@ -320,7 +320,7 @@ class PromptManager {
   /**
    * Processes a list of prompts recursively.
    * Assigns generated identifiers, calculates hierarchical paths, and inherits properties
-   * like actions, prefixCMD, icon, and filePath from parent prompts.
+   * like actions, prefix, icon, and filePath from parent prompts.
    *
    * @param prompts The array of prompts to process.
    * @param parentPrompt Optional parent prompt for context (inheritance, path calculation).
