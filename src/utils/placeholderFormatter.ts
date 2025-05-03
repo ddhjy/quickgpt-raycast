@@ -108,6 +108,7 @@ function safeResolveAbsolute(given: string, root?: string): string | Error {
 
 /**
  * Resolves a file placeholder synchronously, reading file or directory contents.
+ * This function escapes any placeholders in the file content to prevent them from being processed.
  *
  * @param body The file path to resolve
  * @param root The root directory for relative paths
@@ -119,11 +120,19 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
 
   try {
     const stats = fs.statSync(absOrErr);
-    if (stats.isFile()) return `File: ${body.trim()}\n${fs.readFileSync(absOrErr, "utf-8")}\n\n`;
+    if (stats.isFile()) {
+      // Escape placeholders in file content by replacing {{ with \\{{ to prevent further processing
+      let fileContent = fs.readFileSync(absOrErr, "utf-8");
+      // Use a temporary replacement that's unlikely to exist in the content
+      fileContent = fileContent.replace(/{{/g, "\\{\\{");
+      return `File: ${body.trim()}\n${fileContent}\n\n`;
+    }
     if (stats.isDirectory()) {
       const header = `Directory: ${body.trim()}${path.sep}\n`;
       const content = readDirectoryContentsSync(absOrErr, "");
-      return `${header}${content}`;
+      // Escape placeholders in directory content
+      const escapedContent = content.replace(/{{/g, "\\{\\{");
+      return `${header}${escapedContent}`;
     }
     return `[Unsupported path type: ${body}]`;
   } catch (e) {
@@ -189,10 +198,9 @@ export function placeholderFormatter(
   text: string,
   incoming: SpecificReplacements & Record<string, unknown> = {},
   root?: string,
-  options: { resolveFile?: boolean; recursionLevel?: number; hasResolvedFile?: boolean } = {
+  options: { resolveFile?: boolean; recursionLevel?: number } = {
     resolveFile: false,
     recursionLevel: 0,
-    hasResolvedFile: false,
   },
 ): string {
   // Limit recursion depth to prevent infinite recursion
@@ -209,8 +217,6 @@ export function placeholderFormatter(
   // Reset regex state
   PH_REG.lastIndex = 0;
 
-  let hasResolvedFile = options.hasResolvedFile || false;
-
   let result = text.replace(PH_REG, (_, directive: string | undefined, body: string) => {
     /* File placeholders */
     if (directive === "file") {
@@ -220,7 +226,6 @@ export function placeholderFormatter(
       }
 
       const result = resolveFilePlaceholderSync(body, root);
-      hasResolvedFile = true;
       return result;
     }
 
@@ -228,17 +233,19 @@ export function placeholderFormatter(
     return processPlaceholder(directive, body, incoming, map);
   });
 
-  // Process nested placeholders if no file has been resolved yet
-  if (PH_REG.test(result) && currentLevel < MAX_RECURSION && !hasResolvedFile) {
+  // Process nested placeholders
+  if (PH_REG.test(result) && currentLevel < MAX_RECURSION) {
     // Reset regex state
     PH_REG.lastIndex = 0;
     // Process recursively once
     result = placeholderFormatter(result, incoming, root, {
       ...options,
       recursionLevel: currentLevel + 1,
-      hasResolvedFile,
     });
   }
+
+  // Restore escaped placeholders back to their original form
+  result = result.replace(/\\\{\\\{/g, "{{");
 
   return result;
 }
@@ -321,13 +328,25 @@ function processPlaceholder(
     // Check if it's a standard placeholder that has a value in the map
     const standardKey = toPlaceholderKey(content);
     if (standardKey && map.has(standardKey)) {
-      return map.get(standardKey)!;
+      const value = map.get(standardKey)!;
+
+      // For certain placeholders, escape any nested placeholders
+      // to prevent them from being processed
+      if (standardKey === "clipboard" || standardKey === "selection" ||
+        standardKey === "browserContent" || standardKey === "promptTitles") {
+        return value.replace(/{{/g, "\\{\\{");
+      }
+
+      return value;
     }
 
     // Otherwise use the provided value if it's a string
     if (typeof providedValue === "string") {
       // Don't replace with empty strings
-      return providedValue.trim() !== "" ? providedValue : `{{${body}}}`;
+      if (providedValue.trim() !== "") {
+        return providedValue;
+      }
+      return `{{${body}}}`;
     }
     // Convert non-string values to string representation
     return String(providedValue);
@@ -352,6 +371,12 @@ function processPlaceholder(
 
     const standardValue = map.get(key);
     if (standardValue !== undefined && standardValue !== "") {
+      // For certain placeholders, escape any nested placeholders
+      if (key === "clipboard" || key === "selection" ||
+        key === "browserContent" || key === "promptTitles") {
+        return standardValue.replace(/{{/g, "\\{\\{");
+      }
+
       return standardValue;
     }
   }
