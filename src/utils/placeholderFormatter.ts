@@ -28,33 +28,6 @@ export type SpecificReplacements = {
 type PlaceholderKey = keyof SpecificReplacements;
 type PlaceholderInfo = { alias?: string };
 
-// Log level definition
-export type LogLevel = "debug" | "info" | "warn" | "error" | "none";
-
-// Logger configuration
-export interface LoggerConfig {
-  level: LogLevel;
-  enabled: boolean;
-}
-
-// Default logger configuration
-const defaultLoggerConfig: LoggerConfig = {
-  level: "info",
-  enabled: true,
-};
-
-// Current logger configuration
-let loggerConfig: LoggerConfig = { ...defaultLoggerConfig };
-
-// Log level weights
-const LOG_LEVEL_WEIGHT: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-  none: 4,
-};
-
 const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   input: { alias: "i" },
   selection: { alias: "s" },
@@ -79,57 +52,6 @@ const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim(
 
 const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
   (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
-
-/**
- * Internal logging function
- */
-function logInternal(level: LogLevel, message: string, ...args: unknown[]): void {
-  if (!loggerConfig.enabled || LOG_LEVEL_WEIGHT[level] < LOG_LEVEL_WEIGHT[loggerConfig.level]) {
-    return;
-  }
-
-  const timestamp = new Date().toISOString();
-  const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] [PlaceholderFormatter] ${message}`;
-
-  switch (level) {
-    case "debug":
-      console.debug(formattedMessage, ...args);
-      break;
-    case "info":
-      console.info(formattedMessage, ...args);
-      break;
-    case "warn":
-      console.warn(formattedMessage, ...args);
-      break;
-    case "error":
-      console.error(formattedMessage, ...args);
-      break;
-  }
-}
-
-/**
- * Logger object with methods for different log levels
- */
-export const logger = {
-  debug: (message: string, ...args: unknown[]) => logInternal("debug", message, ...args),
-  info: (message: string, ...args: unknown[]) => logInternal("info", message, ...args),
-  warn: (message: string, ...args: unknown[]) => logInternal("warn", message, ...args),
-  error: (message: string, ...args: unknown[]) => logInternal("error", message, ...args),
-};
-
-/**
- * Configure the logging system
- */
-export function configureLogger(config: Partial<LoggerConfig>): void {
-  const oldLevel = loggerConfig.level;
-  const oldEnabled = loggerConfig.enabled;
-
-  loggerConfig = { ...loggerConfig, ...config };
-
-  console.log(
-    `[PlaceholderFormatter] Logger config updated: level=${loggerConfig.level}(was:${oldLevel}), enabled=${loggerConfig.enabled}(was:${oldEnabled})`,
-  );
-}
 
 /**
  * Builds an effective replacement map from raw replacements.
@@ -158,26 +80,26 @@ function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<string, u
  * @returns The resolved absolute path or an Error if resolution fails
  */
 function safeResolveAbsolute(given: string, root?: string): string | Error {
-  logger.debug(`Attempting to resolve path: "${given}", root: "${root || "not set"}"`);
+  console.log(`Attempting to resolve path: "${given}", root: "${root || "not set"}"`);
 
   const trimmed = given.trim();
   if (path.isAbsolute(trimmed)) {
-    logger.debug(`Processing absolute path: "${trimmed}"`);
+    console.log(`Processing absolute path: "${trimmed}"`);
     return trimmed;
   }
 
   if (!root) {
     const error = `Root directory not configured for relative path: ${trimmed}`;
-    logger.error(error);
+    console.error(error);
     return new Error(error);
   }
 
   const resolved = path.resolve(root, trimmed);
-  logger.debug(`Resolved relative path: "${trimmed}" => "${resolved}"`);
+  console.log(`Resolved relative path: "${trimmed}" => "${resolved}"`);
 
   if (!resolved.startsWith(root)) {
     const error = `Path traversal detected for: ${trimmed}`;
-    logger.error(error);
+    console.error(error);
     return new Error(error);
   }
 
@@ -278,7 +200,7 @@ export function placeholderFormatter(
   const currentLevel = options.recursionLevel || 0;
 
   if (currentLevel > MAX_RECURSION) {
-    logger.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
+    console.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
     return text;
   }
 
@@ -373,117 +295,6 @@ export function resolvePlaceholders(
     // IMPORTANT: Do NOT check for property paths here, as this function is for standard placeholder icons
   }
   return usedStandardKeys;
-}
-
-/* Asynchronous Implementation */
-
-/**
- * Resolves a file placeholder asynchronously, reading file or directory contents.
- *
- * @param body The file path to resolve
- * @param root The root directory for relative paths
- * @returns Promise resolving to formatted content or error message
- */
-async function resolveFilePlaceholderAsync(body: string, root?: string) {
-  const absOrErr = safeResolveAbsolute(body, root);
-  if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
-
-  try {
-    const stats = await fs.promises.stat(absOrErr);
-    if (stats.isFile()) {
-      const content = await fs.promises.readFile(absOrErr, "utf-8");
-      return `File: ${body.trim()}\n${content}\n\n`;
-    }
-    if (stats.isDirectory()) {
-      const header = `Directory: ${body.trim()}${path.sep}\n`;
-      const content = readDirectoryContentsSync(absOrErr, "");
-      return `${header}${content}`;
-    }
-    return `[Unsupported path type: ${body}]`;
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") return `[Path not found: ${body}]`;
-    if (code === "EACCES") return `[Permission denied: ${body}]`;
-    return `[Error accessing path: ${body}]`;
-  }
-}
-
-/**
- * Asynchronously formats a string by replacing placeholders with actual values.
- * Recommended for GUI/WebWorker scenarios to avoid blocking the main thread.
- *
- * @param text The text containing placeholders to format
- * @param incoming The replacement values for placeholders and any other properties for p: notation
- * @param root The root directory for file placeholder resolution
- * @param options Additional options for formatting
- * @returns Promise resolving to the formatted text
- */
-export async function placeholderFormatterAsync(
-  text: string,
-  incoming: SpecificReplacements & Record<string, unknown> = {},
-  root?: string,
-  options: { resolveFile?: boolean; recursionLevel?: number; hasResolvedFile?: boolean } = {
-    resolveFile: true,
-    recursionLevel: 0,
-    hasResolvedFile: false,
-  },
-): Promise<string> {
-  // Limit recursion depth to prevent infinite recursion
-  const MAX_RECURSION = 3;
-  const currentLevel = options.recursionLevel || 0;
-
-  if (currentLevel > MAX_RECURSION) {
-    logger.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
-    return text;
-  }
-
-  const map = buildEffectiveMap(incoming);
-
-  // Reset regex state
-  PH_REG.lastIndex = 0;
-
-  const chunks: string[] = [];
-  let lastIdx = 0;
-  let hasResolvedFile = options.hasResolvedFile || false;
-
-  for (let match; (match = PH_REG.exec(text));) {
-    const [whole, directive, body] = match as unknown as [string, string | undefined, string];
-    chunks.push(text.slice(lastIdx, match.index));
-    lastIdx = match.index + whole.length;
-
-    if (directive === "file") {
-      // If file resolution is disabled, return placeholder as-is
-      if (!options.resolveFile) {
-        chunks.push(`{{file:${body}}}`);
-      } else {
-        const result = await resolveFilePlaceholderAsync(body, root);
-        chunks.push(result);
-        hasResolvedFile = true;
-      }
-      continue;
-    }
-
-    // Process regular placeholder
-    const processedValue = processPlaceholder(directive, body, incoming, map);
-    chunks.push(processedValue);
-  }
-
-  chunks.push(text.slice(lastIdx));
-  let result = chunks.join("");
-
-  // Process nested placeholders if no file has been resolved yet
-  if (PH_REG.test(result) && currentLevel < MAX_RECURSION && !hasResolvedFile) {
-    // Reset regex state
-    PH_REG.lastIndex = 0;
-    // Process recursively once
-    result = await placeholderFormatterAsync(result, incoming, root, {
-      ...options,
-      recursionLevel: currentLevel + 1,
-      hasResolvedFile,
-    });
-  }
-
-  return result;
 }
 
 /**
