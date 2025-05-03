@@ -2,6 +2,10 @@
 
 ## [Next Version] - YYYY-MM-DD
 
+### Added
+
+- 新增 `suffix` 属性，类似于 `prefix`，但会将占位符添加到内容的末尾。用法与 `prefix` 相同，通过逗号分隔的属性键列表，如 `suffix: "finalNote, signature"`。
+
 ### Fixed
 
 - 修复了当 Prompt 中使用 `{{option:key}}` 占位符时，跳转到的选项配置页面内容为空的问题。现在可以正确显示基于 Prompt 属性数组生成的下拉选项。
