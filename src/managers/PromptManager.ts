@@ -84,24 +84,24 @@ class PromptManager {
       preferences.customPromptsDirectory4,
     ].filter(Boolean) as string[];
 
-    // Path to the new system prompts file
-    const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
-
-    // Always include system prompts. Include default prompts only if no custom directories are specified.
-    const defaultPromptsPath = path.join(__dirname, "assets/prompts.hjson");
-    const promptFiles = customPromptDirectories.length > 0 ? [] : [defaultPromptsPath];
+    const allPaths = [...customPromptDirectories];
 
     // Get list of temporary directories
     const tempDirs = temporaryDirectoryStore.getActiveTemporaryDirectories();
     this.temporaryDirectoryPaths = tempDirs.map((dir) => dir.path);
-
-    const allPaths = [...promptFiles, ...customPromptDirectories];
 
     // Add all temporary directories to the path list
     if (this.temporaryDirectoryPaths.length > 0) {
       allPaths.push(...this.temporaryDirectoryPaths);
     }
 
+    if (allPaths.length === 0) {
+      const defaultPromptsPath = path.join(__dirname, "assets/prompts.hjson");
+      allPaths.push(defaultPromptsPath);
+    }
+
+    // Path to the new system prompts file
+    const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
     // Finally add the system prompts path
     allPaths.push(systemPromptsPath);
 
