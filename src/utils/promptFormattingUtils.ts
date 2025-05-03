@@ -27,34 +27,62 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * Generates placeholder string based on prefix property.
- * Keys listed in prefix are directly converted to {{key}} placeholders.
+ * Generates placeholder string based on a comma-separated property keys list.
+ * Keys listed are directly converted to {{key}} placeholders.
  * Relies on these keys existing as properties in the prompt object (defined in HJSON).
  * No defaults, no validation against a predefined list, no "none", no "!".
  *
- * @param prefix Comma-separated string of property keys (e.g., "myPromptSetting,lang").
- * @returns Placeholder string (e.g., "{{myPromptSetting}}\n{{lang}}\n") or empty string.
+ * @param keysList Comma-separated string of property keys (e.g., "myPromptSetting,lang").
+ * @param position 指定占位符的位置，影响换行符添加方式。'prefix'在末尾添加换行符，'suffix'在开头添加换行符。
+ * @returns Placeholder string with appropriate newlines based on position parameter.
  */
-export function generatePrefixPlaceholders(prefix: string | undefined): string {
-  let activePrefixKeys: string[] = [];
-  const providedKeysTrimmed = prefix?.trim();
+export function generatePlaceholders(keysList: string | undefined, position: 'prefix' | 'suffix'): string {
+  let activeKeys: string[] = [];
+  const providedKeysTrimmed = keysList?.trim();
 
   if (providedKeysTrimmed && providedKeysTrimmed.length > 0) {
-    activePrefixKeys = providedKeysTrimmed
+    activeKeys = providedKeysTrimmed
       .split(",")
       .map(key => key.trim())
       // Filter out any empty strings resulting from splitting (e.g., "key1,,key2")
       .filter(key => key.length > 0); // Only check for non-empty keys
 
     // Ensure uniqueness
-    activePrefixKeys = Array.from(new Set(activePrefixKeys));
+    activeKeys = Array.from(new Set(activeKeys));
   }
-  // If prefix is null, undefined, or empty, activePrefixKeys remains []
+  // If keys list is null, undefined, or empty, activeKeys remains []
 
   // Generate placeholder strings using the keys directly
-  const placeholderString = activePrefixKeys.map(key => `{{${key}}}`).join("\n");
+  const placeholderString = activeKeys.map(key => `{{${key}}}`).join("\n");
 
-  return placeholderString + (placeholderString.length > 0 ? "\n" : ""); // Add trailing newline if needed
+  // Add newline based on position
+  if (position === 'prefix') {
+    return placeholderString + (placeholderString.length > 0 ? "\n" : ""); // Add trailing newline if needed
+  } else { // suffix
+    return (placeholderString.length > 0 ? "\n" : "") + placeholderString; // Add leading newline if needed
+  }
+}
+
+/**
+ * Generates placeholder string based on prefix property.
+ * Keys listed in prefix are directly converted to {{key}} placeholders.
+ * 
+ * @param prefix Comma-separated string of property keys (e.g., "myPromptSetting,lang").
+ * @returns Placeholder string (e.g., "{{myPromptSetting}}\n{{lang}}\n") or empty string.
+ */
+export function generatePrefixPlaceholders(prefix: string | undefined): string {
+  return generatePlaceholders(prefix, 'prefix');
+}
+
+/**
+ * Generates placeholder string based on suffix property.
+ * Keys listed in suffix are directly converted to {{key}} placeholders.
+ * 
+ * @param suffix Comma-separated string of property keys (e.g., "finalDirective,signature").
+ * @returns Placeholder string (e.g., "\n{{finalDirective}}\n{{signature}}") or empty string.
+ */
+export function generateSuffixPlaceholders(suffix: string | undefined): string {
+  return generatePlaceholders(suffix, 'suffix');
 }
 
 /**
@@ -141,8 +169,11 @@ export function buildFormattedPromptContent(
   // 1. Generate prefix placeholder string using the NEW HJSON-driven logic
   const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefix);
 
-  // 2. Prepend placeholders to the original content
-  const contentWithPrefixPlaceholders = prefixPlaceholderString + currentContent;
+  // 1.1 Generate suffix placeholder string
+  const suffixPlaceholderString = generateSuffixPlaceholders(prompt.suffix);
+
+  // 2. Prepend prefix placeholders and append suffix placeholders to the original content
+  const contentWithPlaceholders = prefixPlaceholderString + currentContent + suffixPlaceholderString;
 
   // 3. Merge the fully processed prompt object with runtime replacements.
   const mergedReplacements = {
@@ -153,7 +184,7 @@ export function buildFormattedPromptContent(
 
   // 4. Call placeholderFormatter on the combined content
   const formattedContent = placeholderFormatter(
-    contentWithPrefixPlaceholders,
+    contentWithPlaceholders,
     mergedReplacements,
     relativeRootDir,
     { resolveFile: true }
@@ -214,9 +245,10 @@ export function getIndentedPromptTitles(): string {
       // Use original content for summary
       let processedContent = prompt.content;
 
-      // Generate and prepend placeholders
+      // Generate prefix and suffix placeholders
       const prefixPlaceholders = generatePrefixPlaceholders(prompt.prefix);
-      processedContent = prefixPlaceholders + processedContent;
+      const suffixPlaceholders = generateSuffixPlaceholders(prompt.suffix);
+      processedContent = prefixPlaceholders + processedContent + suffixPlaceholders;
 
       // Remove newlines and placeholder lines from content for better summary display
       const cleanContent = processedContent

@@ -25,6 +25,7 @@ export type PromptProps = {
   subprompts?: PromptProps[];
   pinned?: boolean;
   prefix?: string;
+  suffix?: string;
   noexplanation?: boolean;
   forbidChinese?: boolean;
   ref?: { [key: string]: string | string[] };
