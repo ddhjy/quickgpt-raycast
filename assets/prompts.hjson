@@ -5,7 +5,7 @@ subprompts: [
 {
   icon: 🖥️
   title: "/"
-  prefixCMD: "none"
+  prefix: "none"
   content: "{{i|s|c}}"
 
 }

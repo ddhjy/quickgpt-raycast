@@ -27,17 +27,17 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * Generates placeholder string based on prefixCMD property.
- * Keys listed in prefixCMD are directly converted to {{key}} placeholders.
+ * Generates placeholder string based on prefix property.
+ * Keys listed in prefix are directly converted to {{key}} placeholders.
  * Relies on these keys existing as properties in the prompt object (defined in HJSON).
  * No defaults, no validation against a predefined list, no "none", no "!".
  *
- * @param prefixCommands Comma-separated string of property keys (e.g., "myPromptSetting,lang").
+ * @param prefix Comma-separated string of property keys (e.g., "myPromptSetting,lang").
  * @returns Placeholder string (e.g., "{{myPromptSetting}}\n{{lang}}\n") or empty string.
  */
-export function generatePrefixPlaceholders(prefixCommands: string | undefined): string {
+export function generatePrefixPlaceholders(prefix: string | undefined): string {
   let activePrefixKeys: string[] = [];
-  const providedKeysTrimmed = prefixCommands?.trim();
+  const providedKeysTrimmed = prefix?.trim();
 
   if (providedKeysTrimmed && providedKeysTrimmed.length > 0) {
     activePrefixKeys = providedKeysTrimmed
@@ -49,7 +49,7 @@ export function generatePrefixPlaceholders(prefixCommands: string | undefined): 
     // Ensure uniqueness
     activePrefixKeys = Array.from(new Set(activePrefixKeys));
   }
-  // If prefixCMD is null, undefined, or empty, activePrefixKeys remains []
+  // If prefix is null, undefined, or empty, activePrefixKeys remains []
 
   // Generate placeholder strings using the keys directly
   const placeholderString = activePrefixKeys.map(key => `{{${key}}}`).join("\n");
@@ -122,7 +122,7 @@ export function getQuickPrompt(
 
 /**
  * Builds the final, fully formatted prompt content string.
- * 1. Generates prefix placeholders based on prefixCMD property.
+ * 1. Generates prefix placeholders based on prefix property.
  * 2. Prepends these placeholders to the original content.
  * 3. Uses `placeholderFormatter` to substitute all placeholders based on prompt properties and runtime replacements.
  *
@@ -139,7 +139,7 @@ export function buildFormattedPromptContent(
   const currentContent = prompt.content || "";
 
   // 1. Generate prefix placeholder string using the NEW HJSON-driven logic
-  const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefixCMD);
+  const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefix);
 
   // 2. Prepend placeholders to the original content
   const contentWithPrefixPlaceholders = prefixPlaceholderString + currentContent;
@@ -215,7 +215,7 @@ export function getIndentedPromptTitles(): string {
       let processedContent = prompt.content;
 
       // Generate and prepend placeholders
-      const prefixPlaceholders = generatePrefixPlaceholders(prompt.prefixCMD);
+      const prefixPlaceholders = generatePrefixPlaceholders(prompt.prefix);
       processedContent = prefixPlaceholders + processedContent;
 
       // Remove newlines and placeholder lines from content for better summary display

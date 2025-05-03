@@ -6,11 +6,11 @@ QuickGPT is a powerful prompt management tool designed for Raycast. It enhances 
 
 ## Key Features
 
-* **Advanced Prompt Management:** Organize and maintain extensive prompt libraries using the human-readable HJSON format (`.hjson`) in the `prompts` directory. Treat your prompts like code, enabling versioning and iteration.
-* **Rich Placeholder System:** Dynamically inject context into your prompts with placeholders like `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`, file content (`{{file:path/to/file}}`), dropdown options (`{{option:key}}`), and prompt properties (`{{p:key}}`). Supports fallback logic (`{{selection|clipboard}}`).
-* **System-Wide Accessibility:** Invoke QuickGPT from anywhere in your system via Raycast for immediate prompt access.
-* **Seamless Integration:** Connect QuickGPT with other applications and extensions using deeplinks and configurable actions (e.g., running AppleScripts, triggering external AI callers).
-* **Scalability:** Effortlessly manage hundreds or thousands of prompts, facilitating complex prompt engineering workflows.
+- **Advanced Prompt Management:** Organize and maintain extensive prompt libraries using the human-readable HJSON format (`.hjson`) in the `prompts` directory. Treat your prompts like code, enabling versioning and iteration.
+- **Rich Placeholder System:** Dynamically inject context into your prompts with placeholders like `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`, file content (`{{file:path/to/file}}`), dropdown options (`{{option:key}}`), and prompt properties (`{{p:key}}`). Supports fallback logic (`{{selection|clipboard}}`).
+- **System-Wide Accessibility:** Invoke QuickGPT from anywhere in your system via Raycast for immediate prompt access.
+- **Seamless Integration:** Connect QuickGPT with other applications and extensions using deeplinks and configurable actions (e.g., running AppleScripts, triggering external AI callers).
+- **Scalability:** Effortlessly manage hundreds or thousands of prompts, facilitating complex prompt engineering workflows.
 
 ## Installation
 
@@ -31,41 +31,41 @@ QuickGPT is a powerful prompt management tool designed for Raycast. It enhances 
     # npm run dev
     ```
 5.  **Import into Raycast:**
-    * Open Raycast preferences (`⌘ + ,`).
-    * Navigate to the `Extensions` tab.
-    * Click the `+` button in the bottom left and select `Import Extension`.
-    * Choose the `quickgpt-raycast` directory you cloned.
-    * Alternatively, if running `npm run dev`, the extension should load automatically in developer mode.
+    - Open Raycast preferences (`⌘ + ,`).
+    - Navigate to the `Extensions` tab.
+    - Click the `+` button in the bottom left and select `Import Extension`.
+    - Choose the `quickgpt-raycast` directory you cloned.
+    - Alternatively, if running `npm run dev`, the extension should load automatically in developer mode.
 
 ## Configuration
 
 Configure QuickGPT through Raycast's preferences (`Raycast Settings -> Extensions -> QuickGPT`):
 
 1.  **Prompt Directories (`Custom Prompts`, `Custom Prompts 1-4`):**
-    * **Required:** Set at least one directory containing your `.hjson` prompt definition files. QuickGPT will load prompts from these locations.
-    * Multiple directories allow for better organization (e.g., separating personal, work, or project-specific prompts).
+    - **Required:** Set at least one directory containing your `.hjson` prompt definition files. QuickGPT will load prompts from these locations.
+    - Multiple directories allow for better organization (e.g., separating personal, work, or project-specific prompts).
 2.  **Scripts Directory (Optional):**
-    * Set a directory containing AppleScript files (`.applescript`, `.scpt`). These scripts will appear as executable actions in QuickGPT.
+    - Set a directory containing AppleScript files (`.applescript`, `.scpt`). These scripts will appear as executable actions in QuickGPT.
 3.  **Default Actions (`Actions`):**
-    * Define a comma-separated list of action names (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) that should appear first in the Action Panel or be triggered by `⌘ + Enter`.
+    - Define a comma-separated list of action names (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) that should appear first in the Action Panel or be triggered by `⌘ + Enter`.
 
 ## Usage
 
 1.  **Launch:** Activate Raycast and type the command alias for `Prompt Lab` (default might be `prompt` or `quickgpt`, check Raycast settings).
 2.  **Browse/Search Mode:**
-    * A list of your loaded prompts appears.
-    * Type to search prompts by title (supports Pinyin matching).
-    * Select a prompt using arrow keys and `Enter`.
+    - A list of your loaded prompts appears.
+    - Type to search prompts by title (supports Pinyin matching).
+    - Select a prompt using arrow keys and `Enter`.
 3.  **Input Mode (Optional):**
-    * If you type text in the search bar and end with a space ` `, QuickGPT enters Input Mode, using the typed text for the `{{input}}` placeholder in the subsequently selected prompt.
-    * Alternatively, after selecting a prompt directly, you can start typing to provide input for the `{{input}}` placeholder.
-    * **Note:** The `{{input}}` placeholder is *only* replaced by the search bar text when in Input Mode, not during Search Mode.
+    - If you type text in the search bar and end with a space ` `, QuickGPT enters Input Mode, using the typed text for the `{{input}}` placeholder in the subsequently selected prompt.
+    - Alternatively, after selecting a prompt directly, you can start typing to provide input for the `{{input}}` placeholder.
+    - **Note:** The `{{input}}` placeholder is _only_ replaced by the search bar text when in Input Mode, not during Search Mode.
 4.  **Action Panel:**
-    * After selecting a prompt (or providing input), press `⌘ + K` (or your configured shortcut) to open the Action Panel.
+    - After selecting a prompt (or providing input), press `⌘ + K` (or your configured shortcut) to open the Action Panel.
 5.  **Execute Action:**
-    * Choose an action from the list (e.g., Copy, Paste, Send to OpenAI, Run Script).
-    * The default action (topmost or configured via preferences) can often be triggered with `⌘ + Enter`.
-    * The selected action executes, using the fully formatted prompt content (with placeholders resolved).
+    - Choose an action from the list (e.g., Copy, Paste, Send to OpenAI, Run Script).
+    - The default action (topmost or configured via preferences) can often be triggered with `⌘ + Enter`.
+    - The selected action executes, using the fully formatted prompt content (with placeholders resolved).
 
 ## Prompt File Format (`.hjson`)
 
@@ -101,8 +101,8 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
   title: "Writing Tools"
   icon: "✍️"
   identifier: "writing_tools_folder"
-  // Inheritable properties (optional): Children will inherit 'prefixCMD' unless overridden
-  prefixCMD: "ne" // No Explanation by default for children
+  // Inheritable properties (optional): Children will inherit 'prefix' unless overridden
+  prefix: "ne" // No Explanation by default for children
 
   subprompts: [
     {
@@ -110,14 +110,14 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
       identifier: "summarize_text_child"
       icon: "📄"
       content: "Summarize this: {{selection|clipboard}}"
-      // Inherits prefixCMD: "ne" from parent
+      // Inherits prefix: "ne" from parent
     }
     {
       title: "Improve Grammar"
       identifier: "improve_grammar_child"
       icon: "✅"
       content: "Improve the grammar of: {{selection|clipboard}}"
-      prefixCMD: "c" // Overrides parent's prefixCMD, asks for Chinese response
+      prefix: "c" // Overrides parent's prefix, asks for Chinese response
     }
   ]
 }
@@ -131,14 +131,14 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
     // unless overridden by the prompt itself or an inherited parent property.
     icon: "⭐"
     actions: ["Copy", "Paste"]
-    prefixCMD: "c" // Default to Chinese responses
+    prefix: "c" // Default to Chinese responses
   }
 
-  // This prompt will inherit the star icon, Copy/Paste actions, and Chinese prefixCMD
+  // This prompt will inherit the star icon, Copy/Paste actions, and Chinese prefix
   title: "My Defaulted Prompt"
   content: "This prompt uses defaults from rootProperty."
 
-  // This prompt overrides the icon but inherits actions and prefixCMD
+  // This prompt overrides the icon but inherits actions and prefix
   title: "Override Icon Prompt"
   icon: "🚀"
   content: "This prompt has a custom icon."
@@ -146,44 +146,44 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
 
 ```
 
-* Refer to `prompt.schema.hjson` (if available in the project) for the complete schema definition.
-* Properties like `icon`, `actions`, `prefixCMD` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
+- Refer to `prompt.schema.hjson` (if available in the project) for the complete schema definition.
+- Properties like `icon`, `actions`, `prefix` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
 
 ## Placeholders
 
 QuickGPT offers a powerful placeholder system to inject dynamic content:
 
-| Placeholder              | Alias(es) | Description                                                                                                                                                               | Example Usage                      |
-| :----------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------- |
-| `{{input}}`              | `{{i}}`   | Text entered in the Raycast input field **after** selecting a prompt or ending search with a space.                                                                       | `Summarize: {{input}}`             |
-| `{{clipboard}}`          | `{{c}}`   | Current text content of the system clipboard.                                                                                                                             | `Translate: {{clipboard}}`         |
-| `{{selection}}`          | `{{s}}`   | Text currently selected in the frontmost application. If Finder items are selected, formats as `{{file:path}}`.                                                           | `Define: {{selection}}`            |
-| `{{currentApp}}`         |           | Name of the frontmost application.                                                                                                                                        | `Instructions for {{currentApp}}`    |
-| `{{browserContent}}`     |           | Markdown content of the active browser tab (requires Raycast Browser Extension, works best with Arc).                                                                     | `Analyze page: {{browserContent}}` |
-| `{{now}}`                | `{{n}}`   | Current date and time in the system's locale format.                                                                                                                      | `Log entry at {{now}}`             |
-| `{{promptTitles}}`       | `{{pt}}`  | An indented list of all available prompt titles.                                                                                                                          | `Available prompts:\n{{promptTitles}}` |
-| `{{file:path}}`        |           | Reads content from the specified file or directory. `path` can be absolute or relative (to the `.hjson` file's directory). Reads directories recursively (respects `.gitignore`). | `Context:\n{{file:../notes.txt}}` |
-| `{{option:key}}`         |           | Creates a dropdown menu using the array defined in the `key` property of the *same* prompt object. User selects before execution. Value replaces the placeholder.             | `Format: {{option:outputFormats}}` |
-| `{{property}}`           |           | Replaced by the value of the `property` key defined within the prompt's `options` object (user selects from dropdown).                                                    | `Translate to {{language}}`        |
-| `{{property}}`           |           | Replaced by the value entered by the user for the `property` key defined within the prompt's `textInputs` object.                                                         | `Audience: {{audience}}`           |
-| `{{p:key}}`              |           | Accesses the value of the `key` property **of the prompt object itself** (after inheritance and defaults). Can use dot notation (e.g., `{{p:parent.title}}`).               | `Prompt Title: {{p:title}}`        |
-| `{{ph1|ph2|...}}`      |           | **Fallback:** Uses the value of the first non-empty placeholder in the list (e.g., `{{selection|clipboard}}` uses selection if available, otherwise clipboard).            | `Input: {{s|c|i}}`                 |
+| Placeholder          | Alias(es) | Description                                                                                                                                                                       | Example Usage                          |
+| :------------------- | :-------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------- | --- | ---- |
+| `{{input}}`          | `{{i}}`   | Text entered in the Raycast input field **after** selecting a prompt or ending search with a space.                                                                               | `Summarize: {{input}}`                 |
+| `{{clipboard}}`      | `{{c}}`   | Current text content of the system clipboard.                                                                                                                                     | `Translate: {{clipboard}}`             |
+| `{{selection}}`      | `{{s}}`   | Text currently selected in the frontmost application. If Finder items are selected, formats as `{{file:path}}`.                                                                   | `Define: {{selection}}`                |
+| `{{currentApp}}`     |           | Name of the frontmost application.                                                                                                                                                | `Instructions for {{currentApp}}`      |
+| `{{browserContent}}` |           | Markdown content of the active browser tab (requires Raycast Browser Extension, works best with Arc).                                                                             | `Analyze page: {{browserContent}}`     |
+| `{{now}}`            | `{{n}}`   | Current date and time in the system's locale format.                                                                                                                              | `Log entry at {{now}}`                 |
+| `{{promptTitles}}`   | `{{pt}}`  | An indented list of all available prompt titles.                                                                                                                                  | `Available prompts:\n{{promptTitles}}` |
+| `{{file:path}}`      |           | Reads content from the specified file or directory. `path` can be absolute or relative (to the `.hjson` file's directory). Reads directories recursively (respects `.gitignore`). | `Context:\n{{file:../notes.txt}}`      |
+| `{{option:key}}`     |           | Creates a dropdown menu using the array defined in the `key` property of the _same_ prompt object. User selects before execution. Value replaces the placeholder.                 | `Format: {{option:outputFormats}}`     |
+| `{{property}}`       |           | Replaced by the value of the `property` key defined within the prompt's `options` object (user selects from dropdown).                                                            | `Translate to {{language}}`            |
+| `{{property}}`       |           | Replaced by the value entered by the user for the `property` key defined within the prompt's `textInputs` object.                                                                 | `Audience: {{audience}}`               |
+| `{{p:key}}`          |           | Accesses the value of the `key` property **of the prompt object itself** (after inheritance and defaults). Can use dot notation (e.g., `{{p:parent.title}}`).                     | `Prompt Title: {{p:title}}`            |
+| `{{ph1               | ph2       | ...}}`                                                                                                                                                                            |                                        | **Fallback:** Uses the value of the first non-empty placeholder in the list (e.g., `{{selection | clipboard}}` uses selection if available, otherwise clipboard). | `Input: {{s | c   | i}}` |
 
 **Notes on Placeholders:**
 
-* **`{{input}}`:** Only populated when QuickGPT is in "Input Mode".
-* **`{{file:path}}`:** Relative paths are resolved based on the location of the `.hjson` file containing the placeholder. Directory reading ignores binary files and patterns defined in `.gitignore` files found within the traversed directories.
-* **`{{option:key}}` vs `{{property}}` (from `options`):** `{{option:key}}` is a newer way to link a placeholder directly to a top-level array property within the same prompt definition for creating dropdowns. The older method uses the `options` object, where keys automatically become placeholders. Both result in a dropdown form.
-* **`{{p:key}}`:** Useful for meta-prompts or referencing inherited values.
-* **Fallback Order:** The order matters (e.g., `{{selection|clipboard}}` prioritizes selection).
+- **`{{input}}`:** Only populated when QuickGPT is in "Input Mode".
+- **`{{file:path}}`:** Relative paths are resolved based on the location of the `.hjson` file containing the placeholder. Directory reading ignores binary files and patterns defined in `.gitignore` files found within the traversed directories.
+- **`{{option:key}}` vs `{{property}}` (from `options`):** `{{option:key}}` is a newer way to link a placeholder directly to a top-level array property within the same prompt definition for creating dropdowns. The older method uses the `options` object, where keys automatically become placeholders. Both result in a dropdown form.
+- **`{{p:key}}`:** Useful for meta-prompts or referencing inherited values.
+- **Fallback Order:** The order matters (e.g., `{{selection|clipboard}}` prioritizes selection).
 
 ## Actions
 
 QuickGPT executes actions on the final formatted prompt content:
 
-* **`Copy`:** Copies the formatted content to the clipboard.
-* **`Paste`:** Pastes the formatted content into the frontmost application.
-* **Scripts (`YourScriptName`):** (Requires `Scripts Directory` setup) Executes the corresponding AppleScript file found in the configured directory. The formatted prompt content is usually copied to the clipboard before script execution.
+- **`Copy`:** Copies the formatted content to the clipboard.
+- **`Paste`:** Pastes the formatted content into the frontmost application.
+- **Scripts (`YourScriptName`):** (Requires `Scripts Directory` setup) Executes the corresponding AppleScript file found in the configured directory. The formatted prompt content is usually copied to the clipboard before script execution.
 
 Actions can be prioritized per-prompt using the `actions` array in the `.hjson` file or globally via the `Actions` preference.
 
