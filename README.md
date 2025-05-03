@@ -101,8 +101,9 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
   title: "Writing Tools"
   icon: "✍️"
   identifier: "writing_tools_folder"
-  // Inheritable properties (optional): Children will inherit 'prefix' unless overridden
+  // Inheritable properties (optional): Children will inherit 'prefix' and 'suffix' unless overridden
   prefix: "ne" // No Explanation by default for children
+  suffix: "thanks" // Add thanks message as suffix for children
 
   subprompts: [
     {
@@ -134,7 +135,7 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
     prefix: "c" // Default to Chinese responses
   }
 
-  // This prompt will inherit the star icon, Copy/Paste actions, and Chinese prefix
+  // This prompt will inherit the star icon, Copy/Paste actions, Chinese prefix, and any suffix
   title: "My Defaulted Prompt"
   content: "This prompt uses defaults from rootProperty."
 
@@ -147,7 +148,7 @@ Prompts are defined in `.hjson` files. HJSON allows for comments and a more rela
 ```
 
 - Refer to `prompt.schema.hjson` (if available in the project) for the complete schema definition.
-- Properties like `icon`, `actions`, `prefix` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
+- Properties like `icon`, `actions`, `prefix`, `suffix` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
 
 ## Placeholders
 
