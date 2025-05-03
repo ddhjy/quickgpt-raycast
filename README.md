@@ -165,9 +165,7 @@ QuickGPT offers a powerful placeholder system to inject dynamic content:
 | `{{promptTitles}}`   | `{{pt}}`  | An indented list of all available prompt titles.                                                                                                                                  | `Available prompts:\n{{promptTitles}}` |
 | `{{file:path}}`      |           | Reads content from the specified file or directory. `path` can be absolute or relative (to the `.hjson` file's directory). Reads directories recursively (respects `.gitignore`). | `Context:\n{{file:../notes.txt}}`      |
 | `{{option:key}}`     |           | Creates a dropdown menu using the array defined in the `key` property of the _same_ prompt object. User selects before execution. Value replaces the placeholder.                 | `Format: {{option:outputFormats}}`     |
-| `{{property}}`       |           | Replaced by the value of the `property` key defined within the prompt's `options` object (user selects from dropdown).                                                            | `Translate to {{language}}`            |
 | `{{property}}`       |           | Replaced by the value entered by the user for the `property` key defined within the prompt's `textInputs` object.                                                                 | `Audience: {{audience}}`               |
-| `{{p:key}}`          |           | Accesses the value of the `key` property **of the prompt object itself** (after inheritance and defaults). Can use dot notation (e.g., `{{p:parent.title}}`).                     | `Prompt Title: {{p:title}}`            |
 | `{{ph1               | ph2       | ...}}`                                                                                                                                                                            |                                        | **Fallback:** Uses the value of the first non-empty placeholder in the list (e.g., `{{selection | clipboard}}` uses selection if available, otherwise clipboard). | `Input: {{s | c   | i}}` |
 
 **Notes on Placeholders:**
@@ -175,7 +173,6 @@ QuickGPT offers a powerful placeholder system to inject dynamic content:
 - **`{{input}}`:** Only populated when QuickGPT is in "Input Mode".
 - **`{{file:path}}`:** Relative paths are resolved based on the location of the `.hjson` file containing the placeholder. Directory reading ignores binary files and patterns defined in `.gitignore` files found within the traversed directories.
 - **`{{option:key}}` vs `{{property}}` (from `options`):** `{{option:key}}` is a newer way to link a placeholder directly to a top-level array property within the same prompt definition for creating dropdowns. The older method uses the `options` object, where keys automatically become placeholders. Both result in a dropdown form.
-- **`{{p:key}}`:** Useful for meta-prompts or referencing inherited values.
 - **Fallback Order:** The order matters (e.g., `{{selection|clipboard}}` prioritizes selection).
 
 ## Actions
