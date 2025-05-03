@@ -26,7 +26,7 @@ export type SpecificReplacements = {
 };
 
 type PlaceholderKey = keyof SpecificReplacements;
-type PlaceholderInfo = { literal: string; alias?: string };
+type PlaceholderInfo = { alias?: string };
 
 // Log level definition
 export type LogLevel = "debug" | "info" | "warn" | "error" | "none";
@@ -56,13 +56,13 @@ const LOG_LEVEL_WEIGHT: Record<LogLevel, number> = {
 };
 
 const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
-  input: { literal: "<Input text>", alias: "i" },
-  selection: { literal: "<Selected text>", alias: "s" },
-  clipboard: { literal: "<Clipboard text>", alias: "c" },
-  currentApp: { literal: "<Current application>" },
-  browserContent: { literal: "<Browser content>" },
-  now: { literal: "<Current time>", alias: "n" },
-  promptTitles: { literal: "<Prompt titles>", alias: "pt" },
+  input: { alias: "i" },
+  selection: { alias: "s" },
+  clipboard: { alias: "c" },
+  currentApp: {},
+  browserContent: {},
+  now: { alias: "n" },
+  promptTitles: { alias: "pt" },
 };
 
 // alias ⇒ key
@@ -446,7 +446,7 @@ export async function placeholderFormatterAsync(
   let lastIdx = 0;
   let hasResolvedFile = options.hasResolvedFile || false;
 
-  for (let match; (match = PH_REG.exec(text)); ) {
+  for (let match; (match = PH_REG.exec(text));) {
     const [whole, directive, body] = match as unknown as [string, string | undefined, string];
     chunks.push(text.slice(lastIdx, match.index));
     lastIdx = match.index + whole.length;
