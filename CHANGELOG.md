@@ -18,6 +18,7 @@
 
 - 移除了 "Open URL" 功能及其相关配置。
 - **移除了内置的前缀命令定义**（如 `c`, `ne` 等对应的文本）及相关常量 `SUPPORTED_PREFIX_COMMANDS`。
+- **移除了通过 `customPrompts`, `customPrompts2`, `customPrompts3` 偏好设置指定单个提示词文件的功能。现在仅支持通过 `customPromptsDirectory` 系列偏好设置指定包含 `.hjson` 文件的目录来加载自定义提示词。**
 
 ### Changed
 
