@@ -7,7 +7,7 @@ QuickGPT is a powerful prompt management tool designed for Raycast. It enhances 
 ## Key Features
 
 - **Advanced Prompt Management:** Organize and maintain extensive prompt libraries using the human-readable HJSON format (`.hjson`) in the `prompts` directory. Treat your prompts like code, enabling versioning and iteration.
-- **Rich Placeholder System:** Dynamically inject context into your prompts with placeholders like `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`, file content (`{{file:path/to/file}}`), dropdown options (`{{option:key}}`), and prompt properties (`{{p:key}}`). Supports fallback logic (`{{selection|clipboard}}`).
+- **Rich Placeholder System:** Dynamically inject context into your prompts with placeholders like `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`, file content (`{{file:path/to/file}}`), dropdown options (`{{option:key}}`). Supports fallback logic (`{{selection|clipboard}}`).
 - **System-Wide Accessibility:** Invoke QuickGPT from anywhere in your system via Raycast for immediate prompt access.
 - **Seamless Integration:** Connect QuickGPT with other applications and extensions using deeplinks and configurable actions (e.g., running AppleScripts, triggering external AI callers).
 - **Scalability:** Effortlessly manage hundreds or thousands of prompts, facilitating complex prompt engineering workflows.
