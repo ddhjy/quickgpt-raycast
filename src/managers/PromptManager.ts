@@ -6,9 +6,6 @@ import * as hjson from "hjson";
 import * as temporaryDirectoryStore from "../stores/TemporaryPromptDirectoryStore";
 
 type Preferences = {
-  customPrompts?: string;
-  customPrompts2?: string;
-  customPrompts3?: string;
   customPromptsDirectory?: string;
   customPromptsDirectory1?: string;
   customPromptsDirectory2?: string;
@@ -86,11 +83,6 @@ class PromptManager {
       preferences.customPromptsDirectory3,
       preferences.customPromptsDirectory4,
     ].filter(Boolean) as string[];
-    const customPromptFiles = [
-      preferences.customPrompts,
-      preferences.customPrompts2,
-      preferences.customPrompts3,
-    ].filter(Boolean) as string[];
 
     // Path to the new system prompts file
     const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
@@ -103,7 +95,7 @@ class PromptManager {
     const tempDirs = temporaryDirectoryStore.getActiveTemporaryDirectories();
     this.temporaryDirectoryPaths = tempDirs.map((dir) => dir.path);
 
-    const allPaths = [...promptFiles, ...customPromptFiles, ...customPromptDirectories];
+    const allPaths = [...promptFiles, ...customPromptDirectories];
 
     // Add all temporary directories to the path list
     if (this.temporaryDirectoryPaths.length > 0) {
