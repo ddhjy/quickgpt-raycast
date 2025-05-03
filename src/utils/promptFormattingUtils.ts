@@ -16,14 +16,6 @@ import promptManager from "../managers/PromptManager";
  */
 
 const IDENTIFIER_PREFIX = "quickgpt-";
-const SUPPORTED_PREFIX_COMMANDS: { [key: string]: string } = {
-  c: "简体中文作答",
-  ne: "NO EXPLANATION",
-  np: "Do not use plugins and data analysis",
-  cot: "",
-  ns: "Do not use tool and Web Search",
-};
-const DEFAULT_PREFIX_COMMANDS = ["c"];
 
 const placeholderIcons: { [key: string]: Icon } = {
   input: Icon.TextInput,
@@ -35,39 +27,34 @@ const placeholderIcons: { [key: string]: Icon } = {
 };
 
 /**
- * Applies predefined prefix commands (like language instructions or behavioral directives)
- * to the beginning of the prompt content based on the `prefixCMD` property of a prompt.
- * Supports adding commands and negating default commands (e.g., `!c` to remove default Chinese response).
- * If `prefixCMD` includes "none", no prefixes are added.
+ * Generates placeholder string based on prefixCMD property.
+ * Keys listed in prefixCMD are directly converted to {{key}} placeholders.
+ * Relies on these keys existing as properties in the prompt object (defined in HJSON).
+ * No defaults, no validation against a predefined list, no "none", no "!".
  *
- * @param content The original prompt content string.
- * @param prefixCommands A comma-separated string of prefix command keys (e.g., "c,!ne").
- * @returns The content with the resolved prefix command lines prepended.
+ * @param prefixCommands Comma-separated string of property keys (e.g., "myPromptSetting,lang").
+ * @returns Placeholder string (e.g., "{{myPromptSetting}}\n{{lang}}\n") or empty string.
  */
-export function applyPrefixCommandsToContent(content: string, prefixCommands: string | undefined): string {
-  // If prefixCommands contains "none", return the original content
-  if (prefixCommands?.includes("none")) {
-    return content;
+export function generatePrefixPlaceholders(prefixCommands: string | undefined): string {
+  let activePrefixKeys: string[] = [];
+  const providedKeysTrimmed = prefixCommands?.trim();
+
+  if (providedKeysTrimmed && providedKeysTrimmed.length > 0) {
+    activePrefixKeys = providedKeysTrimmed
+      .split(",")
+      .map(key => key.trim())
+      // Filter out any empty strings resulting from splitting (e.g., "key1,,key2")
+      .filter(key => key.length > 0); // Only check for non-empty keys
+
+    // Ensure uniqueness
+    activePrefixKeys = Array.from(new Set(activePrefixKeys));
   }
+  // If prefixCMD is null, undefined, or empty, activePrefixKeys remains []
 
-  let activePrefixCommands = [...DEFAULT_PREFIX_COMMANDS];
-  const prefixes = prefixCommands?.split(",");
+  // Generate placeholder strings using the keys directly
+  const placeholderString = activePrefixKeys.map(key => `{{${key}}}`).join("\n");
 
-  prefixes?.forEach((cmd) => {
-    if (cmd.startsWith("!")) {
-      activePrefixCommands = activePrefixCommands.filter((c) => c !== cmd.substring(1));
-    } else {
-      activePrefixCommands.push(cmd);
-    }
-  });
-
-  activePrefixCommands = Array.from(new Set(activePrefixCommands));
-
-  activePrefixCommands.reverse().forEach((cmd) => {
-    content = `! ${SUPPORTED_PREFIX_COMMANDS[cmd]}\n` + content;
-  });
-
-  return content;
+  return placeholderString + (placeholderString.length > 0 ? "\n" : ""); // Add trailing newline if needed
 }
 
 /**
@@ -135,9 +122,9 @@ export function getQuickPrompt(
 
 /**
  * Builds the final, fully formatted prompt content string.
- * 1. Merges prompt properties and standard replacements (standard ones take priority).
- * 2. Applies prefix commands (e.g., language directives) to the base content.
- * 3. Uses `placeholderFormatter` to substitute all placeholders, including {{p:promptProperty}} and {{file:...}}.
+ * 1. Generates prefix placeholders based on prefixCMD property.
+ * 2. Prepends these placeholders to the original content.
+ * 3. Uses `placeholderFormatter` to substitute all placeholders based on prompt properties and runtime replacements.
  *
  * @param prompt The PromptProps object containing the base content and configuration.
  * @param replacements An object containing the values for standard placeholders (clipboard, selection, etc.).
@@ -149,23 +136,28 @@ export function buildFormattedPromptContent(
   replacements: SpecificReplacements,
   relativeRootDir?: string,
 ): string {
-  const currentContent = prompt.content || ""; // Ensure content is a string
+  const currentContent = prompt.content || "";
 
-  // Step 1: Merge prompt properties and standard replacements.
-  // Standard replacements (like input, clipboard) should override prompt properties if names conflict.
+  // 1. Generate prefix placeholder string using the NEW HJSON-driven logic
+  const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefixCMD);
+
+  // 2. Prepend placeholders to the original content
+  const contentWithPrefixPlaceholders = prefixPlaceholderString + currentContent;
+
+  // 3. Merge the fully processed prompt object with runtime replacements.
   const mergedReplacements = {
-    ...prompt, // Spread prompt properties first (lower priority)
-    ...replacements, // Spread standard replacements second (higher priority)
-    promptTitles: replacements.promptTitles || getIndentedPromptTitles(), // Ensure promptTitles is fresh
+    ...prompt,
+    ...replacements,
+    promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
   };
 
-  // Step 2: Apply prefix commands
-  const processedContent = applyPrefixCommandsToContent(currentContent, prompt.prefixCMD);
-
-  // Step 3: Call the unified placeholderFormatter with the merged replacements
-  const formattedContent = placeholderFormatter(processedContent, mergedReplacements, relativeRootDir, {
-    resolveFile: true,
-  });
+  // 4. Call placeholderFormatter on the combined content
+  const formattedContent = placeholderFormatter(
+    contentWithPrefixPlaceholders,
+    mergedReplacements,
+    relativeRootDir,
+    { resolveFile: true }
+  );
 
   return formattedContent;
 }
@@ -204,7 +196,7 @@ export function getPlaceholderIcons(
 
 /**
  * Generates a string containing a hierarchically indented list of all prompt titles.
- * Each title is followed by a short summary of its content (first 20 chars, excluding prefix commands).
+ * Each title is followed by a short summary of its content (first 20 chars).
  * Used for the `{{promptTitles}}` placeholder.
  *
  * @returns A newline-separated string of indented prompt titles and summaries.
@@ -219,15 +211,16 @@ export function getIndentedPromptTitles(): string {
     // Get content summary (first 20 characters)
     let contentSummary = "";
     if (prompt.content) {
-      // Process content, apply prefix commands
+      // Use original content for summary
       let processedContent = prompt.content;
 
-      // Apply prefix commands
-      processedContent = applyPrefixCommandsToContent(processedContent, prompt.prefixCMD);
+      // Generate and prepend placeholders
+      const prefixPlaceholders = generatePrefixPlaceholders(prompt.prefixCMD);
+      processedContent = prefixPlaceholders + processedContent;
 
-      // Remove newlines and prefix command lines from content for better summary display
+      // Remove newlines and placeholder lines from content for better summary display
       const cleanContent = processedContent
-        .replace(/^! .*\n/gm, "") // Remove prefix command lines
+        .replace(/{{.*?}}\n/g, "") // Remove placeholder lines
         .replace(/\n/g, " ") // Replace newlines with spaces
         .trim();
 
