@@ -216,7 +216,10 @@ export function PromptList({
   const promptItems = displayPrompts
     .map((prompt, index) => {
       let promptSpecificRootDir: string | undefined = undefined;
-      if (prompt.filePath) {
+
+      if (prompt.isTemporary && prompt.temporaryDirSource) {
+        promptSpecificRootDir = prompt.temporaryDirSource;
+      } else if (prompt.filePath) {
         let longestMatchLength = 0;
         for (const rootDir of configuredRootDirs) {
           const normalizedRootDir = path.normalize(rootDir);
