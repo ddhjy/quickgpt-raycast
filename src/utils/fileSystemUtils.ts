@@ -28,8 +28,6 @@ export const BINARY_MEDIA_EXTENSIONS = new Set([
   ".iso",
   ".zip",
   ".rar",
-  ".xcodeproj",
-  ".xcworkspace",
   ".tiktoken",
   ".svg",
   ".webp",
@@ -46,6 +44,8 @@ export const IGNORED_PATTERNS = [
   /^\.cache$/,
   /^(bower_components|jspm_packages)$/,
   /^\.DS_Store$/,
+  /\.xcodeproj$/,
+  /\.xcworkspace$/,
 ];
 
 /**
