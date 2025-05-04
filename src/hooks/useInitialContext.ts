@@ -33,27 +33,24 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       }
 
       try {
-        try {
-          const selectedItems = await getSelectedFinderItems();
-          if (selectedItems.length > 0) {
-            let content = "";
-            for (const item of selectedItems) {
-              content += `{{file:${item.path}}}` + "\n";
-            }
-            return content.trim();
+        const selectedItems = await getSelectedFinderItems();
+        if (selectedItems.length > 0) {
+          let content = "";
+          const finderMarker = "__IS_FINDER_SELECTION__";
+          for (const item of selectedItems) {
+            content += `${finderMarker}{{file:${item.path}}}\n`;
           }
-        } catch (finderError) {
-          // Continue execution
+          return content.trim();
         }
+      } catch (finderError) {
+        console.debug("Failed to get selected Finder items:", finderError);
+      }
 
+      try {
         const text = await getSelectedText();
-        if (text) {
-          return text;
-        }
-
-        return "";
+        return text || "";
       } catch (error) {
-        console.info("No text selected");
+        console.info("No text selected or failed to get text");
         return "";
       }
     };

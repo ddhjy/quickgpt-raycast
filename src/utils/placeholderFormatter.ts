@@ -6,7 +6,9 @@
  * - Fallback handling with alias support
  * - Property path access for referencing prompt object properties
  *
- * The formatter processes all placeholders in a single RegExp scan for efficiency.
+ * The formatter processes placeholders in a two-phase approach for better control:
+ * 1. Recursive phase: iteratively resolves property references and fallbacks
+ * 2. One-time phase: processes standard context placeholders, files, and options
  */
 
 import fs from "fs";
@@ -52,6 +54,33 @@ const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim(
 
 const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
   (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
+
+// Special marker for Finder-selected files
+const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
+
+/**
+ * Determines if a placeholder should be recursively processed in phase 1.
+ * Property references and fallback chains not starting with standard placeholder are recursive.
+ * 
+ * @param directive The placeholder directive (file, option, or undefined)
+ * @param body The placeholder body text
+ * @returns True if this placeholder should be processed recursively
+ */
+function isRecursivePlaceholder(directive: string | undefined, body: string): boolean {
+  if (directive) return false; // file: or option: are not recursive
+
+  const parts = body.split('|');
+  const firstPartTrimmed = parts[0].trim();
+  const potentialStandardKey = toPlaceholderKey(firstPartTrimmed);
+
+  // Check if the first part is a standard placeholder key or alias
+  if (potentialStandardKey && potentialStandardKey in PLACEHOLDERS) {
+    // If it starts with a standard placeholder (e.g., {{input|prop}}), handle in phase 2, non-recursive
+    return false;
+  }
+  // If not starting with a standard placeholder, it's a property reference or property-based fallback (recursive)
+  return true;
+}
 
 /**
  * Builds an effective replacement map from raw replacements.
@@ -121,7 +150,7 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
   try {
     const stats = fs.statSync(absOrErr);
     if (stats.isFile()) {
-      // Escape placeholders in file content by replacing {{ with \\{{ to prevent further processing
+      // Escape placeholders in file content by replacing {{ with \\{\\{ to prevent further processing
       let fileContent = fs.readFileSync(absOrErr, "utf-8");
       // Use a temporary replacement that's unlikely to exist in the content
       fileContent = fileContent.replace(/{{/g, "\\{\\{");
@@ -185,8 +214,11 @@ export function getPropertyByPath(obj: unknown, path: string): unknown {
 /* Synchronous Placeholder Formatter */
 
 /**
- * Formats a string by replacing placeholders with actual values.
- * Handles both regular placeholders and file content placeholders.
+ * Formats a string by replacing placeholders with actual values using a two-phase approach:
+ * 1. Iteratively resolves property references and fallbacks until stable
+ * 2. One-time processing of standard context placeholders, files, and options
+ *
+ * Special handling for {{selection}} containing file paths from Finder ensures correct file resolution.
  *
  * @param text The text containing placeholders to format
  * @param incoming The replacement values for placeholders and any other properties for p: notation
@@ -198,56 +230,119 @@ export function placeholderFormatter(
   text: string,
   incoming: SpecificReplacements & Record<string, unknown> = {},
   root?: string,
-  options: { resolveFile?: boolean; recursionLevel?: number } = {
-    resolveFile: false,
-    recursionLevel: 0,
-  },
+  options: { resolveFile?: boolean } = { resolveFile: false },
 ): string {
-  // Limit recursion depth to prevent infinite recursion
-  const MAX_RECURSION = 3;
-  const currentLevel = options.recursionLevel || 0;
-
-  if (currentLevel > MAX_RECURSION) {
-    console.warn(`Maximum recursion depth (${MAX_RECURSION}) exceeded, stopping parsing`);
-    return text;
-  }
+  if (!text) return text;
 
   const map = buildEffectiveMap(incoming);
 
+  // === Phase 1: Iterative processing of property references and fallbacks ===
+  let currentText = text;
+  let iteration = 0;
+  const MAX_ITERATIONS = 10; // Prevent infinite recursion
+
+  // Continue until no more changes or reach max iterations
+  while (iteration < MAX_ITERATIONS) {
+    let changedInIteration = false;
+    iteration++;
+
+    // Reset regex state
+    PH_REG.lastIndex = 0;
+
+    const iterationResult = currentText.replace(PH_REG, (match, directive, body) => {
+      // Only process recursive placeholders in this phase
+      if (!isRecursivePlaceholder(directive, body)) {
+        return match; // Leave non-recursive placeholders for phase 2
+      }
+
+      const result = processPlaceholder(directive, body, incoming, map);
+      // Check if replacement actually changed anything
+      if (result !== match) {
+        changedInIteration = true;
+      }
+      return result;
+    });
+
+    // Update current text for next iteration
+    currentText = iterationResult;
+
+    // If nothing changed in this iteration, we're done
+    if (!changedInIteration) {
+      break;
+    }
+  }
+
+  if (iteration >= MAX_ITERATIONS) {
+    console.warn(`Maximum placeholder recursion depth (${MAX_ITERATIONS}) exceeded, some placeholders may not be fully resolved`);
+  }
+
+  // === Phase 2: One-time processing of standard placeholders, files, and options ===
   // Reset regex state
   PH_REG.lastIndex = 0;
 
-  let result = text.replace(PH_REG, (_, directive: string | undefined, body: string) => {
-    /* File placeholders */
+  currentText = currentText.replace(PH_REG, (match, directive, body) => {
+    const trimmedBody = body.trim();
+
+    // Skip already processed recursive placeholders
+    if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
+      // 检查是否为回退链 (fallback chain)
+      if (trimmedBody.includes('|')) {
+        // 处理回退链
+        const result = processPlaceholder(directive, trimmedBody, incoming, map);
+        if (result !== match) {
+          return result;
+        }
+      }
+      return match;
+    }
+
+    // Handle file: directive
     if (directive === "file") {
       // If file resolution is disabled, return placeholder as-is
       if (!options.resolveFile) {
-        return `{{file:${body}}}`;
+        return `{{file:${trimmedBody}}}`;
       }
-
-      const result = resolveFilePlaceholderSync(body, root);
-      return result;
+      return resolveFilePlaceholderSync(trimmedBody, root);
     }
 
-    /* Regular placeholders */
-    return processPlaceholder(directive, body, incoming, map);
+    // Handle option: directive
+    if (directive === "option") {
+      // Return the original placeholder - this will be detected by PromptListItem
+      return `{{option:${trimmedBody}}}`;
+    }
+
+    // Handle standard context placeholders (including those with fallbacks)
+    const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map);
+
+    // Special handling for values from Finder selection
+    if (resolvedValue.startsWith(FINDER_SELECTION_MARKER)) {
+      // Remove the marker
+      const actualValue = resolvedValue.substring(FINDER_SELECTION_MARKER.length);
+
+      // Check if it's a file placeholder
+      const filePathMatch = actualValue.match(/^{{file:([^}]+)}}$/);
+      if (filePathMatch && filePathMatch[1]) {
+        if (options.resolveFile) {
+          // Resolve file content when resolveFile is true
+          return resolveFilePlaceholderSync(filePathMatch[1], root);
+        } else {
+          // Just return the cleaned file placeholder without marker
+          return actualValue;
+        }
+      }
+
+      // If not a file placeholder or invalid format, return without marker
+      return actualValue;
+    }
+
+    // For all other placeholders, return the resolved value
+    return resolvedValue;
   });
 
-  // Process nested placeholders
-  if (PH_REG.test(result) && currentLevel < MAX_RECURSION) {
-    // Reset regex state
-    PH_REG.lastIndex = 0;
-    // Process recursively once
-    result = placeholderFormatter(result, incoming, root, {
-      ...options,
-      recursionLevel: currentLevel + 1,
-    });
-  }
-
   // Restore escaped placeholders back to their original form
-  result = result.replace(/\\\{\\\{/g, "{{");
+  currentText = currentText.replace(/\\\{\\\{/g, "{{");
 
-  return result;
+  return currentText;
 }
 
 /* Placeholder Resolution */
