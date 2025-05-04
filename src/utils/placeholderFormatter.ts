@@ -328,25 +328,13 @@ function processPlaceholder(
     // Check if it's a standard placeholder that has a value in the map
     const standardKey = toPlaceholderKey(content);
     if (standardKey && map.has(standardKey)) {
-      const value = map.get(standardKey)!;
-
-      // For certain placeholders, escape any nested placeholders
-      // to prevent them from being processed
-      if (standardKey === "clipboard" || standardKey === "selection" ||
-        standardKey === "browserContent" || standardKey === "promptTitles") {
-        return value.replace(/{{/g, "\\{\\{");
-      }
-
-      return value;
+      return map.get(standardKey)!;
     }
 
     // Otherwise use the provided value if it's a string
     if (typeof providedValue === "string") {
       // Don't replace with empty strings
-      if (providedValue.trim() !== "") {
-        return providedValue;
-      }
-      return `{{${body}}}`;
+      return providedValue.trim() !== "" ? providedValue : `{{${body}}}`;
     }
     // Convert non-string values to string representation
     return String(providedValue);
@@ -371,12 +359,6 @@ function processPlaceholder(
 
     const standardValue = map.get(key);
     if (standardValue !== undefined && standardValue !== "") {
-      // For certain placeholders, escape any nested placeholders
-      if (key === "clipboard" || key === "selection" ||
-        key === "browserContent" || key === "promptTitles") {
-        return standardValue.replace(/{{/g, "\\{\\{");
-      }
-
       return standardValue;
     }
   }
