@@ -46,6 +46,7 @@ export const IGNORED_PATTERNS = [
   /^\.DS_Store$/,
   /\.xcodeproj$/,
   /\.xcworkspace$/,
+  /__pycache__/,
 ];
 
 /**
