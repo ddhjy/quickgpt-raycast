@@ -1,7 +1,7 @@
 import { Cache, showToast, Toast } from "@raycast/api";
 
 const CACHE_KEY = "temporaryPromptDirectories";
-const EXPIRY_DURATION = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+const EXPIRY_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 export interface TemporaryDirectoryInfo {
   path: string;
@@ -22,17 +22,22 @@ export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): Tempora
   const elapsedMs = now - dirInfo.lastUsedAt;
   const remainingMs = Math.max(0, EXPIRY_DURATION - elapsedMs);
 
-  // Calculate remaining hours
-  const remainingHours = remainingMs / (60 * 60 * 1000);
+  // Calculate remaining days and hours
+  const remainingDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+  const remainingHours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
   // Format remaining time text
   let remainingText = "";
-  if (remainingHours >= 1) {
-    // For times over 1 hour, show with 1 decimal place
-    remainingText = `${remainingHours.toFixed(1)}h`;
+  if (remainingDays >= 1) {
+    remainingText = `${remainingDays}d ${remainingHours}h`;
+  } else if (remainingHours >= 1) {
+    remainingText = `${remainingHours}h ${remainingMinutes}m`;
   } else {
-    // For less than 1 hour, show as decimal hour with one decimal place
-    remainingText = `${remainingHours.toFixed(1)}h`;
+    remainingText = `${remainingMinutes}m`;
+  }
+  if (remainingMs === 0) {
+    remainingText = 'expired';
   }
 
   return {
