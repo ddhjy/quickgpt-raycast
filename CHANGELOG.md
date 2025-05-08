@@ -18,6 +18,8 @@
 
 ### Changed
 
+- Temporary directory expiration time changed from 1 day to 7 days.
+- Improved display of remaining time for temporary directories to show days, hours, and minutes as appropriate.
 - **重构占位符解析逻辑:**
   - 属性引用占位符 (`{{propertyName}}`) 和不以标准上下文开头的回退占位符 (`{{ph1|ph2|...}}`) 现在会进行循环解析直至稳定。
   - 标准上下文占位符 (`{{input}}`, `{{clipboard}}` 等)、**原始的**文件内容占位符 (`{{file:path}}`) 和动态选项占位符 (`{{option:key}}`) 在循环解析完成后仅进行一次性解析。
