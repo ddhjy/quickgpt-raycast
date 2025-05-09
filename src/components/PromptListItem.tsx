@@ -193,47 +193,80 @@ export function PromptListItem({
           console.error("Failed to add temporary directory:", error);
           await showToast({
             title: "Error",
-            message: `Failed to add temporary directory: ${error}`,
+            message: `Failed to add temporary directory: ${String(error)}`,
             style: Toast.Style.Failure,
           });
         }
       };
 
-      if (temporaryDirs.length > 0) {
-        const removeActions = temporaryDirs.map((dir) => (
+      const actionsList: React.ReactElement[] = [];
+
+      // Action to add a new temporary directory
+      actionsList.push(
+        <Action
+          key="add-new-temp-dir"
+          title="Add Temporary Directory from Finder"
+          icon={Icon.Plus}
+          onAction={handleAdd}
+        />,
+      );
+
+      // Action to remove the current temporary directory if this prompt is served from one
+      if (prompt.isTemporary && prompt.temporaryDirSource) {
+        actionsList.push(
           <Action
-            key={dir.path}
-            title={`Remove: ${path.basename(dir.path)}`}
+            key={`remove-source-temp-dir-${prompt.temporaryDirSource}`}
+            title={`Remove This Temp Dir: ${path.basename(prompt.temporaryDirSource)}`}
+            icon={Icon.Eject}
+            style={Action.Style.Destructive}
+            onAction={() => {
+              if (prompt.temporaryDirSource) {
+                removeTemporaryDirectory(prompt.temporaryDirSource);
+                promptManager.reloadPrompts();
+                onRefreshNeeded();
+              }
+            }}
+          />,
+        );
+      }
+
+      // List actions to remove other temporary directories from the cache
+      const otherTemporaryDirs = temporaryDirs.filter(
+        (dir) => !(prompt.isTemporary && prompt.temporaryDirSource === dir.path),
+      );
+
+      otherTemporaryDirs.forEach((dir) => {
+        actionsList.push(
+          <Action
+            key={`remove-listed-temp-dir-${dir.path}`}
+            title={`Remove: ${path.basename(dir.path)} (Expires: ${dir.remainingText})`}
             icon={Icon.Trash}
             onAction={() => {
               removeTemporaryDirectory(dir.path);
               promptManager.reloadPrompts();
               onRefreshNeeded();
             }}
-          />
-        ));
-
-        return (
-          <>
-            <Action title="Add Temporary Directory" icon={Icon.Plus} onAction={handleAdd} />
-            {removeActions}
-            {temporaryDirs.length > 1 && (
-              <Action
-                title="Remove All Temporary Directories"
-                icon={Icon.Trash}
-                style={Action.Style.Destructive}
-                onAction={() => {
-                  removeAllTemporaryDirectories();
-                  promptManager.reloadPrompts();
-                  onRefreshNeeded();
-                }}
-              />
-            )}
-          </>
+          />,
         );
-      } else {
-        return <Action title="Add Selected Directory" icon={Icon.Plus} onAction={handleAdd} />;
+      });
+
+      // Action to remove all temporary directories
+      if (temporaryDirs.length > 0) {
+        actionsList.push(
+          <Action
+            key="remove-all-temp-dirs"
+            title="Remove All Temporary Directories"
+            icon={Icon.DeleteDocument}
+            style={Action.Style.Destructive}
+            onAction={() => {
+              removeAllTemporaryDirectories();
+              promptManager.reloadPrompts();
+              onRefreshNeeded();
+            }}
+          />,
+        );
       }
+      return <>{actionsList}</>;
     } else if (prompt.identifier === "open-custom-prompts-dir") {
       return handleCustomPromptsDirectoryActions();
     } else if (prompt.identifier === "open-scripts-dir") {
@@ -361,22 +394,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-              ...accessory,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            }
+            ...accessory,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-            {
-              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            },
-          ]
+          {
+            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          },
+        ]
         : []),
     ];
   };
