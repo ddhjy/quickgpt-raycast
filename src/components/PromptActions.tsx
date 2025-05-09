@@ -9,6 +9,7 @@ import {
   showToast,
   open,
   environment,
+  Navigation,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -20,7 +21,10 @@ import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/p
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
+  removeTemporaryDirectory,
 } from "../stores/TemporaryPromptDirectoryStore";
+import promptManager from "../managers/PromptManager";
+import path from "path";
 
 interface Preferences {
   primaryAction: string;
@@ -50,6 +54,8 @@ interface ActionItem {
  * @param promptSpecificRootDir Root directory for file placeholder resolution
  * @param actions An optional array of action names specified in the prompt definition.
  * @param scripts An array of available script information.
+ * @param navigation The Navigation object from useNavigation() hook.
+ * @param onRefreshNeeded A callback function to be called when the prompt manager needs to refresh
  * @returns An array of React elements representing the sorted Raycast Actions.
  */
 export function generatePromptActions(
@@ -58,6 +64,8 @@ export function generatePromptActions(
   promptSpecificRootDir: string | undefined,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
+  navigation: Navigation,
+  onRefreshNeeded?: () => void,
 ) {
   const preferences = getPreferenceValues<Preferences>();
   const configuredActions =
@@ -242,6 +250,33 @@ export function generatePromptActions(
   ];
 
   const allActionItems: ActionItem[] = [...aiCallerActions, ...scriptActions, ...baseActionItems];
+
+  if (prompt.isTemporary && prompt.temporaryDirSource) {
+    const tempDirSourcePath = prompt.temporaryDirSource;
+    allActionItems.push({
+      name: `remove_temp_dir_source_${path.basename(tempDirSourcePath)}`,
+      displayName: `Remove Temp Dir: ${path.basename(tempDirSourcePath)}`,
+      condition: true,
+      action: (
+        <Action
+          title={`Remove Temp Dir: ${path.basename(tempDirSourcePath)}`}
+          icon={Icon.Eject}
+          style={Action.Style.Destructive}
+          onAction={async () => {
+            removeTemporaryDirectory(tempDirSourcePath);
+            promptManager.reloadPrompts();
+            if (onRefreshNeeded) {
+              onRefreshNeeded();
+            }
+            await showToast(Toast.Style.Success, "Temporary Directory Removed", `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`);
+            if (navigation.canPop) {
+              navigation.pop();
+            }
+          }}
+        />
+      ),
+    });
+  }
 
   const eligibleActions = allActionItems.filter((item) => item.condition);
 
