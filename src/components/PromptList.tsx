@@ -17,6 +17,7 @@ interface PromptListProps {
   browserContent: string;
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
+  externalOnRefreshNeeded?: () => void;
 }
 
 /**
@@ -31,15 +32,17 @@ interface PromptListProps {
  * @param props.browserContent Content fetched from the active browser tab.
  * @param props.allowedActions Optional list of allowed action names for the prompts.
  * @param props.initialScripts Optional initial list of scripts (avoids re-fetching).
+ * @param props.externalOnRefreshNeeded Optional callback from parent to trigger a full refresh.
  */
 export function PromptList({
-  prompts,
+  prompts: initialPrompts,
   searchMode = false,
   selectionText,
   currentApp,
   browserContent,
   allowedActions,
   initialScripts,
+  externalOnRefreshNeeded,
 }: PromptListProps) {
   const [searchText, setSearchText] = useState<string>("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -66,6 +69,7 @@ export function PromptList({
   }, []);
 
   const forceUpdate = () => setRefreshKey((prev) => prev + 1);
+  const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
 
   const handlePinToggle = (prompt: PromptProps) => {
     const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
@@ -88,7 +92,7 @@ export function PromptList({
 
   const filteredPrompts = useMemo(() => {
     let result;
-    const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : prompts;
+    const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : initialPrompts;
 
     if (searchMode && searchText.trim().length > 0) {
       result = sourcePrompts.filter((prompt) => {
@@ -97,10 +101,10 @@ export function PromptList({
         return titleMatch || pinyinMatch;
       });
     } else {
-      result = prompts;
+      result = initialPrompts;
     }
     return result;
-  }, [prompts, searchMode, searchText]);
+  }, [initialPrompts, searchMode, searchText]);
 
   const displayPrompts = useMemo(() => {
     const pinnedOrder = pinsManager.pinnedIdentifiers();
@@ -186,6 +190,7 @@ export function PromptList({
           initialScripts={initialScripts}
           prompts={promptsToShow}
           searchMode={false}
+          externalOnRefreshNeeded={externalOnRefreshNeeded}
         />,
       );
       return;
@@ -200,6 +205,7 @@ export function PromptList({
     browserContent,
     allowedActions,
     initialScripts,
+    externalOnRefreshNeeded,
   ]);
 
   const handleSearchTextChange = (text: string) => {
@@ -255,7 +261,7 @@ export function PromptList({
           onPinToggle={handlePinToggle}
           activeSearchText={activeSearchText}
           scripts={scripts}
-          onRefreshNeeded={forceUpdate}
+          onRefreshNeeded={effectiveOnRefreshNeeded}
         />
       );
     })

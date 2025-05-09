@@ -13,6 +13,7 @@ import {
   Clipboard,
   getSelectedFinderItems,
   Image,
+  useNavigation,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/PromptManager";
@@ -76,7 +77,7 @@ export function PromptListItem({
   scripts,
   onRefreshNeeded,
 }: PromptListItemProps) {
-  // Use temporary directory list with expiration time information
+  const navigation = useNavigation();
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
   const [refreshTimer, setRefreshTimer] = useState(0);
 
@@ -301,24 +302,58 @@ export function PromptListItem({
         />
       );
     } else if (prompt.subprompts) {
-      // Action for folder prompts
-      return (
+      // 文件夹类型提示词的操作
+      const folderActions: React.ReactElement[] = [];
+
+      // 1. 打开文件夹操作 (通常是主要操作)
+      folderActions.push(
         <Action.Push
+          key="open-folder"
           title="Open"
-          icon={prompt.icon ?? "🔖"}
+          icon={prompt.icon ?? Icon.FolderOpen} // 使用 Icon.FolderOpen 更合适
           target={
             <PromptList
               prompts={prompt.subprompts}
-              // Provide default empty strings for potentially undefined replacements
               selectionText={replacements.selection ?? ""}
               currentApp={replacements.currentApp ?? ""}
               browserContent={replacements.browserContent ?? ""}
-              allowedActions={allowedActions || prompt.actions}
+              allowedActions={allowedActions || prompt.actions} // 这些是子项的操作
               initialScripts={scripts}
+              externalOnRefreshNeeded={onRefreshNeeded} // 传递刷新回调
             />
           }
-        />
+        />,
       );
+
+      // 2. 如果来源于临时目录，添加移除源目录的操作
+      if (prompt.isTemporary && prompt.temporaryDirSource) {
+        const tempDirSourcePath = prompt.temporaryDirSource; // 闭包捕获
+        folderActions.push(
+          <Action
+            key={`remove-folder-temp-dir-${tempDirSourcePath}`}
+            title={`Remove Temp Dir: ${path.basename(tempDirSourcePath)}`}
+            icon={Icon.Eject} // 或者 Icon.Trash
+            style={Action.Style.Destructive}
+            onAction={async () => {
+              removeTemporaryDirectory(tempDirSourcePath);
+              promptManager.reloadPrompts();
+              if (onRefreshNeeded) {
+                onRefreshNeeded();
+              }
+              await showToast(
+                Toast.Style.Success,
+                "Temporary Directory Removed",
+                `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
+              );
+              // 如果当前视图就是这个文件夹或者其子项，则返回上一级
+              if (navigation.canPop) {
+                navigation.pop();
+              }
+            }}
+          />,
+        );
+      }
+      return <>{folderActions}</>; // 以 React Fragment 包裹返回
     } else {
       // Default actions for regular prompts
       const optionKeys = findOptionPlaceholders(prompt);
@@ -349,17 +384,15 @@ export function PromptListItem({
         );
       } else {
         // Generate standard actions
-        // Wrap the result in a fragment
         const generated = generatePromptActions(
           prompt,
           replacements,
           promptSpecificRootDir,
           allowedActions || prompt.actions,
           scripts,
+          navigation,
+          onRefreshNeeded,
         );
-        // Ensure generated is always an array before wrapping in ActionPanel
-        // If generatePromptActions can return a single element, handle that case.
-        // Assuming it always returns an array or null/undefined based on previous structure:
         return generated ? <>{generated}</> : null;
       }
     }
@@ -369,6 +402,7 @@ export function PromptListItem({
     promptSpecificRootDir,
     allowedActions,
     scripts,
+    navigation,
     onRefreshNeeded,
     temporaryDirs,
     refreshTimer,
