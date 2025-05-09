@@ -1,5 +1,6 @@
 # QuickGPT for Raycast
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AsyncFuncAI/deepwiki-open)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 QuickGPT is a powerful prompt management tool designed for Raycast. It enhances your workflow by enabling you to efficiently manage, access, and utilize a vast library of prompts directly within the Raycast interface. Apply prompts instantly to selected text, clipboard content, or direct input, leveraging a sophisticated placeholder system and seamless integration capabilities.
