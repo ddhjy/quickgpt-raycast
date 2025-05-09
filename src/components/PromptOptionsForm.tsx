@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, ActionPanel } from "@raycast/api";
+import { Form, ActionPanel, useNavigation } from "@raycast/api";
 import { generatePromptActions } from "./PromptActions";
 import { getPropertyByPath } from "../utils/placeholderFormatter";
 import { PromptProps } from "../managers/PromptManager";
@@ -31,6 +31,7 @@ export function PromptOptionsForm({
   promptSpecificRootDir,
   scripts,
 }: OptionsFormProps) {
+  const navigation = useNavigation();
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
   const [selectedTextInputs, setSelectedTextInputs] = useState<{ [key: string]: string }>({});
 
@@ -102,6 +103,7 @@ export function PromptOptionsForm({
               promptSpecificRootDir,
               prompt.actions,
               scripts,
+              navigation,
             )}
           </>
         </ActionPanel>

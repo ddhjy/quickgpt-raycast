@@ -9,6 +9,7 @@
 - Adds a new `{{option:key}}` placeholder allowing users to create dynamic dropdowns within prompts based on prompt attributes. See [README](https://github.com/your-repo/quickgpt-raycast#dynamic-options-placeholder-optionkey) for details.
 - Add support for global variables via `config.json`.
 - 在 "Manage temporary directory" 提示词的选项中，如果该提示词本身来自一个临时目录，则新增一个操作以移除其所在的临时目录。
+- 为所有来源于临时目录的提示词（而不仅限于 "Manage temporary directory" 提示词）添加了操作选项，用户可以直接从该提示词的操作面板中移除其所在的临时目录。
 
 ### Fixed
 
