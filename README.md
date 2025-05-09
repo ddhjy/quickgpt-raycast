@@ -49,6 +49,12 @@ Configure QuickGPT through Raycast's preferences (`Raycast Settings -> Extension
     - Set a directory containing AppleScript files (`.applescript`, `.scpt`). These scripts will appear as executable actions in QuickGPT.
 3.  **Default Actions (`Actions`):**
     - Define a comma-separated list of action names (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) that should appear first in the Action Panel or be triggered by `⌘ + Enter`.
+4. **Editor Application:**
+   - In Raycast's Settings -> Extensions -> QuickGPT, locate the setting item named "Editor Application."
+   - Through this setting, you can select an installed application to open and edit prompt files (`.hjson`).
+   - By default, this option is set to `Cursor`. If the selected application is not installed, or if `Cursor` (as the default value) is not installed, you may encounter errors when attempting to edit files.
+5.  **Open Custom Prompts Directory In (打开自定义提示目录于):**
+    - Specifies the application to use when opening the custom prompts directory via the action menu (e.g., "Finder", "Visual Studio Code").
 
 ## Usage
 
