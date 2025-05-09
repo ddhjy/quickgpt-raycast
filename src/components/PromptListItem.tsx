@@ -14,6 +14,7 @@ import {
   getSelectedFinderItems,
   Image,
   useNavigation,
+  Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/PromptManager";
@@ -34,6 +35,19 @@ import {
 } from "../stores/TemporaryPromptDirectoryStore";
 import promptManager from "../managers/PromptManager";
 import fs from "fs";
+
+interface QuickGPTExtensionPreferences {
+  customPromptsDirectory?: string;
+  customPromptsDirectory1?: string;
+  customPromptsDirectory2?: string;
+  customPromptsDirectory3?: string;
+  customPromptsDirectory4?: string;
+  scriptsDirectory?: string;
+  aiCallerExtensionTarget?: string;
+  aiProviderNames?: string;
+  openCustomPromptsDirectoryIn?: string;
+  customEditor: Application;
+}
 
 interface PromptListItemProps {
   prompt: PromptProps;
@@ -310,7 +324,7 @@ export function PromptListItem({
         <Action.Push
           key="open-folder"
           title="Open"
-          icon={prompt.icon ?? Icon.FolderOpen} // 使用 Icon.FolderOpen 更合适
+          icon={prompt.icon ?? Icon.Folder} // 使用 Icon.FolderOpen 更合适
           target={
             <PromptList
               prompts={prompt.subprompts}
@@ -345,10 +359,8 @@ export function PromptListItem({
                 "Temporary Directory Removed",
                 `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
               );
-              // 如果当前视图就是这个文件夹或者其子项，则返回上一级
-              if (navigation.canPop) {
-                navigation.pop();
-              }
+              // If the current view is this folder or its children, go back to the previous level
+              navigation.pop();
             }}
           />,
         );
@@ -483,19 +495,51 @@ export function PromptListItem({
               />
               {prompt.filePath && (
                 <Action
-                  title="Edit with Cursor"
-                  icon={Icon.Code}
+                  title="Edit File"
+                  shortcut={{ modifiers: ["cmd"], key: "e" }}
+                  icon={Icon.Pencil}
                   onAction={async () => {
                     if (!prompt.filePath) return;
+
                     await Clipboard.copy(prompt.title);
-                    const configDir = path.dirname(prompt.filePath);
-                    await runAppleScript(`do shell script "open -a Cursor '${configDir}' '${prompt.filePath}'"`);
-                    await closeMainWindow();
-                    await showToast({
-                      title: "Copied title",
-                      message: prompt.title,
-                      style: Toast.Style.Success,
-                    });
+
+                    const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
+                    const editorApp = preferences.customEditor;
+
+                    let editorDisplayName = editorApp.name;
+                    if (editorDisplayName.endsWith(".app")) {
+                      editorDisplayName = editorDisplayName.slice(0, -4);
+                    }
+
+                    try {
+                      let openCommand: string;
+
+                      if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                        openCommand = `open -b '${editorApp.bundleId}' '${prompt.filePath}'`;
+                      } else {
+                        openCommand = `open -a '${editorApp.path}' '${prompt.filePath}'`;
+                      }
+
+                      await runAppleScript(`do shell script "${openCommand}"`);
+
+                      await closeMainWindow();
+
+                      const fileName = path.basename(prompt.filePath);
+
+                      await showToast({
+                        title: "Opening File",
+                        message: `Opening ${fileName} with ${editorDisplayName}`,
+                        style: Toast.Style.Success,
+                      });
+
+                    } catch (error) {
+                      console.error("Failed to open editor:", error);
+                      await showToast({
+                        title: "Error Opening Editor",
+                        message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                        style: Toast.Style.Failure,
+                      });
+                    }
                   }}
                 />
               )}
