@@ -269,9 +269,7 @@ export function generatePromptActions(
               onRefreshNeeded();
             }
             await showToast(Toast.Style.Success, "Temporary Directory Removed", `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`);
-            if (navigation.canPop) {
-              navigation.pop();
-            }
+            navigation.pop();
           }}
         />
       ),
