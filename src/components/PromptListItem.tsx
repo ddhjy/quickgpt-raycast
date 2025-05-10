@@ -513,11 +513,11 @@ export function PromptListItem({
 
                     try {
                       let openCommand: string;
-
+                      const configDir = path.dirname(prompt.filePath);
                       if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                        openCommand = `open -b '${editorApp.bundleId}' '${prompt.filePath}'`;
+                        openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
                       } else {
-                        openCommand = `open -a '${editorApp.path}' '${prompt.filePath}'`;
+                        openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
                       }
 
                       await runAppleScript(`do shell script "${openCommand}"`);
