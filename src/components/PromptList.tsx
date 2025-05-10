@@ -83,8 +83,8 @@ export function PromptList({
   };
 
   const configuredRootDirs = [
-    preferences.customPromptsDirectory1,
     preferences.customPromptsDirectory,
+    preferences.customPromptsDirectory1,
     preferences.customPromptsDirectory2,
     preferences.customPromptsDirectory3,
     preferences.customPromptsDirectory4,
