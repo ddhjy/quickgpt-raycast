@@ -254,7 +254,7 @@ export function PromptListItem({
         actionsList.push(
           <Action
             key={`remove-listed-temp-dir-${dir.path}`}
-            title={`Remove: ${path.basename(dir.path)} (Expires: ${dir.remainingText})`}
+            title={`Remove: ${path.basename(dir.path)}`}
             icon={Icon.Trash}
             onAction={() => {
               removeTemporaryDirectory(dir.path);
