@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "quickgpt",
   "title": "QuickGPT",
-  "description": "quickgpt is a tool to provide prompt for chatgpt.",
+  "description": "A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.",
   "icon": "command-icon.png",
   "author": "ddhjy2012",
   "categories": [
@@ -13,7 +13,7 @@
     {
       "name": "prompt-lab",
       "title": "Prompt Lab",
-      "description": "Runs the quickgpt tool, which provides prompts for chatgpt. Requires a view and accepts three optional arguments: clipboard text, selected text, and action.",
+      "description": "A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.",
       "mode": "view",
       "preferences": [
         {
