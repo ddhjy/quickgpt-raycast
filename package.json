@@ -67,7 +67,7 @@
         },
         {
           "name": "customEditor",
-          "title": "Editor application",
+          "title": "Editor Application",
           "description": "Select the application to open and edit prompt files (`.hjson`).",
           "type": "appPicker",
           "required": true,
