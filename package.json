@@ -52,18 +52,18 @@
           "type": "directory"
         },
         {
-          "name": "primaryAction",
-          "title": "Actions",
-          "required": false,
-          "description": "Set the primary action(s) to execute, separated by commas. Example: Copy, Paste, MyScript",
-          "type": "textfield"
-        },
-        {
           "name": "scriptsDirectory",
           "title": "Scripts Directory",
           "required": false,
           "description": "Directory containing AppleScript scripts. All .applescript and .scpt files in this directory will be loaded as executable scripts.",
           "type": "directory"
+        },
+        {
+          "name": "primaryAction",
+          "title": "Actions",
+          "required": false,
+          "description": "Set the primary action(s) to execute, separated by commas. Example: Copy, Paste, MyScript",
+          "type": "textfield"
         },
         {
           "name": "customEditor",
