@@ -67,7 +67,7 @@ QuickGPT is a sophisticated prompt management tool designed specifically for Ray
 3. **Build the Extension**
 
    ```bash
-   npm run build
+   npm run dev
    ```
 
 4. **Import into Raycast**
