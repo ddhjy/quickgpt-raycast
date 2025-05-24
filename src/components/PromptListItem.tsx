@@ -161,12 +161,21 @@ export function PromptListItem({
 
   if (prompt.identifier === "manage-temporary-directory") {
     if (temporaryDirs.length > 0) {
-      displayTitle = `Manage temporary directory (${temporaryDirs.length})`;
+      displayTitle = `Manage Temporary Directory (${temporaryDirs.length})`;
       displayIcon = Icon.Folder;
     } else {
       displayTitle = "Add temporary directory";
       displayIcon = Icon.Plus;
     }
+  }
+
+  // Handle Settings related options icons
+  if (prompt.identifier === "open-custom-prompts-dir") {
+    displayIcon = Icon.Folder;
+  } else if (prompt.identifier === "open-scripts-dir") {
+    displayIcon = Icon.Code;
+  } else if (prompt.identifier === "open-preferences") {
+    displayIcon = Icon.Gear;
   }
 
   // Memoize placeholder icons

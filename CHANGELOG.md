@@ -8,8 +8,8 @@
 - Adds the ability to select a temporary directory as a source for prompts.
 - Adds a new `{{option:key}}` placeholder allowing users to create dynamic dropdowns within prompts based on prompt attributes. See [README](https://github.com/your-repo/quickgpt-raycast#dynamic-options-placeholder-optionkey) for details.
 - Add support for global variables via `config.json`.
-- 在 "Manage temporary directory" 提示词的选项中，如果该提示词本身来自一个临时目录，则新增一个操作以移除其所在的临时目录。
-- 为所有来源于临时目录的提示词（而不仅限于 "Manage temporary directory" 提示词）添加了操作选项，用户可以直接从该提示词的操作面板中移除其所在的临时目录。
+- 在 "Manage Temporary Directory" 提示词的选项中，如果该提示词本身来自一个临时目录，则新增一个操作以移除其所在的临时目录。
+- 为所有来源于临时目录的提示词（而不仅限于 "Manage Temporary Directory" 提示词）添加了操作选项，用户可以直接从该提示词的操作面板中移除其所在的临时目录。
 - 新增“编辑器应用”偏好设置，允许用户通过应用选择器选择他们喜欢的应用程序来打开提示文件。默认为 Cursor。
 
 ### Fixed
@@ -21,6 +21,7 @@
 
 ### Changed
 
+- Settings 相关选项统一使用系统 icon 替代 emoji，包括 "Open custom prompts directory"、"Open scripts directory" 和 "Open preferences"，以保持与 "Manage Temporary Directory" 的一致性。
 - Temporary directory expiration time changed from 1 day to 7 days.
 - Improved display of remaining time for temporary directories to show days, hours, and minutes as appropriate.
 - **重构占位符解析逻辑:**
