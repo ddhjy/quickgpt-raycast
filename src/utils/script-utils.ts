@@ -29,17 +29,14 @@ export function scanScriptsDirectory(dir: string, relativePath = "", result: Scr
     const items = fs.readdirSync(dir);
 
     for (const item of items) {
-      // Ignore files and directories starting with #
       if (item.startsWith("#")) continue;
 
       const itemPath = path.join(dir, item);
       const itemStat = fs.statSync(itemPath);
 
       if (itemStat.isDirectory()) {
-        // Recursively scan subdirectories
         scanScriptsDirectory(itemPath, path.join(relativePath, item), result);
       } else if (item.endsWith(".applescript") || item.endsWith(".scpt")) {
-        // Use only the filename as display name, without the path
         const displayName = path.basename(item, path.extname(item));
 
         result.push({
@@ -66,7 +63,6 @@ export function scanScriptsDirectory(dir: string, relativePath = "", result: Scr
 export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
   const scripts: ScriptInfo[] = [];
 
-  // Get user-defined scripts
   if (scriptsDirectory) {
     try {
       const userScripts = scanScriptsDirectory(scriptsDirectory);

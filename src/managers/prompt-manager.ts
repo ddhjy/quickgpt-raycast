@@ -86,11 +86,9 @@ class PromptManager {
 
     const allPaths = [...customPromptDirectories];
 
-    // Get list of temporary directories
     const tempDirs = temporaryDirectoryStore.getActiveTemporaryDirectories();
     this.temporaryDirectoryPaths = tempDirs.map((dir) => dir.path);
 
-    // Add all temporary directories to the path list
     if (this.temporaryDirectoryPaths.length > 0) {
       allPaths.push(...this.temporaryDirectoryPaths);
     }
@@ -100,9 +98,7 @@ class PromptManager {
       allPaths.push(defaultPromptsPath);
     }
 
-    // Path to the new system prompts file
     const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
-    // Finally add the system prompts path
     allPaths.push(systemPromptsPath);
 
     return Array.from(new Set(allPaths));
@@ -121,7 +117,6 @@ class PromptManager {
       const data = fs.readFileSync(filePath, "utf-8");
       let parsed: unknown;
       try {
-        // Use HJSON parser
         parsed = hjson.parse(data);
       } catch (parseError) {
         console.error(`HJSON parsing failed ${filePath}:`, parseError);
@@ -131,10 +126,8 @@ class PromptManager {
       let promptsData: Record<string, unknown>[] = [];
 
       if (Array.isArray(parsed)) {
-        // Rule: If the top level is an array, it only contains prompts, no rootProperty
         promptsData = parsed.filter((item) => typeof item === "object" && item !== null) as Record<string, unknown>[];
       } else if (typeof parsed === "object" && parsed !== null) {
-        // Rule: If the top level is an object, it might contain rootProperty
         const parsedObject = parsed as Record<string, unknown>;
         if (parsedObject.rootProperty && typeof parsedObject.rootProperty === "object") {
           const fileRootProperty = parsedObject.rootProperty as Partial<PromptProps>;
@@ -142,53 +135,37 @@ class PromptManager {
           this.mergedRootProperties = { ...this.mergedRootProperties, ...fileRootProperty };
           // console.log(`Merged rootProperty from ${filePath}`, fileRootProperty); // Optional debug log
 
-          // Determine the location of prompt data
           if (parsedObject.prompts && Array.isArray(parsedObject.prompts)) {
-            // Case 1: Prompts are under the 'prompts' key
             promptsData = parsedObject.prompts.filter((item) => typeof item === "object" && item !== null) as Record<
               string,
               unknown
             >[];
           } else if (parsedObject.title) {
-            // Case 2: The object itself (after removing rootProperty) is a prompt
-            // Create a new object excluding rootProperty
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { rootProperty, ...promptObject } = parsedObject;
-            // Ensure the remaining object is a valid prompt object (check title specifically)
             if (Object.keys(promptObject).length > 0 && typeof promptObject.title === "string") {
               promptsData = [promptObject];
             }
-            // If the object only contained rootProperty, promptsData remains empty
           }
-          // else: Object contains rootProperty but no recognizable prompts; this file only contributes default values
         } else {
-          // Top level is an object, but no rootProperty key.
-          // Assume this object itself is a prompt, or contains a 'prompts' array.
           if (parsedObject.prompts && Array.isArray(parsedObject.prompts)) {
             promptsData = parsedObject.prompts.filter((item) => typeof item === "object" && item !== null) as Record<
               string,
               unknown
             >[];
           } else if (parsedObject.title) {
-            // Assume the object itself is a prompt
             promptsData = [parsedObject];
           }
-          // else: Unrecognized top-level object structure, ignore
         }
       } else {
-        // Top-level structure is neither object nor array, ignore
         console.warn(`Unsupported HJSON root structure in ${filePath}`);
       }
 
-      // --- Post-processing of extracted promptsData ---
-      // Basic validation: ensure it's an object and has a title (filter already did basic object check)
       const prompts = promptsData.filter((p) => typeof p.title === "string") as PromptProps[];
 
       const baseDir = path.dirname(filePath);
-      // Check if it comes from any temporary directory
       const isTemporarySource = this.temporaryDirectoryPaths.some((tempDir) => filePath.startsWith(tempDir));
 
-      // If it's from a temporary directory, record which one it belongs to for updating usage time
       let tempDirSource = "";
       if (isTemporarySource) {
         for (const tempDir of this.temporaryDirectoryPaths) {
@@ -213,7 +190,6 @@ class PromptManager {
         return processedPrompt;
       });
     } catch (error) {
-      // Handle file reading errors etc.
       console.error(`Failed to load prompt file ${filePath}:`, error);
       return [];
     }
@@ -225,8 +201,8 @@ class PromptManager {
    * Processes the combined list of prompts after loading.
    */
   private loadAllPrompts(): void {
-    this.prompts = []; // Clear existing prompts
-    this.mergedRootProperties = {}; // Reset merged root properties before loading
+    this.prompts = [];
+    this.mergedRootProperties = {};
 
     this.prompts = this.promptFilePaths.flatMap((promptPath) => {
       try {
@@ -237,12 +213,8 @@ class PromptManager {
           return this.loadPromptsFromFileSync(promptPath);
         }
       } catch (error) {
-        // Log if path doesn't exist or is inaccessible, but continue loading others
-        // Avoid console.error for common cases like a non-existent optional path
         if (fs.existsSync(promptPath)) {
           console.error(`Error accessing prompt path: ${promptPath}`, error);
-        } else {
-          // console.log(`Optional prompt path not found: ${promptPath}`); // Optional: log missing optional paths less verbosely
         }
       }
       return [];
@@ -261,11 +233,10 @@ class PromptManager {
     try {
       return fs
         .readdirSync(directoryPath)
-        .filter((file) => !file.startsWith("#") && !file.startsWith(".")) // Also ignore hidden files
+        .filter((file) => !file.startsWith("#") && !file.startsWith("."))
         .flatMap((file) => {
           const filePath = path.join(directoryPath, file);
           try {
-            // Add inner try-catch for individual file/dir issues
             const stat = fs.lstatSync(filePath);
             if (stat.isDirectory()) {
               return this.traverseDirectorySync(filePath);
@@ -321,21 +292,13 @@ class PromptManager {
    */
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map((prompt) => {
-      // Start with root properties as the absolute base
       const baseProperties: Partial<PromptProps> = { ...this.mergedRootProperties };
 
-      // Inherit from parent by default, excluding specific properties
       if (parentPrompt) {
-        // Iterate over all keys of the parent prompt
         for (const key in parentPrompt) {
-          // Ensure the key is a valid PromptProps key and owned by the parent object
           if (Object.prototype.hasOwnProperty.call(parentPrompt, key)) {
             const propKey = key as keyof PromptProps;
-            // Check if the property is NOT in the exclusion list AND the parent has a defined value
             if (!NON_INHERITED_PROPS.includes(propKey) && parentPrompt[propKey] !== undefined) {
-              // Copy the parent's property value to baseProperties
-              // Parent properties will overwrite root properties if they exist
-              // Add type assertion to satisfy TypeScript, suppress linter warning for 'any'
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               baseProperties[propKey] = parentPrompt[propKey] as any;
             }
@@ -343,45 +306,27 @@ class PromptManager {
         }
       }
 
-      // Preserve the original filePath from the prompt object before merging,
-      // as filePath is in NON_INHERITED_PROPS and should always reflect the definition source.
       const originalFilePath = prompt.filePath;
 
-      // Combine base properties (Root + Inherited Parent) with the prompt itself.
-      // Prompt's own properties take the highest priority, overwriting inherited ones.
       prompt = { ...baseProperties, ...prompt };
 
-      // Ensure the correct filePath is retained (the one set during loading)
-      // If the prompt had its own filePath, the merge already prioritized it.
-      // If it didn't, we make sure it's not incorrectly set to undefined if baseProperties didn't have one.
-      // Since filePath is in NON_INHERITED_PROPS, it won't be in baseProperties from the parent.
-      // We rely on the filePath being correctly set during the initial load (`loadPromptsFromFileSync`).
-      // If originalFilePath exists, ensure it's kept. If not, it remains undefined or as set by rootProperty initially.
       if (originalFilePath) {
         prompt.filePath = originalFilePath;
       } else if (NON_INHERITED_PROPS.includes("filePath")) {
-        // If it's non-inherited and wasn't set originally, ensure it's not present unless from rootProperty
-        // Note: The check `!prompt.filePath` might be redundant due to the `originalFilePath` check above,
-        // but it ensures clarity that we only assign root if filePath isn't already set.
         if (!prompt.filePath) {
           prompt.filePath = this.mergedRootProperties.filePath;
         }
       }
-      // Note: Simplified filePath handling relies on the initial load setting it correctly
-      // and the NON_INHERITED_PROPS preventing parent override.
 
-      // Process the prompt (e.g., ensure ID exists)
-      prompt = this.processPrompt(prompt); // Ensure ID is generated if needed
+      prompt = this.processPrompt(prompt);
 
-      // Recalculate path based on hierarchy (always overrides any potential inherited 'path')
       const currentPath = parentPrompt?.path ? `${parentPrompt.path} / ${prompt.title}` : prompt.title;
       prompt.path = currentPath;
 
-      // Recursively process subprompts
       if (prompt.subprompts) {
         prompt.subprompts = this.processPrompts(
           prompt.subprompts,
-          prompt, // Pass the *current*, processed prompt as the parent
+          prompt,
         );
       }
 
@@ -433,13 +378,7 @@ class PromptManager {
     };
     this.prompts.forEach(collectSubpromptIds);
 
-    // Return only top-level prompts (those not appearing as a subprompt)
-    // This simplistic check assumes identifiers are unique and reliable.
-    // A path-based approach might be more robust if identifiers aren't guaranteed unique across files.
     return this.prompts.filter((p) => !allSubpromptIds.has(p.identifier));
-
-    // Alternative: Return all prompts regardless of nesting if needed
-    // return this.prompts;
   }
 
   /**

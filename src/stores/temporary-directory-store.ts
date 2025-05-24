@@ -22,12 +22,10 @@ export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): Tempora
   const elapsedMs = now - dirInfo.lastUsedAt;
   const remainingMs = Math.max(0, EXPIRY_DURATION - elapsedMs);
 
-  // Calculate remaining days and hours
   const remainingDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const remainingHours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
   const remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
-  // Format remaining time text
   let remainingText = "";
   if (remainingDays >= 1) {
     remainingText = `${remainingDays}d ${remainingHours}h`;
@@ -62,7 +60,6 @@ export function getActiveTemporaryDirectories(): TemporaryDirectoryInfo[] {
     const dirInfos: TemporaryDirectoryInfo[] = JSON.parse(cachedData);
     const now = Date.now();
 
-    // Filter out unexpired directories
     const validDirs = dirInfos.filter((info) => now - info.lastUsedAt <= EXPIRY_DURATION);
 
     // If directories have expired, update the cache
@@ -87,7 +84,6 @@ export function isPathInTemporaryDirectories(dirPath: string): boolean {
 
 // Add a new temporary directory
 export function addTemporaryDirectory(dirPath: string): void {
-  // First check if directory already exists
   if (isPathInTemporaryDirectories(dirPath)) {
     showToast(Toast.Style.Failure, "Directory already added as temporary directory");
     return;
@@ -96,7 +92,6 @@ export function addTemporaryDirectory(dirPath: string): void {
   const now = Date.now();
   const newInfo: TemporaryDirectoryInfo = { path: dirPath, addedAt: now, lastUsedAt: now };
 
-  // Get existing directories and add new directory
   const dirInfos = getActiveTemporaryDirectories();
   dirInfos.push(newInfo);
 
@@ -116,9 +111,7 @@ export function updateTemporaryDirectoryUsage(path: string): void {
   }
 }
 
-// Update usage time for any prompt from temporary directories
 export function updateAnyTemporaryDirectoryUsage(): void {
-  // This method is used when uncertain which temporary directory a prompt comes from, updates all directories
   const dirInfos = getActiveTemporaryDirectories();
 
   if (dirInfos.length > 0) {
@@ -151,8 +144,6 @@ export function removeAllTemporaryDirectories(): void {
   }
 }
 
-// Function for backward compatibility
-// Only for backward compatibility, should not be used
 export function getActiveTemporaryDirectory(): TemporaryDirectoryInfo | null {
   const dirs = getActiveTemporaryDirectories();
   return dirs.length > 0 ? dirs[0] : null;

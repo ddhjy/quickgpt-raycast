@@ -24,10 +24,8 @@ class PinsManager {
    * @param identifier The identifier to pin.
    */
   pin(identifier: string): void {
-    let pinned = this.pinnedIdentifiers(); // Get the current ordered array
-    // Remove the identifier if it already exists to move it to the front
+    let pinned = this.pinnedIdentifiers();
     pinned = pinned.filter((id) => id !== identifier);
-    // Add the new identifier to the beginning of the array
     pinned.unshift(identifier);
     this.cache.set(this.key, JSON.stringify(pinned));
   }
@@ -38,7 +36,6 @@ class PinsManager {
    */
   unpin(identifier: string): void {
     let pinned = this.pinnedIdentifiers();
-    // Filter out the identifier to remove it
     pinned = pinned.filter((id) => id !== identifier);
     this.cache.set(this.key, JSON.stringify(pinned));
   }
@@ -49,14 +46,12 @@ class PinsManager {
    */
   pinnedIdentifiers(): string[] {
     const pinnedJson = this.cache.get(this.key);
-    // Parse the JSON string or return an empty array if it doesn't exist
     try {
-      // Ensure it's always an array, even if cache is corrupted with non-array JSON
       const parsed = pinnedJson ? JSON.parse(pinnedJson) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.error("Failed to parse pinned identifiers from cache:", e);
-      return []; // Return empty array on error
+      return [];
     }
   }
 }

@@ -95,12 +95,9 @@ export function PromptListItem({
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
   const [refreshTimer, setRefreshTimer] = useState(0);
 
-  // Update directory information every second to refresh remaining time
   useEffect(() => {
-    // Initial loading
     setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
 
-    // Set timer to update every second
     const timer = setInterval(() => {
       setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
       setRefreshTimer((prev) => prev + 1);
@@ -110,18 +107,15 @@ export function PromptListItem({
     return () => clearInterval(timer);
   }, []);
 
-  // Format title (clipboard placeholder won't resolve here)
   const rawTitle = prompt.title || "";
-  // Merge prompt properties with standard replacements for title formatting
   const mergedForTitle = {
-    ...prompt, // Include prompt properties
-    ...replacements, // Include standard replacements (input, selection, etc.)
-    now: new Date().toLocaleString(), // Ensure 'now' is available
+    ...prompt,
+    ...replacements,
+    now: new Date().toLocaleString(),
   };
-  // Apply placeholder formatting to the title
   const formattedTitleWithPlaceholders = placeholderFormatter(
     rawTitle,
-    mergedForTitle, // Pass the merged object
+    mergedForTitle,
     promptSpecificRootDir,
     { resolveFile: false },
   );
@@ -225,7 +219,6 @@ export function PromptListItem({
 
       const actionsList: React.ReactElement[] = [];
 
-      // Action to add a new temporary directory
       actionsList.push(
         <Action
           key="add-new-temp-dir"
@@ -235,7 +228,6 @@ export function PromptListItem({
         />,
       );
 
-      // Action to remove the current temporary directory if this prompt is served from one
       if (prompt.isTemporary && prompt.temporaryDirSource) {
         actionsList.push(
           <Action
@@ -254,7 +246,6 @@ export function PromptListItem({
         );
       }
 
-      // List actions to remove other temporary directories from the cache
       const otherTemporaryDirs = temporaryDirs.filter(
         (dir) => !(prompt.isTemporary && prompt.temporaryDirSource === dir.path),
       );

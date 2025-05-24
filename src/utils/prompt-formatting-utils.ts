@@ -113,46 +113,36 @@ export function getQuickPrompt(
     }
   } else {
     const targetIdentifierPrefix = `${IDENTIFIER_PREFIX}`;
-    // 1. Remove leading whitespace from selectionText for checking
     const trimmedSelectionText = selectionText.trimStart();
-    let identifierStartIndexInOriginal = -1; // Record the start index of the identifier in the original text
+    let identifierStartIndexInOriginal = -1;
 
-    // 2. Find the first matching prompt
     foundPrompt = promptManager.findPrompt((prompt) => {
       if (prompt.identifier) {
         const fullIdentifier = `${targetIdentifierPrefix}${prompt.identifier}`;
-        // 3. Use the trimmed text for startsWith check
         if (trimmedSelectionText.startsWith(fullIdentifier)) {
-          // 4. If matched, record the start position in the *original* selectionText
-          //    Calculating leading whitespace length is more accurate than indexOf
           const leadingWhitespaceLength = selectionText.length - trimmedSelectionText.length;
-          identifierStartIndexInOriginal = leadingWhitespaceLength; // Identifier starts right after whitespace
-          return true; // Stop searching once found
+          identifierStartIndexInOriginal = leadingWhitespaceLength;
+          return true;
         }
       }
       return false;
     });
 
-    // 5. If a matching prompt is found
     if (foundPrompt?.identifier && identifierStartIndexInOriginal !== -1) {
       const fullIdentifier = `${targetIdentifierPrefix}${foundPrompt.identifier}`;
-      // Extract substring from the end of the identifier in the original text, then trim the result
       cleanedText = selectionText.substring(identifierStartIndexInOriginal + fullIdentifier.length).trim();
     } else {
-      // If no match found, cleanedText remains the original selectionText
       cleanedText = selectionText;
     }
   }
 
-  // Note: The return statement should be outside the if/else structure
   return [foundPrompt, cleanedText];
 }
 
 /**
  * Builds the final, fully formatted prompt content string.
- * 1. Generates prefix placeholders based on prefix property.
- * 2. Prepends these placeholders to the original content.
- * 3. Uses `placeholderFormatter` to substitute all placeholders based on prompt properties and runtime replacements.
+ * Generates prefix placeholders based on prefix property, prepends these placeholders to the original content,
+ * and uses `placeholderFormatter` to substitute all placeholders based on prompt properties and runtime replacements.
  *
  * @param prompt The PromptProps object containing the base content and configuration.
  * @param replacements An object containing the values for standard placeholders (clipboard, selection, etc.).
@@ -166,23 +156,18 @@ export function buildFormattedPromptContent(
 ): string {
   const currentContent = prompt.content || "";
 
-  // 1. Generate prefix placeholder string using the NEW HJSON-driven logic
   const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefix);
 
-  // 1.1 Generate suffix placeholder string
   const suffixPlaceholderString = generateSuffixPlaceholders(prompt.suffix);
 
-  // 2. Prepend prefix placeholders and append suffix placeholders to the original content
   const contentWithPlaceholders = prefixPlaceholderString + currentContent + suffixPlaceholderString;
 
-  // 3. Merge the fully processed prompt object with runtime replacements.
   const mergedReplacements = {
     ...prompt,
     ...replacements,
     promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
   };
 
-  // 4. Call placeholderFormatter on the combined content
   const formattedContent = placeholderFormatter(
     contentWithPlaceholders,
     mergedReplacements,
@@ -208,11 +193,7 @@ export function getPlaceholderIcons(
 ): List.Item.Accessory[] {
   if (!content) return [];
 
-  // Resolve placeholders *using only standard replacements* for icon generation
   const usedPlaceholders = resolvePlaceholders(content, replacements);
-
-  // Remove debug log
-  // console.log("usedPlaceholders", usedPlaceholders);
 
   const placeholderIconsArray: List.Item.Accessory[] = [];
   usedPlaceholders.forEach((placeholder) => {
