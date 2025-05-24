@@ -90,7 +90,6 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
       const itemPath = path.join(dirPath, itemName);
       const relativePath = path.join(basePath, itemName);
 
-      // 使用统一的忽略管理器
       if (ignoreManager.shouldIgnore(itemPath, dirPath)) {
         if (item.isDirectory()) {
           content += `Directory: ${relativePath} (ignored)\n\n`;
