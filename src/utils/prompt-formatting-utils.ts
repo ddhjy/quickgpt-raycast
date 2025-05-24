@@ -33,7 +33,7 @@ const placeholderIcons: { [key: string]: Icon } = {
  * No defaults, no validation against a predefined list, no "none", no "!".
  *
  * @param keysList Comma-separated string of property keys (e.g., "myPromptSetting,lang").
- * @param position 指定占位符的位置，影响换行符添加方式。'prefix'在末尾添加换行符，'suffix'在开头添加换行符。
+ * @param position Specifies placeholder position, affecting how newlines are added. 'prefix' adds trailing newline, 'suffix' adds leading newline.
  * @returns Placeholder string with appropriate newlines based on position parameter.
  */
 export function generatePlaceholders(keysList: string | undefined, position: 'prefix' | 'suffix'): string {

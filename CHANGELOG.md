@@ -4,41 +4,41 @@
 
 ### Added
 
-- 新增 `suffix` 属性，类似于 `prefix`，但会将占位符添加到内容的末尾。用法与 `prefix` 相同，通过逗号分隔的属性键列表，如 `suffix: "finalNote, signature"`。
+- Added `suffix` property, similar to `prefix`, but appends placeholders to the end of content. Usage is the same as `prefix`, with comma-separated property key list, e.g. `suffix: "finalNote, signature"`.
 - Adds the ability to select a temporary directory as a source for prompts.
 - Adds a new `{{option:key}}` placeholder allowing users to create dynamic dropdowns within prompts based on prompt attributes. See [README](https://github.com/your-repo/quickgpt-raycast#dynamic-options-placeholder-optionkey) for details.
 - Add support for global variables via `config.json`.
-- 在 "Manage Temporary Directory" 提示词的选项中，如果该提示词本身来自一个临时目录，则新增一个操作以移除其所在的临时目录。
-- 为所有来源于临时目录的提示词（而不仅限于 "Manage Temporary Directory" 提示词）添加了操作选项，用户可以直接从该提示词的操作面板中移除其所在的临时目录。
-- 新增"编辑器应用"偏好设置，允许用户通过应用选择器选择他们喜欢的应用程序来打开提示文件。默认为 Cursor。
+- Added an action to remove the temporary directory containing the "Manage Temporary Directory" prompt itself, if it comes from a temporary directory.
+- Added action options for all prompts sourced from temporary directories (not just "Manage Temporary Directory" prompt), allowing users to remove the containing temporary directory directly from the prompt's action panel.
+- Added "Editor Application" preference setting that allows users to select their preferred application for opening prompt files via an app picker. Defaults to Cursor.
 
 ### Fixed
 
-- 修复了当 Prompt 中使用 `{{option:key}}` 占位符时，跳转到的选项配置页面内容为空的问题。现在可以正确显示基于 Prompt 属性数组生成的下拉选项。
+- Fixed an issue where the options configuration page was empty when using `{{option:key}}` placeholder in prompts. Now correctly displays dropdown options generated from prompt property arrays.
 - Fix an issue where relative paths (`[Path not found: relative/path]`) in prompts located within a Temporary Directory failed to resolve, causing a 'Root directory not configured for relative path:' error. Relative paths now correctly resolve against their containing temporary directory.
 - Fix the issue where the `model` field in `config.json` was not taking effect.
 - Fix an issue where the `currentApp` placeholder would not be replaced if the active application changed while Raycast was open.
 
 ### Changed
 
-- **重构文件命名规范**：统一采用 kebab-case（连字符命名）作为文件命名规范，提升项目一致性
-  - 重命名所有 Component 文件（如 `PromptActions.tsx` → `prompt-actions.tsx`）
-  - 重命名所有 Hook 文件（如 `useInitialContext.ts` → `use-initial-context.ts`）
-  - 重命名所有 Manager 文件（如 `PromptManager.ts` → `prompt-manager.ts`）
-  - 重命名所有 Store 文件（如 `TemporaryPromptDirectoryStore.ts` → `temporary-directory-store.ts`）
-  - 重命名所有 Utils 文件（如 `fileSystemUtils.ts` → `file-system-utils.ts`）
-  - 更新所有相关的导入语句以匹配新的文件名
-- Settings 相关选项统一使用系统 icon 替代 emoji，包括 "Open custom prompts directory"、"Open scripts directory" 和 "Open preferences"，以保持与 "Manage Temporary Directory" 的一致性。
+- **Refactored file naming convention**: Adopted kebab-case (hyphen-separated) as the unified file naming convention to improve project consistency
+  - Renamed all Component files (e.g., `PromptActions.tsx` → `prompt-actions.tsx`)
+  - Renamed all Hook files (e.g., `useInitialContext.ts` → `use-initial-context.ts`)
+  - Renamed all Manager files (e.g., `PromptManager.ts` → `prompt-manager.ts`)
+  - Renamed all Store files (e.g., `TemporaryPromptDirectoryStore.ts` → `temporary-directory-store.ts`)
+  - Renamed all Utils files (e.g., `fileSystemUtils.ts` → `file-system-utils.ts`)
+  - Updated all related import statements to match the new file names
+- Settings-related options now use system icons instead of emojis, including "Open custom prompts directory", "Open scripts directory", and "Open preferences", for consistency with "Manage Temporary Directory".
 - Temporary directory expiration time changed from 1 day to 7 days.
 - Improved display of remaining time for temporary directories to show days, hours, and minutes as appropriate.
-- **重构占位符解析逻辑:**
-  - 属性引用占位符 (`{{propertyName}}`) 和不以标准上下文开头的回退占位符 (`{{ph1|ph2|...}}`) 现在会进行循环解析直至稳定。
-  - 标准上下文占位符 (`{{input}}`, `{{clipboard}}` 等)、**原始的**文件内容占位符 (`{{file:path}}`) 和动态选项占位符 (`{{option:key}}`) 在循环解析完成后仅进行一次性解析。
-  - **精确处理文件选择:** 内部通过标记区分 `{{selection}}` 值的来源。只有当其值来源于 **Finder 中的文件选择**时，其生成的 `{{file:path}}` 才会在需要时被进一步解析加载内容。若用户选中的是字面文本 `{{file:path}}`，则不触发文件解析。
-- 将"自定义编辑器命令"偏好设置更改为"编辑器应用"，使用应用选择器（appPicker）让用户更方便地选择用于编辑提示文件的编辑器。
-- **优化文件忽略逻辑：**
-  - 创建统一的 `IgnoreManager` 单例类来管理所有文件忽略规则
-  - 增强 `.gitignore` 支持，递归查找并应用所有父目录的 `.gitignore` 文件
-  - 实现忽略规则缓存机制，提升性能
-  - 支持自定义忽略规则扩展
-  - 统一处理二进制文件检测和忽略模式匹配
+- **Refactored placeholder parsing logic:**
+  - Property reference placeholders (`{{propertyName}}`) and fallback placeholders not starting with standard context (`{{ph1|ph2|...}}`) are now recursively parsed until stable.
+  - Standard context placeholders (`{{input}}`, `{{clipboard}}` etc.), **raw** file content placeholders (`{{file:path}}`), and dynamic option placeholders (`{{option:key}}`) are parsed only once after recursive parsing is complete.
+  - **Precise file selection handling:** Internally distinguishes the source of `{{selection}}` values using markers. Only `{{file:path}}` generated from **Finder file selections** will be further parsed to load content when needed. If user selects literal text `{{file:path}}`, file parsing is not triggered.
+- Changed "Custom Editor Command" preference to "Editor Application", using app picker to let users more conveniently select the editor for editing prompt files.
+- **Optimized file ignore logic:**
+  - Created unified `IgnoreManager` singleton class to manage all file ignore rules
+  - Enhanced `.gitignore` support to recursively find and apply all parent directory `.gitignore` files
+  - Implemented ignore rule caching mechanism to improve performance
+  - Support for custom ignore rule extensions
+  - Unified handling of binary file detection and ignore pattern matching

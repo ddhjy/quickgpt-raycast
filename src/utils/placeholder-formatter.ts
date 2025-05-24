@@ -285,9 +285,9 @@ export function placeholderFormatter(
 
     // Skip already processed recursive placeholders
     if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
-      // 检查是否为回退链 (fallback chain)
+      // Check if it's a fallback chain
       if (trimmedBody.includes('|')) {
-        // 处理回退链
+        // Process fallback chain
         const result = processPlaceholder(directive, trimmedBody, incoming, map);
         if (result !== match) {
           return result;
