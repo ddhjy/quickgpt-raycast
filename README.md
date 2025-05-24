@@ -12,7 +12,7 @@ A professional prompt management extension for Raycast that streamlines your wor
 
 2. Management 200+ prompts with HJSON format and git version control
 
-<img src="https://github.com/user-attachments/assets/edf147d9-a995-4bfc-b1be-852b537578bb" alt="图片描述" >
+<img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="图片描述" >
 
 ## Overview
 
