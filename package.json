@@ -74,20 +74,6 @@
           "placeholder": "author.extension_name.command_name"
         },
         {
-          "name": "aiProviderNames",
-          "title": "AI Provider Action Names",
-          "description": "Comma-separated list of AI provider names to show as actions (must match names configured in AI Caller). E.g., OpenAI,Azure,Claude",
-          "type": "textfield",
-          "required": false
-        },
-        {
-          "name": "openCustomPromptsDirectoryIn",
-          "title": "Open Custom Prompts Directory In",
-          "description": "The application to open the custom prompts directory in. For example, 'Finder' or 'Visual Studio Code'.",
-          "type": "textfield",
-          "required": false
-        },
-        {
           "name": "customEditor",
           "title": "Editor application",
           "description": "Select the application to open and edit prompt files (`.hjson`).",

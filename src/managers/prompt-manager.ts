@@ -324,10 +324,7 @@ class PromptManager {
       prompt.path = currentPath;
 
       if (prompt.subprompts) {
-        prompt.subprompts = this.processPrompts(
-          prompt.subprompts,
-          prompt,
-        );
+        prompt.subprompts = this.processPrompts(prompt.subprompts, prompt);
       }
 
       return prompt;

@@ -31,7 +31,6 @@ interface Preferences {
   primaryAction: string;
   scriptsDirectory?: string;
   aiCallerExtensionTarget?: string;
-  aiProviderNames?: string;
 }
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
@@ -146,57 +145,36 @@ export function generatePromptActions(
 
     if (targetParts.length === 3) {
       const [author, extensionName, commandName] = targetParts;
-      const providerNames =
-        preferences.aiProviderNames
-          ?.split(",")
-          .map((name) => name.trim())
-          .filter(Boolean) ?? [];
 
-      const createAICallerAction = (providerName?: string): ActionItem => {
-        const name = providerName ? providerName.toLowerCase() : "ai_caller_default";
-        const title = providerName ? `Send to ${providerName}` : "Send to AI";
-
-        return {
-          name: name,
-          displayName: title,
-          condition: true,
-          action: (
-            <Action
-              title={title}
-              icon={Icon.Bolt}
-              onAction={wrapActionHandler(async () => {
-                try {
-                  const finalContent = await getFinalContent();
-                  const effectiveSystemPrompt = getSystemPrompt(prompt);
-                  const args: { promptContent: string; systemPrompt?: string; providerName?: string } = {
-                    promptContent: finalContent,
-                  };
-                  if (effectiveSystemPrompt) {
-                    args.systemPrompt = effectiveSystemPrompt;
-                  }
-                  if (providerName) {
-                    args.providerName = providerName;
-                  }
-
-                  const deeplink = `raycast://extensions/${author}/${extensionName}/${commandName}?arguments=${encodeURIComponent(JSON.stringify(args))}`;
-                  await open(deeplink);
-                } catch (error) {
-                  console.error("Failed to construct or open AI Caller deeplink:", error);
-                  await showToast(Toast.Style.Failure, "Deeplink Error", String(error));
+      aiCallerActions.push({
+        name: "ai_caller_default",
+        displayName: "Send to AI",
+        condition: true,
+        action: (
+          <Action
+            title="Send to AI"
+            icon={Icon.Bolt}
+            onAction={wrapActionHandler(async () => {
+              try {
+                const finalContent = await getFinalContent();
+                const effectiveSystemPrompt = getSystemPrompt(prompt);
+                const args: { promptContent: string; systemPrompt?: string } = {
+                  promptContent: finalContent,
+                };
+                if (effectiveSystemPrompt) {
+                  args.systemPrompt = effectiveSystemPrompt;
                 }
-              })}
-            />
-          ),
-        };
-      };
 
-      if (providerNames.length === 0) {
-        aiCallerActions.push(createAICallerAction());
-      } else {
-        providerNames.forEach((providerName) => {
-          aiCallerActions.push(createAICallerAction(providerName));
-        });
-      }
+                const deeplink = `raycast://extensions/${author}/${extensionName}/${commandName}?arguments=${encodeURIComponent(JSON.stringify(args))}`;
+                await open(deeplink);
+              } catch (error) {
+                console.error("Failed to construct or open AI Caller deeplink:", error);
+                await showToast(Toast.Style.Failure, "Deeplink Error", String(error));
+              }
+            })}
+          />
+        ),
+      });
     } else if (target) {
       console.warn(
         "Invalid aiCallerExtensionTarget format in preferences. Expected 'author.extension_name.command_name'. AI Actions disabled.",
@@ -271,7 +249,11 @@ export function generatePromptActions(
             if (onRefreshNeeded) {
               onRefreshNeeded();
             }
-            await showToast(Toast.Style.Success, "Temporary Directory Removed", `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`);
+            await showToast(
+              Toast.Style.Success,
+              "Temporary Directory Removed",
+              `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
+            );
             navigation.pop();
           }}
         />

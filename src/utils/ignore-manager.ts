@@ -7,175 +7,205 @@ import path from "path";
  * Supports .gitignore files and custom ignore rules
  */
 class IgnoreManager {
-    private static instance: IgnoreManager;
-    private ignoreCache: Map<string, Ignore> = new Map();
+  private static instance: IgnoreManager;
+  private ignoreCache: Map<string, Ignore> = new Map();
 
-    private directoriesToIgnore = [
-        "node_modules",
-        ".git",
-        "dist",
-        "build",
-        "coverage",
-        "tmp",
-        "logs",
-        ".cache",
-        ".vscode",
-        ".idea",
-        "__pycache__",
-        "bower_components",
-        "jspm_packages",
-        "*.xcodeproj",
-        "*.xcworkspace",
-    ];
+  private directoriesToIgnore = [
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "coverage",
+    "tmp",
+    "logs",
+    ".cache",
+    ".vscode",
+    ".idea",
+    "__pycache__",
+    "bower_components",
+    "jspm_packages",
+    "*.xcodeproj",
+    "*.xcworkspace",
+  ];
 
-    private otherIgnorePatterns = [
-        ".DS_Store",
-        "*.log",
-        ".env",
-        ".env.local",
-        "*.pyc",
-        "package-lock.json",
-        "yarn.lock",
-        "pnpm-lock.yaml",
-        ".npmrc",
-        ".yarnrc",
-        "# *",
-        ".#*",
-    ];
+  private otherIgnorePatterns = [
+    ".DS_Store",
+    "*.log",
+    ".env",
+    ".env.local",
+    "*.pyc",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    ".npmrc",
+    ".yarnrc",
+    "# *",
+    ".#*",
+  ];
 
-    /**
-     * Generate complete ignore patterns for directories (including the directory itself and its contents)
-     */
-    private generateDirectoryIgnorePatterns(): string[] {
-        const patterns: string[] = [];
-        for (const dir of this.directoriesToIgnore) {
-            patterns.push(dir);
-            patterns.push(dir + "/");
-        }
-        return patterns;
+  /**
+   * Generate complete ignore patterns for directories (including the directory itself and its contents)
+   */
+  private generateDirectoryIgnorePatterns(): string[] {
+    const patterns: string[] = [];
+    for (const dir of this.directoriesToIgnore) {
+      patterns.push(dir);
+      patterns.push(dir + "/");
+    }
+    return patterns;
+  }
+
+  /**
+   * Get all default ignore rules
+   */
+  private get defaultIgnorePatterns(): string[] {
+    return [...this.generateDirectoryIgnorePatterns(), ...this.otherIgnorePatterns];
+  }
+
+  private binaryExtensions = new Set([
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".webp",
+    ".ico",
+    ".svg",
+    ".mp3",
+    ".wav",
+    ".flac",
+    ".mp4",
+    ".avi",
+    ".mkv",
+    ".mov",
+    ".wmv",
+    ".exe",
+    ".dll",
+    ".bin",
+    ".iso",
+    ".dmg",
+    ".pkg",
+    ".zip",
+    ".rar",
+    ".tar",
+    ".gz",
+    ".7z",
+    ".bz2",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".tiktoken",
+    ".db",
+    ".sqlite",
+  ]);
+
+  private constructor() {}
+
+  static getInstance(): IgnoreManager {
+    if (!IgnoreManager.instance) {
+      IgnoreManager.instance = new IgnoreManager();
+    }
+    return IgnoreManager.instance;
+  }
+
+  /**
+   * Get ignore instance for directory (with caching)
+   */
+  getIgnoreForDirectory(dirPath: string): Ignore {
+    const cached = this.ignoreCache.get(dirPath);
+    if (cached) {
+      return cached;
     }
 
-    /**
-     * Get all default ignore rules
-     */
-    private get defaultIgnorePatterns(): string[] {
-        return [
-            ...this.generateDirectoryIgnorePatterns(),
-            ...this.otherIgnorePatterns
-        ];
+    const ig = ignore();
+    ig.add(this.defaultIgnorePatterns);
+
+    const gitignoreFiles = this.findGitignoreFiles(dirPath);
+
+    for (const gitignorePath of gitignoreFiles) {
+      try {
+        const content = fs.readFileSync(gitignorePath, "utf-8");
+        ig.add(content);
+      } catch (error) {
+        console.debug(`Failed to read .gitignore at ${gitignorePath}:`, error);
+      }
     }
 
-    private binaryExtensions = new Set([
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".ico", ".svg",
-        ".mp3", ".wav", ".flac", ".mp4", ".avi", ".mkv", ".mov", ".wmv",
-        ".exe", ".dll", ".bin", ".iso", ".dmg", ".pkg",
-        ".zip", ".rar", ".tar", ".gz", ".7z", ".bz2",
-        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-        ".tiktoken", ".db", ".sqlite",
-    ]);
+    this.ignoreCache.set(dirPath, ig);
+    return ig;
+  }
 
-    private constructor() { }
+  /**
+   * Find all .gitignore files from root directory to specified directory
+   */
+  private findGitignoreFiles(dirPath: string): string[] {
+    const gitignoreFiles: string[] = [];
+    let currentDir = dirPath;
 
-    static getInstance(): IgnoreManager {
-        if (!IgnoreManager.instance) {
-            IgnoreManager.instance = new IgnoreManager();
-        }
-        return IgnoreManager.instance;
+    while (currentDir && currentDir !== path.dirname(currentDir)) {
+      const gitignorePath = path.join(currentDir, ".gitignore");
+      if (fs.existsSync(gitignorePath)) {
+        gitignoreFiles.unshift(gitignorePath);
+      }
+      currentDir = path.dirname(currentDir);
     }
 
-    /**
-     * Get ignore instance for directory (with caching)
-     */
-    getIgnoreForDirectory(dirPath: string): Ignore {
-        const cached = this.ignoreCache.get(dirPath);
-        if (cached) {
-            return cached;
-        }
+    return gitignoreFiles;
+  }
 
-        const ig = ignore();
-        ig.add(this.defaultIgnorePatterns);
+  /**
+   * Check if file should be ignored
+   */
+  shouldIgnore(filePath: string, basePath: string): boolean {
+    const ig = this.getIgnoreForDirectory(basePath);
+    const relativePath = path.relative(basePath, filePath);
 
-        const gitignoreFiles = this.findGitignoreFiles(dirPath);
-
-        for (const gitignorePath of gitignoreFiles) {
-            try {
-                const content = fs.readFileSync(gitignorePath, "utf-8");
-                ig.add(content);
-            } catch (error) {
-                console.debug(`Failed to read .gitignore at ${gitignorePath}:`, error);
-            }
-        }
-
-        this.ignoreCache.set(dirPath, ig);
-        return ig;
+    if (ig.ignores(relativePath)) {
+      return true;
     }
 
-    /**
-     * Find all .gitignore files from root directory to specified directory
-     */
-    private findGitignoreFiles(dirPath: string): string[] {
-        const gitignoreFiles: string[] = [];
-        let currentDir = dirPath;
-
-        while (currentDir && currentDir !== path.dirname(currentDir)) {
-            const gitignorePath = path.join(currentDir, ".gitignore");
-            if (fs.existsSync(gitignorePath)) {
-                gitignoreFiles.unshift(gitignorePath);
-            }
-            currentDir = path.dirname(currentDir);
-        }
-
-        return gitignoreFiles;
+    if (this.isBinaryFile(filePath)) {
+      return true;
     }
 
-    /**
-     * Check if file should be ignored
-     */
-    shouldIgnore(filePath: string, basePath: string): boolean {
-        const ig = this.getIgnoreForDirectory(basePath);
-        const relativePath = path.relative(basePath, filePath);
+    return false;
+  }
 
-        if (ig.ignores(relativePath)) {
-            return true;
-        }
+  /**
+   * Check if it's a binary file
+   */
+  isBinaryFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return this.binaryExtensions.has(ext);
+  }
 
-        if (this.isBinaryFile(filePath)) {
-            return true;
-        }
+  /**
+   * Clear cache (call when needed)
+   */
+  clearCache(): void {
+    this.ignoreCache.clear();
+  }
 
-        return false;
-    }
+  /**
+   * Add custom ignore patterns
+   */
+  addCustomIgnorePatterns(patterns: string[]): void {
+    this.otherIgnorePatterns.push(...patterns);
+    this.clearCache();
+  }
 
-    /**
-     * Check if it's a binary file
-     */
-    isBinaryFile(filePath: string): boolean {
-        const ext = path.extname(filePath).toLowerCase();
-        return this.binaryExtensions.has(ext);
-    }
-
-    /**
-     * Clear cache (call when needed)
-     */
-    clearCache(): void {
-        this.ignoreCache.clear();
-    }
-
-    /**
-     * Add custom ignore patterns
-     */
-    addCustomIgnorePatterns(patterns: string[]): void {
-        this.otherIgnorePatterns.push(...patterns);
-        this.clearCache();
-    }
-
-    /**
-     * Add directories to ignore (automatically generates ignore rules for both directory and its contents)
-     */
-    addDirectoriesToIgnore(directories: string[]): void {
-        this.directoriesToIgnore.push(...directories);
-        this.clearCache();
-    }
+  /**
+   * Add directories to ignore (automatically generates ignore rules for both directory and its contents)
+   */
+  addDirectoriesToIgnore(directories: string[]): void {
+    this.directoriesToIgnore.push(...directories);
+    this.clearCache();
+  }
 }
 
-export default IgnoreManager.getInstance(); 
+export default IgnoreManager.getInstance();
