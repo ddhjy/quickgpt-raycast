@@ -92,8 +92,6 @@ Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions >
 ### Actions Configuration
 
 - **Actions**: Comma-separated list of default actions (e.g., `Copy,Paste,OpenAI`)
-- **AI Caller Extension Target**: Deeplink target for AI service integration
-- **AI Provider Action Names**: Names of AI providers to display as actions
 
 ### Editor Settings
 
