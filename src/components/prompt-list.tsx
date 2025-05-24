@@ -2,12 +2,12 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { List, getPreferenceValues, showToast, Toast, clearSearchBar, useNavigation } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
-import { PromptProps } from "../managers/PromptManager";
-import promptManager from "../managers/PromptManager";
-import pinsManager from "../managers/PinsManager";
-import { MemoizedPromptListItem } from "./PromptListItem";
-import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
-import { getAvailableScripts, ScriptInfo } from "../utils/scriptUtils";
+import { PromptProps } from "../managers/prompt-manager";
+import promptManager from "../managers/prompt-manager";
+import pinsManager from "../managers/pins-manager";
+import { MemoizedPromptListItem } from "./prompt-list-item";
+import defaultActionPreferenceStore from "../stores/default-action-preference-store";
+import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
 
 interface PromptListProps {
   prompts: PromptProps[];

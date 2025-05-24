@@ -21,6 +21,13 @@
 
 ### Changed
 
+- **重构文件命名规范**：统一采用 kebab-case（连字符命名）作为文件命名规范，提升项目一致性
+  - 重命名所有 Component 文件（如 `PromptActions.tsx` → `prompt-actions.tsx`）
+  - 重命名所有 Hook 文件（如 `useInitialContext.ts` → `use-initial-context.ts`）
+  - 重命名所有 Manager 文件（如 `PromptManager.ts` → `prompt-manager.ts`）
+  - 重命名所有 Store 文件（如 `TemporaryPromptDirectoryStore.ts` → `temporary-directory-store.ts`）
+  - 重命名所有 Utils 文件（如 `fileSystemUtils.ts` → `file-system-utils.ts`）
+  - 更新所有相关的导入语句以匹配新的文件名
 - Settings 相关选项统一使用系统 icon 替代 emoji，包括 "Open custom prompts directory"、"Open scripts directory" 和 "Open preferences"，以保持与 "Manage Temporary Directory" 的一致性。
 - Temporary directory expiration time changed from 1 day to 7 days.
 - Improved display of remaining time for temporary directories to show days, hours, and minutes as appropriate.
