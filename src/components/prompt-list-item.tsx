@@ -325,37 +325,37 @@ export function PromptListItem({
         />
       );
     } else if (prompt.subprompts) {
-      // 文件夹类型提示词的操作
+      // Actions for folder type prompts
       const folderActions: React.ReactElement[] = [];
 
-      // 1. 打开文件夹操作 (通常是主要操作)
+      // 1. Open folder action (usually the primary action)
       folderActions.push(
         <Action.Push
           key="open-folder"
           title="Open"
-          icon={prompt.icon ?? Icon.Folder} // 使用 Icon.FolderOpen 更合适
+          icon={prompt.icon ?? Icon.Folder} // Icon.FolderOpen would be more appropriate
           target={
             <PromptList
               prompts={prompt.subprompts}
               selectionText={replacements.selection ?? ""}
               currentApp={replacements.currentApp ?? ""}
               browserContent={replacements.browserContent ?? ""}
-              allowedActions={allowedActions || prompt.actions} // 这些是子项的操作
+              allowedActions={allowedActions || prompt.actions} // These are actions for sub-items
               initialScripts={scripts}
-              externalOnRefreshNeeded={onRefreshNeeded} // 传递刷新回调
+              externalOnRefreshNeeded={onRefreshNeeded} // Pass refresh callback
             />
           }
         />,
       );
 
-      // 2. 如果来源于临时目录，添加移除源目录的操作
+      // 2. If sourced from temporary directory, add action to remove source directory
       if (prompt.isTemporary && prompt.temporaryDirSource) {
-        const tempDirSourcePath = prompt.temporaryDirSource; // 闭包捕获
+        const tempDirSourcePath = prompt.temporaryDirSource; // Closure capture
         folderActions.push(
           <Action
             key={`remove-folder-temp-dir-${tempDirSourcePath}`}
             title={`Remove Temp Dir: ${path.basename(tempDirSourcePath)}`}
-            icon={Icon.Eject} // 或者 Icon.Trash
+            icon={Icon.Eject} // Or Icon.Trash
             style={Action.Style.Destructive}
             onAction={async () => {
               removeTemporaryDirectory(tempDirSourcePath);
@@ -374,7 +374,7 @@ export function PromptListItem({
           />,
         );
       }
-      return <>{folderActions}</>; // 以 React Fragment 包裹返回
+      return <>{folderActions}</>; // Return wrapped in React Fragment
     } else {
       // Default actions for regular prompts
       const optionKeys = findOptionPlaceholders(prompt);

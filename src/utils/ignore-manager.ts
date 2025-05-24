@@ -178,15 +178,15 @@ class IgnoreManager {
      */
     addCustomIgnorePatterns(patterns: string[]): void {
         this.otherIgnorePatterns.push(...patterns);
-        this.clearCache(); // 清除缓存以应用新规则
+        this.clearCache(); // Clear cache to apply new rules
     }
 
     /**
-     * 添加需要忽略的目录（自动生成目录本身和目录内容的忽略规则）
+     * Add directories to ignore (automatically generates ignore rules for both directory and its contents)
      */
     addDirectoriesToIgnore(directories: string[]): void {
         this.directoriesToIgnore.push(...directories);
-        this.clearCache(); // 清除缓存以应用新规则
+        this.clearCache(); // Clear cache to apply new rules
     }
 }
 
