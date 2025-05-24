@@ -1,75 +1,36 @@
 import path from "path";
 import fsPromises from "fs/promises";
 import fs from "fs";
-import ignore from "ignore";
+import ignoreManager from "./ignoreManager";
 
 /**
  * This file provides utility functions for interacting with the file system,
  * including checking for binary/media files, ignored items (like node_modules),
  * and reading directory contents recursively (both sync and async).
+ * Uses the unified IgnoreManager for consistent file handling.
  */
-
-export const BINARY_MEDIA_EXTENSIONS = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".tiff",
-  ".mp3",
-  ".wav",
-  ".flac",
-  ".mp4",
-  ".avi",
-  ".mkv",
-  ".exe",
-  ".dll",
-  ".bin",
-  ".iso",
-  ".zip",
-  ".rar",
-  ".tiktoken",
-  ".svg",
-  ".webp",
-  ".ico",
-]);
-
-export const IGNORED_PATTERNS = [
-  /^(node_modules|dist|build|coverage|tmp|logs|public|assets|vendor)$/,
-  /^\..+/,
-  /^(package-lock\.json|yarn\.lock)$/,
-  /^\.vscode$/,
-  /^\.idea$/,
-  /^\.env(\.local)?$/,
-  /^\.cache$/,
-  /^(bower_components|jspm_packages)$/,
-  /^\.DS_Store$/,
-  /\.xcodeproj$/,
-  /\.xcworkspace$/,
-  /__pycache__/,
-];
 
 /**
  * Checks if a file extension indicates a binary or media file type.
- * Compares the lowercased file extension against a predefined set.
+ * Uses the unified IgnoreManager for consistent binary file detection.
  *
  * @param fileName The full name or path of the file.
  * @returns True if the extension is in the predefined set, false otherwise.
  */
 export const isBinaryOrMediaFile = (fileName: string): boolean => {
-  const ext = path.extname(fileName).toLowerCase();
-  return BINARY_MEDIA_EXTENSIONS.has(ext);
+  return ignoreManager.isBinaryFile(fileName);
 };
 
 /**
- * Checks if a file or directory name matches common ignore patterns.
- * Used to skip items like `node_modules`, `.git`, etc.
+ * Checks if a file or directory path should be ignored.
+ * Uses the unified IgnoreManager for consistent ignore pattern matching.
  *
- * @param itemName The name of the file or directory.
- * @returns True if the name matches any of the ignore patterns, false otherwise.
+ * @param itemPath The full path of the file or directory.
+ * @param basePath The base path to calculate relative paths from.
+ * @returns True if the item should be ignored, false otherwise.
  */
-export const isIgnoredItem = (itemName: string): boolean => {
-  return IGNORED_PATTERNS.some((pattern) => pattern.test(itemName));
+export const isIgnoredItem = (itemPath: string, basePath: string): boolean => {
+  return ignoreManager.shouldIgnore(itemPath, basePath);
 };
 
 /**
@@ -91,7 +52,7 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
     const itemPath = path.join(dirPath, itemName);
     const relativePath = path.join(basePath, itemName);
 
-    if (isIgnoredItem(itemName) || isBinaryOrMediaFile(itemName)) {
+    if (isIgnoredItem(itemPath, dirPath) || isBinaryOrMediaFile(itemName)) {
       content += `File: ${relativePath} (content ignored)\n\n`;
     } else if (item.isDirectory()) {
       content += await readDirectoryContents(itemPath, relativePath);
@@ -111,7 +72,7 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
 /**
  * Synchronously and recursively reads the contents of a directory.
  * Constructs a string representation including file paths and their content.
- * Skips ignored items and indicates when binary/media files are encountered.
+ * Uses the unified IgnoreManager for consistent ignore pattern matching.
  * Logs warnings for read errors but continues processing.
  *
  * @param dirPath The absolute path to the directory to read.
@@ -120,17 +81,6 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
  */
 export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""): string => {
   let content = "";
-  const ig = ignore();
-
-  const gitignorePath = path.join(dirPath, ".gitignore");
-  if (fs.existsSync(gitignorePath)) {
-    try {
-      const gitignoreContent = fs.readFileSync(gitignorePath, "utf-8");
-      ig.add(gitignoreContent);
-    } catch (error) {
-      console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}:`, error);
-    }
-  }
 
   try {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -140,21 +90,13 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
       const itemPath = path.join(dirPath, itemName);
       const relativePath = path.join(basePath, itemName);
 
-      // Check if item is ignored by .gitignore first
-      if (ig.ignores(itemName)) {
-        // Add a note indicating it's ignored by .gitignore, then skip further processing
+      // 使用统一的忽略管理器
+      if (ignoreManager.shouldIgnore(itemPath, dirPath)) {
         if (item.isDirectory()) {
-          content += `Directory: ${relativePath} (ignored by .gitignore)\n\n`;
+          content += `Directory: ${relativePath} (ignored)\n\n`;
         } else if (item.isFile()) {
-          content += `File: ${relativePath} (ignored by .gitignore)\n\n`;
-        } else {
-          // Handle other types like symlinks if necessary, or just a generic message
-          content += `Item: ${relativePath} (ignored by .gitignore)\n\n`;
+          content += `File: ${relativePath} (ignored)\n\n`;
         }
-        continue; // Continue to the next item
-      }
-
-      if (isIgnoredItem(itemName)) {
         continue;
       }
 
@@ -163,7 +105,7 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
           content += `Directory: ${relativePath}${path.sep}\n`;
           content += readDirectoryContentsSync(itemPath, relativePath);
         } else if (item.isFile()) {
-          if (isBinaryOrMediaFile(itemName)) {
+          if (ignoreManager.isBinaryFile(itemPath)) {
             content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
           } else {
             const fileContent = fs.readFileSync(itemPath, "utf-8");
