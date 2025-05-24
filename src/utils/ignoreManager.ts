@@ -3,45 +3,71 @@ import fs from "fs";
 import path from "path";
 
 /**
- * 管理文件忽略规则的单例类
- * 支持 .gitignore 文件和自定义忽略规则
+ * Singleton class for managing file ignore rules
+ * Supports .gitignore files and custom ignore rules
  */
 class IgnoreManager {
     private static instance: IgnoreManager;
     private ignoreCache: Map<string, Ignore> = new Map();
 
-    // 默认忽略规则
-    private defaultIgnorePatterns = [
-        "node_modules/",
-        ".git/",
+    // Directory names that need to ignore both the directory itself and its contents
+    private directoriesToIgnore = [
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        "coverage",
+        "tmp",
+        "logs",
+        ".cache",
+        ".vscode",
+        ".idea",
+        "__pycache__",
+        "bower_components",
+        "jspm_packages",
+        "*.xcodeproj",
+        "*.xcworkspace",
+    ];
+
+    // Other ignore rules (files and special patterns)
+    private otherIgnorePatterns = [
         ".DS_Store",
         "*.log",
-        "dist/",
-        "build/",
-        "coverage/",
-        "tmp/",
-        "logs/",
         ".env",
         ".env.local",
-        ".cache/",
-        ".vscode/",
-        ".idea/",
-        "__pycache__/",
         "*.pyc",
-        "bower_components/",
-        "jspm_packages/",
         "package-lock.json",
         "yarn.lock",
         "pnpm-lock.yaml",
         ".npmrc",
         ".yarnrc",
-        "*.xcodeproj/",
-        "*.xcworkspace/",
-        "# *", // 忽略以 # 开头的文件/目录
-        ".#*", // 忽略临时文件
+        "# *", // Ignore files/directories starting with #
+        ".#*", // Ignore temporary files
     ];
 
-    // 二进制和媒体文件扩展名
+    /**
+     * Generate complete ignore patterns for directories (including the directory itself and its contents)
+     */
+    private generateDirectoryIgnorePatterns(): string[] {
+        const patterns: string[] = [];
+        for (const dir of this.directoriesToIgnore) {
+            patterns.push(dir);        // Match the directory itself
+            patterns.push(dir + "/");  // Match directory contents
+        }
+        return patterns;
+    }
+
+    /**
+     * Get all default ignore rules
+     */
+    private get defaultIgnorePatterns(): string[] {
+        return [
+            ...this.generateDirectoryIgnorePatterns(),
+            ...this.otherIgnorePatterns
+        ];
+    }
+
+    // Binary and media file extensions
     private binaryExtensions = new Set([
         ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".ico", ".svg",
         ".mp3", ".wav", ".flac", ".mp4", ".avi", ".mkv", ".mov", ".wmv",
@@ -61,25 +87,25 @@ class IgnoreManager {
     }
 
     /**
-     * 获取目录的 ignore 实例（带缓存）
+     * Get ignore instance for directory (with caching)
      */
     getIgnoreForDirectory(dirPath: string): Ignore {
-        // 检查缓存
+        // Check cache
         const cached = this.ignoreCache.get(dirPath);
         if (cached) {
             return cached;
         }
 
-        // 创建新的 ignore 实例
+        // Create new ignore instance
         const ig = ignore();
 
-        // 添加默认忽略规则
+        // Add default ignore rules
         ig.add(this.defaultIgnorePatterns);
 
-        // 递归查找所有父目录的 .gitignore 文件
+        // Recursively find all .gitignore files in parent directories
         const gitignoreFiles = this.findGitignoreFiles(dirPath);
 
-        // 按从根到子的顺序加载 .gitignore 文件
+        // Load .gitignore files in order from root to child
         for (const gitignorePath of gitignoreFiles) {
             try {
                 const content = fs.readFileSync(gitignorePath, "utf-8");
@@ -89,13 +115,13 @@ class IgnoreManager {
             }
         }
 
-        // 缓存结果
+        // Cache result
         this.ignoreCache.set(dirPath, ig);
         return ig;
     }
 
     /**
-     * 查找从根目录到指定目录的所有 .gitignore 文件
+     * Find all .gitignore files from root directory to specified directory
      */
     private findGitignoreFiles(dirPath: string): string[] {
         const gitignoreFiles: string[] = [];
@@ -104,7 +130,7 @@ class IgnoreManager {
         while (currentDir && currentDir !== path.dirname(currentDir)) {
             const gitignorePath = path.join(currentDir, ".gitignore");
             if (fs.existsSync(gitignorePath)) {
-                gitignoreFiles.unshift(gitignorePath); // 添加到开头，保证从根到子的顺序
+                gitignoreFiles.unshift(gitignorePath); // Add to beginning to ensure root-to-child order
             }
             currentDir = path.dirname(currentDir);
         }
@@ -113,18 +139,18 @@ class IgnoreManager {
     }
 
     /**
-     * 检查文件是否应该被忽略
+     * Check if file should be ignored
      */
     shouldIgnore(filePath: string, basePath: string): boolean {
         const ig = this.getIgnoreForDirectory(basePath);
         const relativePath = path.relative(basePath, filePath);
 
-        // 检查是否被 .gitignore 规则忽略
+        // Check if ignored by .gitignore rules
         if (ig.ignores(relativePath)) {
             return true;
         }
 
-        // 检查是否是二进制文件
+        // Check if it's a binary file
         if (this.isBinaryFile(filePath)) {
             return true;
         }
@@ -133,7 +159,7 @@ class IgnoreManager {
     }
 
     /**
-     * 检查是否为二进制文件
+     * Check if it's a binary file
      */
     isBinaryFile(filePath: string): boolean {
         const ext = path.extname(filePath).toLowerCase();
@@ -141,17 +167,25 @@ class IgnoreManager {
     }
 
     /**
-     * 清除缓存（在需要时调用）
+     * Clear cache (call when needed)
      */
     clearCache(): void {
         this.ignoreCache.clear();
     }
 
     /**
-     * 添加自定义忽略规则
+     * Add custom ignore patterns
      */
     addCustomIgnorePatterns(patterns: string[]): void {
-        this.defaultIgnorePatterns.push(...patterns);
+        this.otherIgnorePatterns.push(...patterns);
+        this.clearCache(); // 清除缓存以应用新规则
+    }
+
+    /**
+     * 添加需要忽略的目录（自动生成目录本身和目录内容的忽略规则）
+     */
+    addDirectoriesToIgnore(directories: string[]): void {
+        this.directoriesToIgnore.push(...directories);
         this.clearCache(); // 清除缓存以应用新规则
     }
 }
