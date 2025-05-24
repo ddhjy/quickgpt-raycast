@@ -8,6 +8,7 @@ import pinsManager from "../managers/pins-manager";
 import { MemoizedPromptListItem } from "./prompt-list-item";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
 import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
+import { useInputHistory } from "../hooks/use-input-history";
 
 interface PromptListProps {
   prompts: PromptProps[];
@@ -44,7 +45,9 @@ export function PromptList({
   initialScripts,
   externalOnRefreshNeeded,
 }: PromptListProps) {
-  const [searchText, setSearchText] = useState<string>("");
+  // Replace original searchText state with input history hook
+  const { currentInput, setCurrentInput, navigateHistory, resetHistory, addToHistory } = useInputHistory("");
+  const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
   const preferences = getPreferenceValues<{
     customPromptsDirectory?: string;
@@ -179,7 +182,7 @@ export function PromptList({
 
       clearSearchBar({ forceScrollToTop: true });
 
-      setSearchText("");
+      setCurrentInput("");
 
       push(
         <PromptList
@@ -209,7 +212,7 @@ export function PromptList({
   ]);
 
   const handleSearchTextChange = (text: string) => {
-    setSearchText(text);
+    setCurrentInput(text);
   };
 
   const activeSearchText = searchMode ? "" : searchText;
@@ -262,6 +265,8 @@ export function PromptList({
           activeSearchText={activeSearchText}
           scripts={scripts}
           onRefreshNeeded={effectiveOnRefreshNeeded}
+          addToHistory={addToHistory}
+          setCurrentInput={setCurrentInput}
         />
       );
     })
@@ -274,6 +279,12 @@ export function PromptList({
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
       filtering={false}
+      onSelectionChange={() => {
+        // Reset history navigation when user uses arrow keys to select list items
+        if (!searchMode) {
+          resetHistory();
+        }
+      }}
       searchBarAccessory={
         searchMode ? (
           <List.Dropdown

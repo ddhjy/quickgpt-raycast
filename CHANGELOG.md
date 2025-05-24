@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added input history feature that automatically saves previously entered inputs. Access history using Cmd+Y shortcut in input mode. History stores up to 50 most recent unique inputs.
 - Added `suffix` property, similar to `prefix`, but appends placeholders to the end of content. Usage is the same as `prefix`, with comma-separated property key list, e.g. `suffix: "finalNote, signature"`.
 - Adds the ability to select a temporary directory as a source for prompts.
 - Adds a new `{{option:key}}` placeholder allowing users to create dynamic dropdowns within prompts based on prompt attributes. See [README](https://github.com/your-repo/quickgpt-raycast#dynamic-options-placeholder-optionkey) for details.

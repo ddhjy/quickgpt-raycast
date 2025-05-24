@@ -34,6 +34,7 @@ import {
   TemporaryDirectoryWithExpiry,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
+import inputHistoryStore from "../stores/input-history-store";
 import fs from "fs";
 
 interface QuickGPTExtensionPreferences {
@@ -60,6 +61,8 @@ interface PromptListItemProps {
   activeSearchText?: string;
   scripts: ScriptInfo[];
   onRefreshNeeded: () => void;
+  addToHistory?: (input: string) => void;
+  setCurrentInput?: (input: string) => void;
 }
 
 /**
@@ -90,6 +93,8 @@ export function PromptListItem({
   onPinToggle,
   scripts,
   onRefreshNeeded,
+  addToHistory,
+  setCurrentInput,
 }: PromptListItemProps) {
   const navigation = useNavigation();
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
@@ -469,6 +474,67 @@ export function PromptListItem({
       actions={
         <ActionPanel>
           {promptActions}
+          {!searchMode && addToHistory && setCurrentInput && (
+            <Action
+              title="Show Input History"
+              icon={Icon.Clock}
+              shortcut={{ modifiers: ["cmd"], key: "y" }}
+              onAction={() => {
+                const history = inputHistoryStore.getHistory();
+                navigation.push(
+                  <List>
+                    {history.map((item: string, index: number) => (
+                      <List.Item
+                        key={index}
+                        title={item}
+                        actions={
+                          <ActionPanel>
+                            <Action
+                              title="Use This Input"
+                              onAction={() => {
+                                navigation.pop();
+                                setCurrentInput(item);
+                              }}
+                            />
+                            <Action
+                              title="Delete"
+                              style={Action.Style.Destructive}
+                              onAction={() => {
+                                inputHistoryStore.removeFromHistory(item);
+                                // Refresh the list by re-creating it
+                                navigation.pop();
+                                navigation.push(
+                                  <List>
+                                    {inputHistoryStore.getHistory().map((historyItem: string, historyIndex: number) => (
+                                      <List.Item
+                                        key={historyIndex}
+                                        title={historyItem}
+                                        actions={
+                                          <ActionPanel>
+                                            <Action
+                                              title="Use This Input"
+                                              onAction={() => {
+                                                navigation.pop();
+                                                setCurrentInput(historyItem);
+                                              }}
+                                            />
+                                          </ActionPanel>
+                                        }
+                                      />
+                                    ))}
+                                  </List>
+                                );
+                              }}
+                            />
+                          </ActionPanel>
+                        }
+                      />
+                    ))}
+                  </List>
+                );
+              }}
+            />
+          )}
           {prompt.identifier !== "manage-temporary-directory" && (
             <>
               <Action
