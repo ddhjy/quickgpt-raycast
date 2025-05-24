@@ -44,7 +44,6 @@ interface QuickGPTExtensionPreferences {
   customPromptsDirectory3?: string;
   customPromptsDirectory4?: string;
   scriptsDirectory?: string;
-  aiCallerExtensionTarget?: string;
   customEditor: Application;
 }
 

@@ -66,14 +66,6 @@
           "type": "directory"
         },
         {
-          "name": "aiCallerExtensionTarget",
-          "title": "AI Caller Extension Target",
-          "description": "Target for the AI Caller extension deeplink (e.g., author-name.ai-caller-extension.ai-call). Find this in the AI Caller extension's details.",
-          "type": "textfield",
-          "required": false,
-          "placeholder": "author.extension_name.command_name"
-        },
-        {
           "name": "customEditor",
           "title": "Editor application",
           "description": "Select the application to open and edit prompt files (`.hjson`).",
