@@ -33,16 +33,13 @@ interface Preferences {
   aiProviderNames?: string;
 }
 
-// Define a more specific type for Action props we might access
-// Adjust this based on the actual props you need to access (shortcut, onAction, etc.)
-// Using Action.Props might be sufficient if all actions derive from it.
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
 
 interface ActionItem {
   name: string;
   displayName: string;
   condition: boolean;
-  action: ActionWithPossibleProps; // Use the more specific type
+  action: ActionWithPossibleProps;
 }
 
 /**

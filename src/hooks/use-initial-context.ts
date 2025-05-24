@@ -83,10 +83,8 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     };
 
     const fetchData = async () => {
-      // Get frontmost app and selected text first
       const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([fetchFrontmostApp(), fetchSelectedText()]);
 
-      // Only fetch browser content if the frontmost app is a browser
       let fetchedBrowserContent = "";
       const browserNames = ["Arc"];
       if (browserNames.some((browser) => fetchedFrontmostApp.includes(browser))) {
@@ -100,9 +98,8 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
     const timer = setTimeout(() => {
       fetchData();
-    }, 10); // Add a small delay
+    }, 10);
 
-    // Cleanup function to clear the timeout
     return () => {
       clearTimeout(timer);
     };

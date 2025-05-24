@@ -40,7 +40,6 @@ const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   promptTitles: { alias: "pt" },
 };
 
-// alias ⇒ key
 const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
   Object.entries(PLACEHOLDERS)
     .filter(([, { alias }]) => alias)
@@ -49,7 +48,7 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 
 /* Utility Functions */
 
-const PH_REG = /{{(?:(file|option):)?([^}]+)}}/g; // Modified: Single regex for all placeholders including option
+const PH_REG = /{{(?:(file|option):)?([^}]+)}}/g;
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
 const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
@@ -246,27 +245,22 @@ export function placeholderFormatter(
     let changedInIteration = false;
     iteration++;
 
-    // Reset regex state
     PH_REG.lastIndex = 0;
 
     const iterationResult = currentText.replace(PH_REG, (match, directive, body) => {
-      // Only process recursive placeholders in this phase
       if (!isRecursivePlaceholder(directive, body)) {
-        return match; // Leave non-recursive placeholders for phase 2
+        return match;
       }
 
       const result = processPlaceholder(directive, body, incoming, map);
-      // Check if replacement actually changed anything
       if (result !== match) {
         changedInIteration = true;
       }
       return result;
     });
 
-    // Update current text for next iteration
     currentText = iterationResult;
 
-    // If nothing changed in this iteration, we're done
     if (!changedInIteration) {
       break;
     }
@@ -276,18 +270,13 @@ export function placeholderFormatter(
     console.warn(`Maximum placeholder recursion depth (${MAX_ITERATIONS}) exceeded, some placeholders may not be fully resolved`);
   }
 
-  // === Phase 2: One-time processing of standard placeholders, files, and options ===
-  // Reset regex state
   PH_REG.lastIndex = 0;
 
   currentText = currentText.replace(PH_REG, (match, directive, body) => {
     const trimmedBody = body.trim();
 
-    // Skip already processed recursive placeholders
     if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
-      // Check if it's a fallback chain
       if (trimmedBody.includes('|')) {
-        // Process fallback chain
         const result = processPlaceholder(directive, trimmedBody, incoming, map);
         if (result !== match) {
           return result;
@@ -296,50 +285,37 @@ export function placeholderFormatter(
       return match;
     }
 
-    // Handle file: directive
     if (directive === "file") {
-      // If file resolution is disabled, return placeholder as-is
       if (!options.resolveFile) {
         return `{{file:${trimmedBody}}}`;
       }
       return resolveFilePlaceholderSync(trimmedBody, root);
     }
 
-    // Handle option: directive
     if (directive === "option") {
-      // Return the original placeholder - this will be detected by PromptListItem
       return `{{option:${trimmedBody}}}`;
     }
 
-    // Handle standard context placeholders (including those with fallbacks)
     const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map);
 
-    // Special handling for values from Finder selection
     if (resolvedValue.startsWith(FINDER_SELECTION_MARKER)) {
-      // Remove the marker
       const actualValue = resolvedValue.substring(FINDER_SELECTION_MARKER.length);
 
-      // Check if it's a file placeholder
       const filePathMatch = actualValue.match(/^{{file:([^}]+)}}$/);
       if (filePathMatch && filePathMatch[1]) {
         if (options.resolveFile) {
-          // Resolve file content when resolveFile is true
           return resolveFilePlaceholderSync(filePathMatch[1], root);
         } else {
-          // Just return the cleaned file placeholder without marker
           return actualValue;
         }
       }
 
-      // If not a file placeholder or invalid format, return without marker
       return actualValue;
     }
 
-    // For all other placeholders, return the resolved value
     return resolvedValue;
   });
 
-  // Restore escaped placeholders back to their original form
   currentText = currentText.replace(/\\\{\\\{/g, "{{");
 
   return currentText;
@@ -357,34 +333,28 @@ export function placeholderFormatter(
  */
 export function resolvePlaceholders(
   text: string,
-  standardReplacements: Partial<SpecificReplacements> = {}, // Use only standard replacements for icon logic
+  standardReplacements: Partial<SpecificReplacements> = {},
 ): Set<PlaceholderKey> {
   const usedStandardKeys = new Set<PlaceholderKey>();
-  // Use only standard replacements to build the map for icon determination
   const map = buildEffectiveMap(standardReplacements);
 
   let m: RegExpExecArray | null;
-  // Reset regex state
   PH_REG.lastIndex = 0;
   while ((m = PH_REG.exec(text))) {
     const [, directive, rawBody] = m as unknown as [string, string | undefined, string];
-    if (directive === "file") continue; // Skip file placeholders
+    if (directive === "file") continue;
 
     const body = rawBody.trim();
 
-    // Check ONLY for standard placeholders and their fallbacks
     let chosenStandardKey: PlaceholderKey | undefined;
     for (const part of body.split("|")) {
       const key = toPlaceholderKey(part.trim());
       if (!key) continue;
 
-      // Check if it's a known standard placeholder AND has a non-empty value in the map
       if (key in PLACEHOLDERS && map.has(key)) {
         chosenStandardKey = key;
-        break; // Found the first valid standard placeholder in the chain
+        break;
       }
-      // Special case: If clipboard is in the chain, always consider it potentially used,
-      // even if empty, because its value is fetched later dynamically in some actions
       if (key === "clipboard" && !chosenStandardKey) {
         chosenStandardKey = "clipboard";
         break;
@@ -394,7 +364,6 @@ export function resolvePlaceholders(
     if (chosenStandardKey) {
       usedStandardKeys.add(chosenStandardKey);
     }
-    // IMPORTANT: Do NOT check for property paths here, as this function is for standard placeholder icons
   }
   return usedStandardKeys;
 }
@@ -415,39 +384,29 @@ function processPlaceholder(
   incoming: SpecificReplacements & Record<string, unknown>,
   map: Map<PlaceholderKey, string>,
 ): string {
-  const content = body.trim(); // Trim the placeholder body
+  const content = body.trim();
 
-  // --- Priority 1: Check incoming replacements first ---
   const providedValue = getPropertyByPath(incoming, content);
   if (providedValue !== undefined) {
-    // Check if it's a standard placeholder that has a value in the map
     const standardKey = toPlaceholderKey(content);
     if (standardKey && map.has(standardKey)) {
       return map.get(standardKey)!;
     }
 
-    // Otherwise use the provided value if it's a string
     if (typeof providedValue === "string") {
-      // Don't replace with empty strings
       return providedValue.trim() !== "" ? providedValue : `{{${body}}}`;
     }
-    // Convert non-string values to string representation
     return String(providedValue);
   }
 
-  // --- Priority 2: Handle 'option:' directive ---
   if (directive === "option") {
-    // Return the original placeholder - this will be detected by PromptListItem
     return `{{option:${content}}}`;
   }
 
-  // --- Priority 3: Handle 'file:' directive ---
   if (directive === "file") {
     return `[Path not found: ${content}]`;
   }
 
-  // --- Priority 4: Handle standard placeholder fallback chain ---
-  // e.g., {{input|selection}}
   for (const part of content.split("|")) {
     const key = toPlaceholderKey(part.trim());
     if (!key) continue;
@@ -458,6 +417,5 @@ function processPlaceholder(
     }
   }
 
-  // --- Fallback: No replacement found ---
   return `{{${body}}}`;
 }

@@ -10,7 +10,6 @@ class IgnoreManager {
     private static instance: IgnoreManager;
     private ignoreCache: Map<string, Ignore> = new Map();
 
-    // Directory names that need to ignore both the directory itself and its contents
     private directoriesToIgnore = [
         "node_modules",
         ".git",
@@ -29,7 +28,6 @@ class IgnoreManager {
         "*.xcworkspace",
     ];
 
-    // Other ignore rules (files and special patterns)
     private otherIgnorePatterns = [
         ".DS_Store",
         "*.log",
@@ -41,8 +39,8 @@ class IgnoreManager {
         "pnpm-lock.yaml",
         ".npmrc",
         ".yarnrc",
-        "# *", // Ignore files/directories starting with #
-        ".#*", // Ignore temporary files
+        "# *",
+        ".#*",
     ];
 
     /**
@@ -51,8 +49,8 @@ class IgnoreManager {
     private generateDirectoryIgnorePatterns(): string[] {
         const patterns: string[] = [];
         for (const dir of this.directoriesToIgnore) {
-            patterns.push(dir);        // Match the directory itself
-            patterns.push(dir + "/");  // Match directory contents
+            patterns.push(dir);
+            patterns.push(dir + "/");
         }
         return patterns;
     }
@@ -67,7 +65,6 @@ class IgnoreManager {
         ];
     }
 
-    // Binary and media file extensions
     private binaryExtensions = new Set([
         ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".ico", ".svg",
         ".mp3", ".wav", ".flac", ".mp4", ".avi", ".mkv", ".mov", ".wmv",
@@ -90,22 +87,16 @@ class IgnoreManager {
      * Get ignore instance for directory (with caching)
      */
     getIgnoreForDirectory(dirPath: string): Ignore {
-        // Check cache
         const cached = this.ignoreCache.get(dirPath);
         if (cached) {
             return cached;
         }
 
-        // Create new ignore instance
         const ig = ignore();
-
-        // Add default ignore rules
         ig.add(this.defaultIgnorePatterns);
 
-        // Recursively find all .gitignore files in parent directories
         const gitignoreFiles = this.findGitignoreFiles(dirPath);
 
-        // Load .gitignore files in order from root to child
         for (const gitignorePath of gitignoreFiles) {
             try {
                 const content = fs.readFileSync(gitignorePath, "utf-8");
@@ -115,7 +106,6 @@ class IgnoreManager {
             }
         }
 
-        // Cache result
         this.ignoreCache.set(dirPath, ig);
         return ig;
     }
@@ -130,7 +120,7 @@ class IgnoreManager {
         while (currentDir && currentDir !== path.dirname(currentDir)) {
             const gitignorePath = path.join(currentDir, ".gitignore");
             if (fs.existsSync(gitignorePath)) {
-                gitignoreFiles.unshift(gitignorePath); // Add to beginning to ensure root-to-child order
+                gitignoreFiles.unshift(gitignorePath);
             }
             currentDir = path.dirname(currentDir);
         }
@@ -145,12 +135,10 @@ class IgnoreManager {
         const ig = this.getIgnoreForDirectory(basePath);
         const relativePath = path.relative(basePath, filePath);
 
-        // Check if ignored by .gitignore rules
         if (ig.ignores(relativePath)) {
             return true;
         }
 
-        // Check if it's a binary file
         if (this.isBinaryFile(filePath)) {
             return true;
         }
@@ -178,7 +166,7 @@ class IgnoreManager {
      */
     addCustomIgnorePatterns(patterns: string[]): void {
         this.otherIgnorePatterns.push(...patterns);
-        this.clearCache(); // Clear cache to apply new rules
+        this.clearCache();
     }
 
     /**
@@ -186,7 +174,7 @@ class IgnoreManager {
      */
     addDirectoriesToIgnore(directories: string[]): void {
         this.directoriesToIgnore.push(...directories);
-        this.clearCache(); // Clear cache to apply new rules
+        this.clearCache();
     }
 }
 
