@@ -3,209 +3,282 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AsyncFuncAI/deepwiki-open)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-QuickGPT is a powerful prompt management tool designed for Raycast. It enhances your workflow by enabling you to efficiently manage, access, and utilize a vast library of prompts directly within the Raycast interface. Apply prompts instantly to selected text, clipboard content, or direct input, leveraging a sophisticated placeholder system and seamless integration capabilities.
+A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.
+
+## Overview
+
+QuickGPT is a sophisticated prompt management tool designed specifically for Raycast. It enables users to organize, access, and utilize extensive prompt libraries directly within the Raycast interface. The extension supports dynamic content injection through an advanced placeholder system and seamlessly integrates with various applications and workflows.
 
 ## Key Features
 
-- **Advanced Prompt Management:** Organize and maintain extensive prompt libraries using the human-readable HJSON format (`.hjson`) in the `prompts` directory. Treat your prompts like code, enabling versioning and iteration.
-- **Rich Placeholder System:** Dynamically inject context into your prompts with placeholders like `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`, file content (`{{file:path/to/file}}`), dropdown options (`{{option:key}}`). Supports fallback logic (`{{selection|clipboard}}`).
-- **System-Wide Accessibility:** Invoke QuickGPT from anywhere in your system via Raycast for immediate prompt access.
-- **Seamless Integration:** Connect QuickGPT with other applications and extensions using deeplinks and configurable actions (e.g., running AppleScripts, triggering external AI callers).
-- **Scalability:** Effortlessly manage hundreds or thousands of prompts, facilitating complex prompt engineering workflows.
+### Advanced Prompt Management
+
+- **HJSON Format Support**: Utilize the human-readable HJSON format (`.hjson`) for defining prompts, enabling version control and collaborative development
+- **Hierarchical Organization**: Structure prompts in nested folders for better organization and accessibility
+- **Temporary Directories**: Add temporary prompt directories with automatic expiration (7 days)
+- **Multiple Source Directories**: Configure up to 5 custom prompt directories for different contexts or projects
+
+### Sophisticated Placeholder System
+
+- **Context-Aware Placeholders**: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
+- **File Content Integration**: `{{file:path/to/file}}` for including external file contents
+- **Dynamic Options**: `{{option:key}}` for creating interactive dropdown menus
+- **Fallback Logic**: `{{selection|clipboard}}` for intelligent placeholder resolution
+- **Property References**: Access prompt properties directly using `{{propertyName}}` notation
+
+### Integration Capabilities
+
+- **System-Wide Accessibility**: Invoke QuickGPT from any application via Raycast
+- **AppleScript Support**: Execute custom AppleScript files as actions
+- **Clipboard Management**: Seamless copy/paste operations with formatted content
 
 ## Installation
 
-1.  **Prerequisites:** Ensure you have [Raycast](https://www.raycast.com/) installed on your macOS.
-2.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/ddhjy/quickgpt-raycast.git
-    cd quickgpt-raycast
-    ```
-3.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-4.  **Build the Extension:**
-    ```bash
-    npm run build
-    # Or for development:
-    # npm run dev
-    ```
-5.  **Import into Raycast:**
-    - Open Raycast preferences (`⌘ + ,`).
-    - Navigate to the `Extensions` tab.
-    - Click the `+` button in the bottom left and select `Import Extension`.
-    - Choose the `quickgpt-raycast` directory you cloned.
-    - Alternatively, if running `npm run dev`, the extension should load automatically in developer mode.
+### Prerequisites
+
+- macOS with [Raycast](https://www.raycast.com/) installed
+- Node.js 20.8.10 or higher
+- npm or yarn package manager
+
+### Installation Steps
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/ddhjy/quickgpt-raycast.git
+   cd quickgpt-raycast
+   ```
+
+2. **Install Dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Build the Extension**
+
+   ```bash
+   npm run build
+   ```
+
+4. **Import into Raycast**
+   - Open Raycast Preferences (`⌘ + ,`)
+   - Navigate to Extensions tab
+   - Click the `+` button and select "Import Extension"
+   - Choose the `quickgpt-raycast` directory
 
 ## Configuration
 
-Configure QuickGPT through Raycast's preferences (`Raycast Settings -> Extensions -> QuickGPT`):
+Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions > QuickGPT`):
 
-1.  **Prompt Directories (`Custom Prompts`, `Custom Prompts 1-4`):**
-    - **Required:** Set at least one directory containing your `.hjson` prompt definition files. QuickGPT will load prompts from these locations.
-    - Multiple directories allow for better organization (e.g., separating personal, work, or project-specific prompts).
-2.  **Scripts Directory (Optional):**
-    - Set a directory containing AppleScript files (`.applescript`, `.scpt`). These scripts will appear as executable actions in QuickGPT.
-3.  **Default Actions (`Actions`):**
-    - Define a comma-separated list of action names (e.g., `Copy`, `Paste`, `YourScriptName`, `OpenAI`) that should appear first in the Action Panel or be triggered by `⌘ + Enter`.
-4. **Editor Application:**
-   - In Raycast's Settings -> Extensions -> QuickGPT, locate the setting item named "Editor Application."
-   - Through this setting, you can select an installed application to open and edit prompt files (`.hjson`).
-   - By default, this option is set to `Cursor`. If the selected application is not installed, or if `Cursor` (as the default value) is not installed, you may encounter errors when attempting to edit files.
-5.  **Open Custom Prompts Directory In (打开自定义提示目录于):**
-    - Specifies the application to use when opening the custom prompts directory via the action menu (e.g., "Finder", "Visual Studio Code").
+### Prompt Directories
+
+- **Custom Prompts**: Primary directory for prompt files
+- **Custom Prompts 1-4**: Additional directories for organizing prompts by context
+
+### Scripts Directory
+
+- **Scripts Directory**: Location for AppleScript files (`.applescript`, `.scpt`)
+
+### Actions Configuration
+
+- **Actions**: Comma-separated list of default actions (e.g., `Copy,Paste,OpenAI`)
+- **AI Caller Extension Target**: Deeplink target for AI service integration
+- **AI Provider Action Names**: Names of AI providers to display as actions
+
+### Editor Settings
+
+- **Editor Application**: Select the application for editing prompt files
+- **Open Custom Prompts Directory In**: Application for opening prompt directories
 
 ## Usage
 
-1.  **Launch:** Activate Raycast and type the command alias for `Prompt Lab` (default might be `prompt` or `quickgpt`, check Raycast settings).
-2.  **Browse/Search Mode:**
-    - A list of your loaded prompts appears.
-    - Type to search prompts by title (supports Pinyin matching).
-    - Select a prompt using arrow keys and `Enter`.
-3.  **Input Mode (Optional):**
-    - If you type text in the search bar and end with a space ` `, QuickGPT enters Input Mode, using the typed text for the `{{input}}` placeholder in the subsequently selected prompt.
-    - Alternatively, after selecting a prompt directly, you can start typing to provide input for the `{{input}}` placeholder.
-    - **Note:** The `{{input}}` placeholder is _only_ replaced by the search bar text when in Input Mode, not during Search Mode.
-4.  **Action Panel:**
-    - After selecting a prompt (or providing input), press `⌘ + K` (or your configured shortcut) to open the Action Panel.
-5.  **Execute Action:**
-    - Choose an action from the list (e.g., Copy, Paste, Send to OpenAI, Run Script).
-    - The default action (topmost or configured via preferences) can often be triggered with `⌘ + Enter`.
-    - The selected action executes, using the fully formatted prompt content (with placeholders resolved).
+### Basic Operation
 
-## Prompt File Format (`.hjson`)
+1. **Launch QuickGPT**
 
-Prompts are defined in `.hjson` files. HJSON allows for comments and a more relaxed syntax than JSON.
+   - Activate Raycast and type the command alias (default: `prompt` or `quickgpt`)
 
-**Example `prompt.hjson`:**
+2. **Browse and Search**
+
+   - Navigate through prompts using arrow keys
+   - Search by typing (supports Pinyin matching)
+   - Pin frequently used prompts with `⌘ + Shift + P`
+
+3. **Input Modes**
+
+   - **Search Mode**: Browse and filter prompts
+   - **Input Mode**: Type text followed by space to provide input for `{{input}}` placeholder
+
+4. **Execute Actions**
+   - Press `⌘ + K` to open the Action Panel
+   - Use `⌘ + Enter` for the default action
+   - Available actions include Copy, Paste, Script execution, and AI service calls
+
+### Advanced Features
+
+#### Temporary Directories
+
+Add temporary prompt directories that automatically expire after 7 days:
+
+1. Select a directory in Finder
+2. Choose "Manage Temporary Directory" from the Settings menu
+3. Select "Add Temporary Directory from Finder"
+
+#### Deeplinks
+
+Access specific prompts directly using deeplinks:
+
+```
+raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt-[identifier]"}
+```
+
+## Prompt File Format
+
+Prompts are defined in HJSON files with the following structure:
 
 ```hjson
-// Example HJSON prompt definition
 {
-  // Title displayed in Raycast. Can include placeholders.
-  title: "Translate"
-  // Unique identifier (optional but recommended for pinning and deeplinks)
-  identifier: "translate_example_v1"
-  // Icon shown in the list (Emoji or SF Symbol name)
-  icon: "🌐"
-  // The main prompt content. Use placeholders for dynamic data.
+  // Required: Display title
+  title: "Translation Assistant"
+
+  // Optional: Unique identifier for pinning and deeplinks
+  identifier: "translate_v1"
+
+  // Optional: Icon (emoji or SF Symbol)
+  icon: "globe"
+
+  // Required: Main prompt content with placeholders
   content: '''
   Translate the following text into {{option:languages}}:
 
   {{selection|clipboard}}
   '''
-  // Prioritize specific actions for this prompt (optional)
-  actions: ["ChatGPT", "Copy"]
-  // Define an array property
-  languages: ["French", "Spanish", "German", "Japanese"]
-  // Use {{option:languages}} in title or content to create a dropdown
-  // from the 'languages' property of this prompt object.
-}
 
-// --- Example of nested prompts (folders) ---
+  // Optional: Preferred actions for this prompt
+  actions: ["Copy", "Paste"]
+
+  // Optional: Array property for dropdown options
+  languages: ["French", "Spanish", "German", "Japanese"]
+
+  // Optional: Property key references for prefix/suffix
+  prefix: "responseFormat,tone"
+  suffix: "signature"
+
+  // Optional: Properties referenced by prefix/suffix
+  responseFormat: "Provide a clear and concise response"
+  tone: "Professional tone"
+  signature: "Generated by QuickGPT"
+}
+```
+
+### Nested Prompts
+
+```hjson
 {
   title: "Writing Tools"
-  icon: "✍️"
-  identifier: "writing_tools_folder"
-  // Inheritable properties (optional): Children will inherit 'prefix' and 'suffix' unless overridden
-  prefix: "ne" // No Explanation by default for children
-  suffix: "thanks" // Add thanks message as suffix for children
+  icon: "pencil"
+  identifier: "writing_tools"
+
+  // Inheritable properties
+  prefix: "tone"
+  tone: "Professional writing style"
 
   subprompts: [
     {
-      title: "Summarize Text"
-      identifier: "summarize_text_child"
-      icon: "📄"
-      content: "Summarize this: {{selection|clipboard}}"
-      // Inherits prefix: "ne" from parent
+      title: "Grammar Check"
+      identifier: "grammar_check"
+      content: "Check and improve grammar: {{selection}}"
+      // Inherits prefix from parent
     }
     {
-      title: "Improve Grammar"
-      identifier: "improve_grammar_child"
-      icon: "✅"
-      content: "Improve the grammar of: {{selection|clipboard}}"
-      prefix: "c" // Overrides parent's prefix, asks for Chinese response
+      title: "Summarize"
+      identifier: "summarize"
+      content: "Summarize: {{selection}}"
+      prefix: "length" // Overrides parent prefix
+      length: "Keep it under 100 words"
     }
   ]
 }
-
-// --- Example of rootProperty for defaults ---
-// Place this at the top level of a .hjson file
-{
-  rootProperty: {
-    // These properties apply as defaults to all prompts defined *after* this
-    // in this file, and potentially subsequent files loaded from the same directory,
-    // unless overridden by the prompt itself or an inherited parent property.
-    icon: "⭐"
-    actions: ["Copy", "Paste"]
-    prefix: "c" // Default to Chinese responses
-  }
-
-  // This prompt will inherit the star icon, Copy/Paste actions, Chinese prefix, and any suffix
-  title: "My Defaulted Prompt"
-  content: "This prompt uses defaults from rootProperty."
-
-  // This prompt overrides the icon but inherits actions and prefix
-  title: "Override Icon Prompt"
-  icon: "🚀"
-  content: "This prompt has a custom icon."
-}
-
 ```
 
-- Refer to `prompt.schema.hjson` (if available in the project) for the complete schema definition.
-- Properties like `icon`, `actions`, `prefix`, `suffix` can be inherited from parent prompts (defined via `subprompts`) or set globally via `rootProperty`. Specific prompt properties always override inherited or root properties.
+## Placeholder Reference
 
-## Placeholders
+| Placeholder          | Alias    | Description                              |
+| -------------------- | -------- | ---------------------------------------- |
+| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field      |
+| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                |
+| `{{selection}}`      | `{{s}}`  | Selected text or Finder items            |
+| `{{currentApp}}`     |          | Name of frontmost application            |
+| `{{browserContent}}` |          | Markdown content from active browser tab |
+| `{{now}}`            | `{{n}}`  | Current date and time                    |
+| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles       |
+| `{{file:path}}`      |          | File or directory content                |
+| `{{option:key}}`     |          | Dropdown selection from array property   |
+| `{{property}}`       |          | Value from prompt property               |
+| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)   |
 
-QuickGPT offers a powerful placeholder system to inject dynamic content:
+## Development
 
-| Placeholder          | Alias(es) | Description                                                                                                                                                                       | Example Usage                          |
-| :------------------- | :-------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------- | --- | ---- |
-| `{{input}}`          | `{{i}}`   | Text entered in the Raycast input field **after** selecting a prompt or ending search with a space.                                                                               | `Summarize: {{input}}`                 |
-| `{{clipboard}}`      | `{{c}}`   | Current text content of the system clipboard.                                                                                                                                     | `Translate: {{clipboard}}`             |
-| `{{selection}}`      | `{{s}}`   | Text currently selected in the frontmost application. If Finder items are selected, formats as `{{file:path}}`.                                                                   | `Define: {{selection}}`                |
-| `{{currentApp}}`     |           | Name of the frontmost application.                                                                                                                                                | `Instructions for {{currentApp}}`      |
-| `{{browserContent}}` |           | Markdown content of the active browser tab (requires Raycast Browser Extension, works best with Arc).                                                                             | `Analyze page: {{browserContent}}`     |
-| `{{now}}`            | `{{n}}`   | Current date and time in the system's locale format.                                                                                                                              | `Log entry at {{now}}`                 |
-| `{{promptTitles}}`   | `{{pt}}`  | An indented list of all available prompt titles.                                                                                                                                  | `Available prompts:\n{{promptTitles}}` |
-| `{{file:path}}`      |           | Reads content from the specified file or directory. `path` can be absolute or relative (to the `.hjson` file's directory). Reads directories recursively (respects `.gitignore`). | `Context:\n{{file:../notes.txt}}`      |
-| `{{option:key}}`     |           | Creates a dropdown menu using the array defined in the `key` property of the _same_ prompt object. User selects before execution. Value replaces the placeholder.                 | `Format: {{option:outputFormats}}`     |
-| `{{property}}`       |           | Replaced by the value entered by the user for the `property` key defined within the prompt's `textInputs` object.                                                                 | `Audience: {{audience}}`               |
-| `{{ph1               | ph2       | ...}}`                                                                                                                                                                            |                                        | **Fallback:** Uses the value of the first non-empty placeholder in the list (e.g., `{{selection | clipboard}}` uses selection if available, otherwise clipboard). | `Input: {{s | c   | i}}` |
+### Project Structure
 
-**Notes on Placeholders:**
+```
+quickgpt-raycast/
+├── src/
+│   ├── components/     # React components
+│   ├── hooks/         # Custom React hooks
+│   ├── managers/      # Core managers (Prompt, Pins)
+│   ├── stores/        # Data stores
+│   ├── utils/         # Utility functions
+│   └── prompt-lab.tsx # Main entry point
+├── assets/            # Static assets and default prompts
+├── package.json       # Project configuration
+└── tsconfig.json     # TypeScript configuration
+```
 
-- **`{{input}}`:** Only populated when QuickGPT is in "Input Mode".
-- **`{{file:path}}`:** Relative paths are resolved based on the location of the `.hjson` file containing the placeholder. Directory reading ignores binary files and patterns defined in `.gitignore` files found within the traversed directories.
-- **`{{option:key}}` vs `{{property}}` (from `options`):** `{{option:key}}` is a newer way to link a placeholder directly to a top-level array property within the same prompt definition for creating dropdowns. The older method uses the `options` object, where keys automatically become placeholders. Both result in a dropdown form.
-- **Fallback Order:** The order matters (e.g., `{{selection|clipboard}}` prioritizes selection).
+### Available Scripts
 
-## Actions
+```bash
+npm run build    # Build for production
+npm run dev      # Development mode with hot reload
+npm run lint     # Run ESLint
+npm run format   # Format code with Prettier
+npm run test     # Run tests
+```
 
-QuickGPT executes actions on the final formatted prompt content:
+### Testing
 
-- **`Copy`:** Copies the formatted content to the clipboard.
-- **`Paste`:** Pastes the formatted content into the frontmost application.
-- **Scripts (`YourScriptName`):** (Requires `Scripts Directory` setup) Executes the corresponding AppleScript file found in the configured directory. The formatted prompt content is usually copied to the clipboard before script execution.
+The project uses Jest for unit testing. Run tests with:
 
-Actions can be prioritized per-prompt using the `actions` array in the `.hjson` file or globally via the `Actions` preference.
+```bash
+npm test
+```
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are welcome. Please follow these guidelines:
 
-1.  Fork the repository on GitHub.
-2.  Create a new branch for your feature or bug fix (`git checkout -b feature/my-new-feature` or `bugfix/issue-fix`).
-3.  Make your changes and commit them with clear messages (`git commit -am 'Add some feature'`).
-4.  Push your changes to your fork (`git push origin feature/my-new-feature`).
-5.  Open a Pull Request on the main repository, clearly describing your changes.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Create a Pull Request
 
-## Reporting Issues
+### Code Style
 
-If you encounter bugs or have feature requests, please file an issue on the [GitHub Issues page](https://github.com/ddhjy/quickgpt-raycast/issues).
+- TypeScript with strict mode enabled
+- ESLint configuration extends `@raycast`
+- Prettier for code formatting
+- Comprehensive JSDoc comments
 
 ## License
 
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For bug reports and feature requests, please use the [GitHub Issues](https://github.com/ddhjy/quickgpt-raycast/issues) page.
+
+## Acknowledgments
+
+Built for the Raycast community to enhance productivity and streamline AI-powered workflows.
