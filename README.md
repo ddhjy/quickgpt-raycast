@@ -5,6 +5,15 @@
 
 A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.
 
+1. Integrated with PopClip and Gemini
+
+<video src="https://github.com/user-attachments/assets/e1a222b3-2df2-496f-bf8d-7726f7fab5d0">
+</video>
+
+2. Management 200+ prompts with HJSON format and git version control
+
+<img src="https://github.com/user-attachments/assets/4da7aacd-1599-4db9-ac44-c3ed95720460" alt="图片描述" >
+
 ## Overview
 
 QuickGPT is a sophisticated prompt management tool designed specifically for Raycast. It enables users to organize, access, and utilize extensive prompt libraries directly within the Raycast interface. The extension supports dynamic content injection through an advanced placeholder system and seamlessly integrates with various applications and workflows.
