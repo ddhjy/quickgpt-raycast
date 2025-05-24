@@ -43,7 +43,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
           return content.trim();
         }
       } catch (finderError) {
-        console.debug("Failed to get selected Finder items:", finderError);
+        console.debug("Failed to get selected Finder items");
       }
 
       try {
