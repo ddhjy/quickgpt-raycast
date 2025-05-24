@@ -60,7 +60,7 @@ const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
 /**
  * Determines if a placeholder should be recursively processed in phase 1.
  * Property references and fallback chains not starting with standard placeholder are recursive.
- * 
+ *
  * @param directive The placeholder directive (file, option, or undefined)
  * @param body The placeholder body text
  * @returns True if this placeholder should be processed recursively
@@ -68,7 +68,7 @@ const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
 function isRecursivePlaceholder(directive: string | undefined, body: string): boolean {
   if (directive) return false; // file: or option: are not recursive
 
-  const parts = body.split('|');
+  const parts = body.split("|");
   const firstPartTrimmed = parts[0].trim();
   const potentialStandardKey = toPlaceholderKey(firstPartTrimmed);
 
@@ -267,7 +267,9 @@ export function placeholderFormatter(
   }
 
   if (iteration >= MAX_ITERATIONS) {
-    console.warn(`Maximum placeholder recursion depth (${MAX_ITERATIONS}) exceeded, some placeholders may not be fully resolved`);
+    console.warn(
+      `Maximum placeholder recursion depth (${MAX_ITERATIONS}) exceeded, some placeholders may not be fully resolved`,
+    );
   }
 
   PH_REG.lastIndex = 0;
@@ -276,7 +278,7 @@ export function placeholderFormatter(
     const trimmedBody = body.trim();
 
     if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
-      if (trimmedBody.includes('|')) {
+      if (trimmedBody.includes("|")) {
         const result = processPlaceholder(directive, trimmedBody, incoming, map);
         if (result !== match) {
           return result;

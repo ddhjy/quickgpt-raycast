@@ -45,8 +45,6 @@ interface QuickGPTExtensionPreferences {
   customPromptsDirectory4?: string;
   scriptsDirectory?: string;
   aiCallerExtensionTarget?: string;
-  aiProviderNames?: string;
-  openCustomPromptsDirectoryIn?: string;
   customEditor: Application;
 }
 
@@ -118,12 +116,9 @@ export function PromptListItem({
     ...replacements,
     now: new Date().toLocaleString(),
   };
-  const formattedTitleWithPlaceholders = placeholderFormatter(
-    rawTitle,
-    mergedForTitle,
-    promptSpecificRootDir,
-    { resolveFile: false },
-  );
+  const formattedTitleWithPlaceholders = placeholderFormatter(rawTitle, mergedForTitle, promptSpecificRootDir, {
+    resolveFile: false,
+  });
 
   // Apply placeholder formatting to the actual prompt title
   const formattedActualTitle = formattedTitleWithPlaceholders;
@@ -522,7 +517,7 @@ export function PromptListItem({
                                         }
                                       />
                                     ))}
-                                  </List>
+                                  </List>,
                                 );
                               }}
                             />
@@ -530,7 +525,7 @@ export function PromptListItem({
                         }
                       />
                     ))}
-                  </List>
+                  </List>,
                 );
               }}
             />
@@ -596,7 +591,6 @@ export function PromptListItem({
                         message: `Opening ${fileName} with ${editorDisplayName}`,
                         style: Toast.Style.Success,
                       });
-
                     } catch (error) {
                       console.error("Failed to open editor:", error);
                       await showToast({

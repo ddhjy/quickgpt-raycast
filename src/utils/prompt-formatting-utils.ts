@@ -36,16 +36,16 @@ const placeholderIcons: { [key: string]: Icon } = {
  * @param position Specifies placeholder position, affecting how newlines are added. 'prefix' adds trailing newline, 'suffix' adds leading newline.
  * @returns Placeholder string with appropriate newlines based on position parameter.
  */
-export function generatePlaceholders(keysList: string | undefined, position: 'prefix' | 'suffix'): string {
+export function generatePlaceholders(keysList: string | undefined, position: "prefix" | "suffix"): string {
   let activeKeys: string[] = [];
   const providedKeysTrimmed = keysList?.trim();
 
   if (providedKeysTrimmed && providedKeysTrimmed.length > 0) {
     activeKeys = providedKeysTrimmed
       .split(",")
-      .map(key => key.trim())
+      .map((key) => key.trim())
       // Filter out any empty strings resulting from splitting (e.g., "key1,,key2")
-      .filter(key => key.length > 0); // Only check for non-empty keys
+      .filter((key) => key.length > 0); // Only check for non-empty keys
 
     // Ensure uniqueness
     activeKeys = Array.from(new Set(activeKeys));
@@ -53,12 +53,13 @@ export function generatePlaceholders(keysList: string | undefined, position: 'pr
   // If keys list is null, undefined, or empty, activeKeys remains []
 
   // Generate placeholder strings using the keys directly
-  const placeholderString = activeKeys.map(key => `{{${key}}}`).join("\n");
+  const placeholderString = activeKeys.map((key) => `{{${key}}}`).join("\n");
 
   // Add newline based on position
-  if (position === 'prefix') {
+  if (position === "prefix") {
     return placeholderString + (placeholderString.length > 0 ? "\n" : ""); // Add trailing newline if needed
-  } else { // suffix
+  } else {
+    // suffix
     return (placeholderString.length > 0 ? "\n" : "") + placeholderString; // Add leading newline if needed
   }
 }
@@ -66,23 +67,23 @@ export function generatePlaceholders(keysList: string | undefined, position: 'pr
 /**
  * Generates placeholder string based on prefix property.
  * Keys listed in prefix are directly converted to {{key}} placeholders.
- * 
+ *
  * @param prefix Comma-separated string of property keys (e.g., "myPromptSetting,lang").
  * @returns Placeholder string (e.g., "{{myPromptSetting}}\n{{lang}}\n") or empty string.
  */
 export function generatePrefixPlaceholders(prefix: string | undefined): string {
-  return generatePlaceholders(prefix, 'prefix');
+  return generatePlaceholders(prefix, "prefix");
 }
 
 /**
  * Generates placeholder string based on suffix property.
  * Keys listed in suffix are directly converted to {{key}} placeholders.
- * 
+ *
  * @param suffix Comma-separated string of property keys (e.g., "finalDirective,signature").
  * @returns Placeholder string (e.g., "\n{{finalDirective}}\n{{signature}}") or empty string.
  */
 export function generateSuffixPlaceholders(suffix: string | undefined): string {
-  return generatePlaceholders(suffix, 'suffix');
+  return generatePlaceholders(suffix, "suffix");
 }
 
 /**
@@ -168,12 +169,9 @@ export function buildFormattedPromptContent(
     promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
   };
 
-  const formattedContent = placeholderFormatter(
-    contentWithPlaceholders,
-    mergedReplacements,
-    relativeRootDir,
-    { resolveFile: true }
-  );
+  const formattedContent = placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
+    resolveFile: true,
+  });
 
   return formattedContent;
 }

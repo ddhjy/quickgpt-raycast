@@ -35,7 +35,7 @@ export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): Tempora
     remainingText = `${remainingMinutes}m`;
   }
   if (remainingMs === 0) {
-    remainingText = 'expired';
+    remainingText = "expired";
   }
 
   return {

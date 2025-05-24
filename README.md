@@ -98,7 +98,6 @@ Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions >
 ### Editor Settings
 
 - **Editor Application**: Select the application for editing prompt files
-- **Open Custom Prompts Directory In**: Application for opening prompt directories
 
 ## Usage
 
