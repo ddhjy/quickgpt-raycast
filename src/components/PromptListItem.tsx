@@ -497,7 +497,6 @@ export function PromptListItem({
                   JSON.stringify({
                     target: `quickgpt-${prompt.identifier}`,
                     actions: prompt.actions?.join(","),
-                    filePath: prompt.filePath,
                   }),
                 )}`}
                 icon={Icon.Link}
