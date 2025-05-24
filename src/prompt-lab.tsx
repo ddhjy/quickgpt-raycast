@@ -1,10 +1,10 @@
 import { LaunchProps } from "@raycast/api";
-import pinsManager from "./managers/PinsManager";
-import promptManager from "./managers/PromptManager";
-import { getQuickPrompt } from "./utils/promptFormattingUtils";
-import { PromptList } from "./components/PromptList";
-import { useInitialContext } from "./hooks/useInitialContext";
-import { PromptProps } from "./managers/PromptManager";
+import pinsManager from "./managers/pins-manager";
+import promptManager from "./managers/prompt-manager";
+import { getQuickPrompt } from "./utils/prompt-formatting-utils";
+import { PromptList } from "./components/prompt-list";
+import { useInitialContext } from "./hooks/use-initial-context";
+import { PromptProps } from "./managers/prompt-manager";
 
 interface ExtendedArguments extends Arguments.PromptLab {
   initialSelectionText?: string;

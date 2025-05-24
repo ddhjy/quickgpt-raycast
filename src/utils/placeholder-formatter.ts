@@ -13,7 +13,7 @@
 
 import fs from "fs";
 import path from "path";
-import { readDirectoryContentsSync } from "./fileSystemUtils";
+import { readDirectoryContentsSync } from "./file-system-utils";
 
 /* Types & Constants */
 

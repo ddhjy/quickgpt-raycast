@@ -13,17 +13,17 @@ import {
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
-import defaultActionPreferenceStore from "../stores/DefaultActionPreferenceStore";
-import { ScriptInfo } from "../utils/scriptUtils";
-import { PromptProps } from "../managers/PromptManager";
-import { SpecificReplacements } from "../utils/placeholderFormatter";
-import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/promptFormattingUtils";
+import defaultActionPreferenceStore from "../stores/default-action-preference-store";
+import { ScriptInfo } from "../utils/script-utils";
+import { PromptProps } from "../managers/prompt-manager";
+import { SpecificReplacements } from "../utils/placeholder-formatter";
+import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/prompt-formatting-utils";
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
   removeTemporaryDirectory,
-} from "../stores/TemporaryPromptDirectoryStore";
-import promptManager from "../managers/PromptManager";
+} from "../stores/temporary-directory-store";
+import promptManager from "../managers/prompt-manager";
 import path from "path";
 
 interface Preferences {

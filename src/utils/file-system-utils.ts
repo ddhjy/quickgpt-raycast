@@ -1,7 +1,7 @@
 import path from "path";
 import fsPromises from "fs/promises";
 import fs from "fs";
-import ignoreManager from "./ignoreManager";
+import ignoreManager from "./ignore-manager";
 
 /**
  * This file provides utility functions for interacting with the file system,

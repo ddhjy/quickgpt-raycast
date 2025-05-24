@@ -1,4 +1,4 @@
-import { placeholderFormatter, SpecificReplacements, resolvePlaceholders } from "../utils/placeholderFormatter";
+import { placeholderFormatter, SpecificReplacements, resolvePlaceholders } from "../utils/placeholder-formatter";
 
 describe("placeholderFormatter", () => {
   it("should replace {{input}} and {{clipboard}}", () => {

@@ -1,12 +1,12 @@
 import { Icon, List } from "@raycast/api";
-import { PromptProps } from "../managers/PromptManager";
+import { PromptProps } from "../managers/prompt-manager";
 import {
   SpecificReplacements,
   placeholderFormatter,
   resolvePlaceholders,
   getPropertyByPath,
-} from "./placeholderFormatter";
-import promptManager from "../managers/PromptManager";
+} from "./placeholder-formatter";
+import promptManager from "../managers/prompt-manager";
 
 /**
  * This file provides utility functions specifically related to formatting and processing

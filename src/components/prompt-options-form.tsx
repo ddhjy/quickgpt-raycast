@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Form, ActionPanel, useNavigation } from "@raycast/api";
-import { generatePromptActions } from "./PromptActions";
-import { getPropertyByPath } from "../utils/placeholderFormatter";
-import { PromptProps } from "../managers/PromptManager";
-import { ScriptInfo } from "../utils/scriptUtils";
-import { SpecificReplacements } from "../utils/placeholderFormatter";
+import { generatePromptActions } from "./prompt-actions";
+import { getPropertyByPath } from "../utils/placeholder-formatter";
+import { PromptProps } from "../managers/prompt-manager";
+import { ScriptInfo } from "../utils/script-utils";
+import { SpecificReplacements } from "../utils/placeholder-formatter";
 
 interface OptionsFormProps {
   prompt: PromptProps;

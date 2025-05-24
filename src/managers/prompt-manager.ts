@@ -3,7 +3,7 @@ import * as path from "path";
 import md5 from "md5";
 import { getPreferenceValues } from "@raycast/api";
 import * as hjson from "hjson";
-import * as temporaryDirectoryStore from "../stores/TemporaryPromptDirectoryStore";
+import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
 
 type Preferences = {
   customPromptsDirectory?: string;
