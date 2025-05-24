@@ -7,8 +7,6 @@ import {
   Toast,
   closeMainWindow,
   showToast,
-  open,
-  environment,
   Navigation,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
@@ -30,7 +28,6 @@ import path from "path";
 interface Preferences {
   primaryAction: string;
   scriptsDirectory?: string;
-  aiCallerExtensionTarget?: string;
 }
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
@@ -109,9 +106,7 @@ export function generatePromptActions(
     return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
   };
 
-  const getSystemPrompt = (prompt: PromptProps): string | undefined => {
-    return "systemPrompt" in prompt ? (prompt as { systemPrompt?: string }).systemPrompt : undefined;
-  };
+
 
   const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
     name: `script_${scriptName}`,
@@ -138,58 +133,7 @@ export function generatePromptActions(
     ),
   }));
 
-  const aiCallerActions: ActionItem[] = [];
-  if (preferences.aiCallerExtensionTarget) {
-    const target = preferences.aiCallerExtensionTarget.trim();
-    const targetParts = target.split(".");
 
-    if (targetParts.length === 3) {
-      const [author, extensionName, commandName] = targetParts;
-
-      aiCallerActions.push({
-        name: "ai_caller_default",
-        displayName: "Send to AI",
-        condition: true,
-        action: (
-          <Action
-            title="Send to AI"
-            icon={Icon.Bolt}
-            onAction={wrapActionHandler(async () => {
-              try {
-                const finalContent = await getFinalContent();
-                const effectiveSystemPrompt = getSystemPrompt(prompt);
-                const args: { promptContent: string; systemPrompt?: string } = {
-                  promptContent: finalContent,
-                };
-                if (effectiveSystemPrompt) {
-                  args.systemPrompt = effectiveSystemPrompt;
-                }
-
-                const deeplink = `raycast://extensions/${author}/${extensionName}/${commandName}?arguments=${encodeURIComponent(JSON.stringify(args))}`;
-                await open(deeplink);
-              } catch (error) {
-                console.error("Failed to construct or open AI Caller deeplink:", error);
-                await showToast(Toast.Style.Failure, "Deeplink Error", String(error));
-              }
-            })}
-          />
-        ),
-      });
-    } else if (target) {
-      console.warn(
-        "Invalid aiCallerExtensionTarget format in preferences. Expected 'author.extension_name.command_name'. AI Actions disabled.",
-      );
-
-      const configureUrl = `raycast://configure-extension?name=${environment.extensionName}`;
-
-      aiCallerActions.push({
-        name: "configure_ai_caller",
-        displayName: "Configure Extension Settings",
-        condition: true,
-        action: <Action.OpenInBrowser title="Configure Extension Settings" icon={Icon.Gear} url={configureUrl} />,
-      });
-    }
-  }
 
   const baseActionItems: ActionItem[] = [
     {
@@ -230,7 +174,7 @@ export function generatePromptActions(
     },
   ];
 
-  const allActionItems: ActionItem[] = [...aiCallerActions, ...scriptActions, ...baseActionItems];
+  const allActionItems: ActionItem[] = [...scriptActions, ...baseActionItems];
 
   if (prompt.isTemporary && prompt.temporaryDirSource) {
     const tempDirSourcePath = prompt.temporaryDirSource;
@@ -264,7 +208,7 @@ export function generatePromptActions(
   const eligibleActions = allActionItems.filter((item) => item.condition);
 
   eligibleActions.sort((a, b) => {
-    const getNameForSort = (name: string) => name.toLowerCase().replace(/^(script_|ai_caller_)/, "");
+    const getNameForSort = (name: string) => name.toLowerCase().replace(/^script_/, "");
     const nameA = getNameForSort(a.name);
     const nameB = getNameForSort(b.name);
 
@@ -280,9 +224,9 @@ export function generatePromptActions(
   const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
   let defaultActionItem: ActionItem | undefined;
   if (defaultActionPreference) {
-    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+|ai_caller_)/, "");
+    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+)/, "");
     defaultActionItem = eligibleActions.find(
-      (item) => item.name.toLowerCase().replace(/^(script_|ai_caller_)/, "") === preferenceBaseName.toLowerCase(),
+      (item) => item.name.toLowerCase().replace(/^script_/, "") === preferenceBaseName.toLowerCase(),
     );
   }
 
