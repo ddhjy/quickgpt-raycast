@@ -53,14 +53,22 @@ export function PromptOptionsForm({
       if (Array.isArray(values) && values.length > 0) {
         // Select the first option by default
         initialOptions[key] = String(values[0]);
+      } else if (values && typeof values === "object" && Object.keys(values).length > 0) {
+        const firstEntryValue = Object.values(values as Record<string, string>)[0];
+        initialOptions[key] = String(firstEntryValue);
       }
     });
 
     // Handle the traditional options object
     if (prompt.options) {
       Object.entries(prompt.options).forEach(([key, values]) => {
-        if (values.length > 0 && !initialOptions[key]) {
-          initialOptions[key] = values[0];
+        if (!initialOptions[key]) {
+          if (Array.isArray(values) && values.length > 0) {
+            initialOptions[key] = values[0];
+          } else if (values && typeof values === "object" && Object.keys(values).length > 0) {
+            const firstEntryValue = Object.values(values as Record<string, string>)[0];
+            initialOptions[key] = String(firstEntryValue);
+          }
         }
       });
     }
@@ -112,40 +120,76 @@ export function PromptOptionsForm({
       {/* Dynamically generate dropdown menus from properties specified by optionKeys */}
       {optionKeys.map((key) => {
         const values = getPropertyByPath(prompt, key);
-        if (!Array.isArray(values) || values.length === 0) {
-          // Skip non-array or empty array
-          return null;
+
+        if (Array.isArray(values)) {
+          return (
+            <Form.Dropdown
+              key={key}
+              id={key}
+              title={key}
+              value={selectedOptions[key] || String(values[0])}
+              onChange={(newValue) => handleDropdownChange(key, newValue)}
+            >
+              {values.map((v) => (
+                <Form.Dropdown.Item key={String(v)} value={String(v)} title={String(v)} />
+              ))}
+            </Form.Dropdown>
+          );
+        } else if (values && typeof values === "object") {
+          const entries = Object.entries(values as Record<string, string>);
+          const defaultValue = selectedOptions[key] || entries[0]?.[1];
+          return (
+            <Form.Dropdown
+              key={key}
+              id={key}
+              title={key}
+              value={defaultValue}
+              onChange={(newValue) => handleDropdownChange(key, newValue)}
+            >
+              {entries.map(([label, val]) => (
+                <Form.Dropdown.Item key={val} value={val} title={label} />
+              ))}
+            </Form.Dropdown>
+          );
         }
 
-        return (
-          <Form.Dropdown
-            key={key}
-            id={key}
-            title={key}
-            value={selectedOptions[key] || String(values[0])}
-            onChange={(newValue) => handleDropdownChange(key, newValue)}
-          >
-            {values.map((value) => (
-              <Form.Dropdown.Item key={String(value)} value={String(value)} title={String(value)} />
-            ))}
-          </Form.Dropdown>
-        );
+        return null;
       })}
 
       {/* Dropdown menus generated from the traditional options object */}
-      {Object.entries(prompt.options || {}).map(([key, values]) => (
-        <Form.Dropdown
-          key={key}
-          id={key}
-          title={key}
-          value={selectedOptions[key] || values[0]}
-          onChange={(newValue) => handleDropdownChange(key, newValue)}
-        >
-          {values.map((value) => (
-            <Form.Dropdown.Item key={value} value={value} title={value} />
-          ))}
-        </Form.Dropdown>
-      ))}
+      {Object.entries(prompt.options || {}).map(([key, values]) => {
+        if (Array.isArray(values)) {
+          return (
+            <Form.Dropdown
+              key={key}
+              id={key}
+              title={key}
+              value={selectedOptions[key] || values[0]}
+              onChange={(newValue) => handleDropdownChange(key, newValue)}
+            >
+              {values.map((value) => (
+                <Form.Dropdown.Item key={value} value={value} title={value} />
+              ))}
+            </Form.Dropdown>
+          );
+        } else {
+          const dictEntries = Object.entries(values as Record<string, string>);
+          const defaultValue = selectedOptions[key] || dictEntries[0]?.[1];
+          return (
+            <Form.Dropdown
+              key={key}
+              id={key}
+              title={key}
+              value={defaultValue}
+              onChange={(newValue) => handleDropdownChange(key, newValue)}
+            >
+              {dictEntries.map(([label, val]) => (
+                <Form.Dropdown.Item key={val} value={val} title={label} />
+              ))}
+            </Form.Dropdown>
+          );
+        }
+      })}
 
       {/* Text input fields */}
       {Object.entries(prompt.textInputs || {}).map(([key, placeholder]) => (

@@ -26,7 +26,7 @@ export type PromptProps = {
   noexplanation?: boolean;
   forbidChinese?: boolean;
   ref?: { [key: string]: string | string[] };
-  options?: { [key: string]: string[] };
+  options?: { [key: string]: string[] | Record<string, string> };
   actions?: string[];
   textInputs?: { [key: string]: string };
   path?: string;

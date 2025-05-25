@@ -297,6 +297,13 @@ export function placeholderFormatter(
     if (directive === "option") {
       const optionValue = getPropertyByPath(incoming, trimmedBody);
       if (optionValue !== undefined) {
+        if (Array.isArray(optionValue)) {
+          return String(optionValue[0]);
+        }
+        if (optionValue && typeof optionValue === "object") {
+          const firstKey = Object.keys(optionValue)[0];
+          return String((optionValue as Record<string, unknown>)[firstKey]);
+        }
         return String(optionValue);
       }
       return `{{option:${trimmedBody}}}`;
@@ -408,6 +415,13 @@ function processPlaceholder(
   if (directive === "option") {
     const optionValue = getPropertyByPath(incoming, content);
     if (optionValue !== undefined) {
+      if (Array.isArray(optionValue)) {
+        return String(optionValue[0]);
+      }
+      if (optionValue && typeof optionValue === "object") {
+        const firstKey = Object.keys(optionValue)[0];
+        return String((optionValue as Record<string, unknown>)[firstKey]);
+      }
       return String(optionValue);
     }
     return `{{option:${content}}}`;

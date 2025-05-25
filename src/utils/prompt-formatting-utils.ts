@@ -277,7 +277,10 @@ export function findOptionPlaceholders(prompt: PromptProps): string[] {
     const propertyName = match[1].trim();
     // Check if the prompt object itself has this property and it is a non-empty array
     const propValue = getPropertyByPath(prompt, propertyName);
-    if (Array.isArray(propValue) && propValue.length > 0) {
+    if (
+      (Array.isArray(propValue) && propValue.length > 0) ||
+      (propValue && typeof propValue === "object" && !Array.isArray(propValue) && Object.keys(propValue).length > 0)
+    ) {
       optionKeys.push(propertyName);
     }
   }
