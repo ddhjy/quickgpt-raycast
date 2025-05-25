@@ -5,7 +5,7 @@
 
 A professional prompt management extension for Raycast that **streamlines** your workflow by providing efficient access to a comprehensive library of **prompts** with advanced placeholder capabilities.
 
-1. **streamlines**: Integrated with PopClip and Gemini, a prompt is a tool 
+1. **streamlines**: Integrated with PopClip and Gemini, a prompt is a tool
 
 <video src="https://github.com/user-attachments/assets/e1a222b3-2df2-496f-bf8d-7726f7fab5d0">
 </video>
@@ -70,12 +70,6 @@ QuickGPT is a sophisticated prompt management tool designed specifically for Ray
    npm run dev
    ```
 
-4. **Import into Raycast**
-   - Open Raycast Preferences (`⌘ + ,`)
-   - Navigate to Extensions tab
-   - Click the `+` button and select "Import Extension"
-   - Choose the `quickgpt-raycast` directory
-
 ## Configuration
 
 Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions > QuickGPT`):
@@ -85,9 +79,24 @@ Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions >
 - **Custom Prompts**: Primary directory for prompt files
 - **Custom Prompts 1-4**: Additional directories for organizing prompts by context
 
+**Recommended Setup**: To get started quickly, configure your first prompt directory to point to the included example:
+
+[example/prompt/](example/prompt/)
+
+This directory contains a comprehensive `prompt-template.hjson` file that demonstrates:
+
+- Advanced placeholder usage (`{{input}}`, `{{selection}}`, `{{option:key}}`)
+- Nested subprompts with hierarchical organization
+- Dynamic dropdown options and property references
+- Professional writing assistant templates
+
 ### Scripts Directory
 
 - **Scripts Directory**: Location for AppleScript files (`.applescript`, `.scpt`)
+
+**Recommended Setup**: Configure the scripts directory to:
+
+[example/script/](example/script/)
 
 ### Actions Configuration
 
@@ -223,6 +232,10 @@ Prompts are defined in HJSON files with the following structure:
 | `{{option:key}}`     |          | Dropdown selection from array property   |
 | `{{property}}`       |          | Value from prompt property               |
 | `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)   |
+
+Placeholder usage example:
+
+[example/prompt/prompt-template.hjson](example/prompt/prompt-template.hjson)
 
 ## Development
 

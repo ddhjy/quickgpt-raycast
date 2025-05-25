@@ -1,0 +1,146 @@
+{
+  title: "Writing Assistant"
+  icon: "✍️"
+  identifier: "writing-assistant-demo"
+  
+  // Main prompt with placeholders
+  content: '''
+    As a professional writing assistant, help me {{option:task}} the following text:
+    
+    {{i|s|c}}
+    
+    Style: {{style}}
+    Tone: {{tone}}
+  '''
+  
+  // Properties that can be referenced
+  style: "Clear and concise"
+  tone: "Professional yet friendly"
+  
+  // Dynamic options
+  task: [
+    "improve"
+    "proofread"
+    "summarize"
+    "expand"
+    "translate"
+  ]
+  
+  // Prefix/suffix properties
+  prefix: "requirements,context"
+  suffix: "signature"
+  
+  requirements: "Please maintain the original meaning while enhancing clarity"
+  context: "Target audience: General readers"
+  signature: "Enhanced by AI Writing Assistant"
+  
+  // Custom actions
+  actions: ["Copy", "Paste", "Grammar Check"]
+  
+  // Nested subprompts
+  subprompts: [
+    {
+      title: "Email Composer"
+      icon: "📧"
+      identifier: "email-composer"
+      content: '''
+        Compose a professional email based on:
+        
+        Purpose: {{i}}
+        Key points: {{s|c}}
+        
+        Recipient: {{option:recipient}}
+      '''
+      recipient: {
+        "Colleague": "informal but professional"
+        "Manager": "formal and respectful"
+        "Client": "professional and courteous"
+      }
+    }
+    {
+      title: "Blog Post Optimizer"
+      icon: "📝"
+      content: '''
+        Optimize this blog post for SEO and readability:
+        
+        {{s|c}}
+        
+        Target keywords: {{i}}
+        Reading level: {{readingLevel}}
+      '''
+      readingLevel: "Intermediate (8th grade)"
+      textInputs: {
+        "targetKeywords": "Enter your target keywords"
+        "metaDescription": "Write a meta description (150-160 chars)"
+      }
+    }
+    {
+      title: "Creative Writing Helper"
+      icon: "🎨"
+      identifier: "creative-writing"
+      subprompts: [
+        {
+          title: "Character Development"
+          content: '''
+            Help me develop a character with these traits:
+            {{i|s|c}}
+            
+            Include: {{option:aspects}}
+          '''
+          aspects: [
+            "Physical appearance"
+            "Personality traits"
+            "Background story"
+            "Motivations and goals"
+            "Strengths and weaknesses"
+          ]
+        }
+        {
+          title: "Plot Generator"
+          content: '''
+            Generate a plot outline for a {{option:genre}} story with:
+            
+            Main theme: {{i}}
+            Setting: {{s|c}}
+          '''
+          genre: [
+            "Mystery"
+            "Science Fiction"
+            "Romance"
+            "Fantasy"
+            "Thriller"
+          ]
+        }
+      ]
+    }
+    {
+      title: "Quick Templates"
+      icon: "⚡"
+      subprompts: [
+        {
+          title: "Fix Grammar"
+          prefix: ""
+          content: "Fix grammar and punctuation: {{i|s|c}}"
+        }
+        {
+          title: "Make Concise"
+          prefix: ""
+          content: "Make this more concise: {{i|s|c}}"
+        }
+        {
+          title: "Add Examples"
+          content: '''
+            Add relevant examples to illustrate this concept:
+            {{i|s|c}}
+          '''
+        }
+      ]
+    }
+  ]
+  
+  // File reference examples
+  ref: {
+    "styleGuide": "{{file:./writing-style-guide.md}}"
+    "templates": "{{file:./templates/}}"
+  }
+}
