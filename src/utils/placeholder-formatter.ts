@@ -295,6 +295,10 @@ export function placeholderFormatter(
     }
 
     if (directive === "option") {
+      const optionValue = getPropertyByPath(incoming, trimmedBody);
+      if (optionValue !== undefined) {
+        return String(optionValue);
+      }
       return `{{option:${trimmedBody}}}`;
     }
 
@@ -402,6 +406,10 @@ function processPlaceholder(
   }
 
   if (directive === "option") {
+    const optionValue = getPropertyByPath(incoming, content);
+    if (optionValue !== undefined) {
+      return String(optionValue);
+    }
     return `{{option:${content}}}`;
   }
 
