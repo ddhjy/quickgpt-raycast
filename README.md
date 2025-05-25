@@ -3,14 +3,14 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AsyncFuncAI/deepwiki-open)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.
+A professional prompt management extension for Raycast that **streamlines** your workflow by providing efficient access to a comprehensive library of **prompts** with advanced placeholder capabilities.
 
-1. Integrated with PopClip and Gemini
+1. **streamlines**: Integrated with PopClip and Gemini
 
 <video src="https://github.com/user-attachments/assets/e1a222b3-2df2-496f-bf8d-7726f7fab5d0">
 </video>
 
-2. Management 200+ prompts with HJSON format and git version control
+2. **prompts**: Management 200+ prompts with HJSON format and git version control
 
 <img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="图片描述" >
 
