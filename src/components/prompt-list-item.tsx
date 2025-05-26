@@ -363,7 +363,11 @@ export function PromptListItem({
 
   // Create accessories to display remaining time
   const getAccessories = () => {
-    if (prompt.identifier === "manage-temporary-directory") {
+    // For settings-related options, don't display any accessory icons
+    if (prompt.identifier === "manage-temporary-directory" ||
+      prompt.identifier === "open-preferences" ||
+      prompt.identifier === "open-custom-prompts-dir" ||
+      prompt.identifier === "open-scripts-dir") {
       return [];
     }
 
