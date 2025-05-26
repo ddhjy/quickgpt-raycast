@@ -271,6 +271,7 @@ export function PromptListItem({
               prompts={prompt.subprompts}
               selectionText={replacements.selection ?? ""}
               currentApp={replacements.currentApp ?? ""}
+              allApp={replacements.allApp ?? ""}
               browserContent={replacements.browserContent ?? ""}
               allowedActions={allowedActions || prompt.actions} // These are actions for sub-items
               initialScripts={scripts}

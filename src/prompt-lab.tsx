@@ -27,7 +27,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   // Convert actions string to array
   const allowedActions = actions?.split(",").filter(Boolean);
 
-  const { selectionText, currentApp, browserContent } = useInitialContext(initialSelectionText, target);
+  const { selectionText, currentApp, allApp, browserContent } = useInitialContext(initialSelectionText, target);
 
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
@@ -61,6 +61,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       prompts={uniquePrompts}
       selectionText={effectiveSelectionText}
       currentApp={currentApp}
+      allApp={allApp}
       browserContent={browserContent}
       allowedActions={allowedActions}
     />

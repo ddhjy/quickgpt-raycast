@@ -22,6 +22,7 @@ const placeholderIcons: { [key: string]: Icon } = {
   clipboard: Icon.Clipboard,
   selection: Icon.Text,
   currentApp: Icon.Window,
+  allApp: Icon.AppWindowGrid2x2,
   browserContent: Icon.Globe,
   promptTitles: Icon.List,
 };

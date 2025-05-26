@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSelectedText, getFrontmostApplication, BrowserExtension, getSelectedFinderItems } from "@raycast/api";
+import { getSelectedText, getFrontmostApplication, BrowserExtension, getSelectedFinderItems, getApplications } from "@raycast/api";
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -15,6 +15,7 @@ import { getSelectedText, getFrontmostApplication, BrowserExtension, getSelected
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
   const [currentApp, setCurrentApp] = useState("");
+  const [allApp, setAllApp] = useState("");
   const [browserContent, setBrowserContent] = useState("");
 
   useEffect(() => {
@@ -82,8 +83,28 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       }
     };
 
+    /**
+     * Fetches the list of all installed applications.
+     * Handles potential errors gracefully by returning an empty string.
+     *
+     * @returns A promise resolving to a comma-separated list of application names.
+     */
+    const fetchAllApps = async (): Promise<string> => {
+      try {
+        const apps = await getApplications();
+        return apps.map(app => app.name).join(", ");
+      } catch (error) {
+        console.info("Failed to fetch all applications:", error);
+        return "";
+      }
+    };
+
     const fetchData = async () => {
-      const [fetchedFrontmostApp, fetchedSelectedText] = await Promise.all([fetchFrontmostApp(), fetchSelectedText()]);
+      const [fetchedFrontmostApp, fetchedSelectedText, fetchedAllApps] = await Promise.all([
+        fetchFrontmostApp(), 
+        fetchSelectedText(),
+        fetchAllApps()
+      ]);
 
       let fetchedBrowserContent = "";
       const browserNames = ["Arc"];
@@ -93,6 +114,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
       setSelectionText(fetchedSelectedText);
       setCurrentApp(fetchedFrontmostApp);
+      setAllApp(fetchedAllApps);
       setBrowserContent(fetchedBrowserContent);
     };
 
@@ -108,6 +130,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
   return {
     selectionText,
     currentApp,
+    allApp,
     browserContent,
   };
 }

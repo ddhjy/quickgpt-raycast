@@ -29,7 +29,7 @@ QuickGPT is a sophisticated prompt management tool designed specifically for Ray
 
 ### Sophisticated Placeholder System
 
-- **Context-Aware Placeholders**: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
+- **Context-Aware Placeholders**: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{allApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
 - **File Content Integration**: `{{file:path/to/file}}` for including external file contents
 - **Dynamic Options**: `{{option:key}}` for creating interactive dropdown menus
 - **Fallback Logic**: `{{selection|clipboard}}` for intelligent placeholder resolution
@@ -219,19 +219,20 @@ Prompts are defined in HJSON files with the following structure:
 
 ## Placeholder Reference
 
-| Placeholder          | Alias    | Description                              |
-| -------------------- | -------- | ---------------------------------------- |
-| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field      |
-| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                |
-| `{{selection}}`      | `{{s}}`  | Selected text or Finder items            |
-| `{{currentApp}}`     |          | Name of frontmost application            |
-| `{{browserContent}}` |          | Markdown content from active browser tab |
-| `{{now}}`            | `{{n}}`  | Current date and time                    |
-| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles       |
-| `{{file:path}}`      |          | File or directory content                |
-| `{{option:key}}`     |          | Dropdown selection from array property   |
-| `{{property}}`       |          | Value from prompt property               |
-| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)   |
+| Placeholder          | Alias    | Description                                        |
+| -------------------- | -------- | -------------------------------------------------- |
+| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field                |
+| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                          |
+| `{{selection}}`      | `{{s}}`  | Selected text or Finder items                      |
+| `{{currentApp}}`     |          | Name of frontmost application                      |
+| `{{allApp}}`         |          | Comma-separated list of all installed applications |
+| `{{browserContent}}` |          | Markdown content from active browser tab           |
+| `{{now}}`            | `{{n}}`  | Current date and time                              |
+| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                 |
+| `{{file:path}}`      |          | File or directory content                          |
+| `{{option:key}}`     |          | Dropdown selection from array property             |
+| `{{property}}`       |          | Value from prompt property                         |
+| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)             |
 
 Placeholder usage example:
 

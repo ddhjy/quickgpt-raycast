@@ -15,6 +15,7 @@ interface PromptListProps {
   searchMode?: boolean;
   selectionText: string;
   currentApp: string;
+  allApp?: string;
   browserContent: string;
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
@@ -40,6 +41,7 @@ export function PromptList({
   searchMode = false,
   selectionText,
   currentApp,
+  allApp = "",
   browserContent,
   allowedActions,
   initialScripts,
@@ -190,6 +192,7 @@ export function PromptList({
         <PromptList
           selectionText={selectionText}
           currentApp={currentApp}
+          allApp={allApp}
           browserContent={browserContent}
           allowedActions={allowedActions}
           initialScripts={initialScripts}
@@ -207,6 +210,7 @@ export function PromptList({
     displayPrompts,
     selectionText,
     currentApp,
+    allApp,
     browserContent,
     allowedActions,
     initialScripts,
@@ -259,6 +263,7 @@ export function PromptList({
           replacements={{
             selection: selectionText,
             currentApp,
+            allApp,
             browserContent,
             input: searchMode ? "" : activeSearchText,
           }}

@@ -22,6 +22,7 @@ export type SpecificReplacements = {
   clipboard?: string;
   selection?: string;
   currentApp?: string;
+  allApp?: string;
   browserContent?: string;
   now?: string;
   promptTitles?: string;
@@ -35,6 +36,7 @@ const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   selection: { alias: "s" },
   clipboard: { alias: "c" },
   currentApp: {},
+  allApp: {},
   browserContent: {},
   now: { alias: "n" },
   promptTitles: { alias: "pt" },
