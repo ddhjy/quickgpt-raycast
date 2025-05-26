@@ -567,55 +567,64 @@ export function PromptListItem({
                 )}`}
                 icon={Icon.Link}
               />
-              {prompt.filePath && (
-                <Action
-                  title="Edit File"
-                  shortcut={{ modifiers: ["cmd"], key: "e" }}
-                  icon={Icon.Pencil}
-                  onAction={async () => {
-                    if (!prompt.filePath) return;
+              {prompt.filePath && (() => {
+                const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
+                const editorApp = preferences.customEditor;
+                let editorDisplayName = editorApp.name;
+                if (editorDisplayName.endsWith(".app")) {
+                  editorDisplayName = editorDisplayName.slice(0, -4);
+                }
 
-                    await Clipboard.copy(prompt.title);
+                return (
+                  <Action
+                    title={`Edit with ${editorDisplayName}`}
+                    shortcut={{ modifiers: ["cmd"], key: "e" }}
+                    icon={Icon.Pencil}
+                    onAction={async () => {
+                      if (!prompt.filePath) return;
 
-                    const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
-                    const editorApp = preferences.customEditor;
+                      await Clipboard.copy(prompt.title);
 
-                    let editorDisplayName = editorApp.name;
-                    if (editorDisplayName.endsWith(".app")) {
-                      editorDisplayName = editorDisplayName.slice(0, -4);
-                    }
+                      const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
+                      const editorApp = preferences.customEditor;
 
-                    try {
-                      let openCommand: string;
-                      const configDir = path.dirname(prompt.filePath);
-                      if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                        openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
-                      } else {
-                        openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                      let editorDisplayName = editorApp.name;
+                      if (editorDisplayName.endsWith(".app")) {
+                        editorDisplayName = editorDisplayName.slice(0, -4);
                       }
 
-                      await runAppleScript(`do shell script "${openCommand}"`);
+                      try {
+                        let openCommand: string;
+                        const configDir = path.dirname(prompt.filePath);
+                        if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                          openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
+                        } else {
+                          openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                        }
 
-                      await closeMainWindow();
+                        await runAppleScript(`do shell script "${openCommand}"`);
 
-                      const fileName = path.basename(prompt.filePath);
+                        await closeMainWindow();
 
-                      await showToast({
-                        title: "Opening File",
-                        message: `Opening ${fileName} with ${editorDisplayName}`,
-                        style: Toast.Style.Success,
-                      });
-                    } catch (error) {
-                      console.error("Failed to open editor:", error);
-                      await showToast({
-                        title: "Error Opening Editor",
-                        message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
-                        style: Toast.Style.Failure,
-                      });
-                    }
-                  }}
-                />
-              )}
+                        const fileName = path.basename(prompt.filePath);
+
+                        await showToast({
+                          title: "Opening File",
+                          message: `Opening ${fileName} with ${editorDisplayName}`,
+                          style: Toast.Style.Success,
+                        });
+                      } catch (error) {
+                        console.error("Failed to open editor:", error);
+                        await showToast({
+                          title: "Error Opening Editor",
+                          message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                          style: Toast.Style.Failure,
+                        });
+                      }
+                    }}
+                  />
+                );
+              })()}
             </>
           )}
         </ActionPanel>
