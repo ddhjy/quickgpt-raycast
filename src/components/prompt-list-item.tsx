@@ -11,7 +11,6 @@ import {
   openExtensionPreferences,
   getPreferenceValues,
   Clipboard,
-  getSelectedFinderItems,
   Image,
   useNavigation,
   Application,
@@ -26,16 +25,14 @@ import { ScriptInfo } from "../utils/script-utils";
 import { placeholderFormatter } from "../utils/placeholder-formatter";
 import { PromptList } from "./prompt-list";
 import { PromptOptionsForm } from "./prompt-options-form";
+import { TemporaryDirectoryManager } from "./temporary-directory-manager";
 import {
-  addTemporaryDirectory,
   removeTemporaryDirectory,
-  removeAllTemporaryDirectories,
   getActiveTemporaryDirectoriesWithExpiry,
   TemporaryDirectoryWithExpiry,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
-import fs from "fs";
 
 interface QuickGPTExtensionPreferences {
   customPromptsDirectory?: string;
@@ -182,107 +179,15 @@ export function PromptListItem({
   // Memoize prompt actions
   const promptActions = useMemo(() => {
     if (prompt.identifier === "manage-temporary-directory") {
-      const handleAdd = async () => {
-        try {
-          const selectedItems = await getSelectedFinderItems();
-          if (selectedItems.length === 0) {
-            await showToast({
-              title: "Error",
-              message: "Please select a directory in Finder",
-              style: Toast.Style.Failure,
-            });
-            return;
+      return (
+        <Action.Push
+          title="Open"
+          icon={Icon.List}
+          target={
+            <TemporaryDirectoryManager onRefreshNeeded={onRefreshNeeded} />
           }
-
-          const selectedPath = selectedItems[0].path;
-          const stats = fs.statSync(selectedPath);
-          if (!stats.isDirectory()) {
-            await showToast({
-              title: "Error",
-              message: "Please select a directory instead of a file",
-              style: Toast.Style.Failure,
-            });
-            return;
-          }
-
-          addTemporaryDirectory(selectedPath);
-          promptManager.reloadPrompts();
-          onRefreshNeeded();
-        } catch (error) {
-          console.error("Failed to add temporary directory:", error);
-          await showToast({
-            title: "Error",
-            message: `Failed to add temporary directory: ${String(error)}`,
-            style: Toast.Style.Failure,
-          });
-        }
-      };
-
-      const actionsList: React.ReactElement[] = [];
-
-      actionsList.push(
-        <Action
-          key="add-new-temp-dir"
-          title="Add Temporary Directory from Finder"
-          icon={Icon.Plus}
-          onAction={handleAdd}
-        />,
+        />
       );
-
-      if (prompt.isTemporary && prompt.temporaryDirSource) {
-        actionsList.push(
-          <Action
-            key={`remove-source-temp-dir-${prompt.temporaryDirSource}`}
-            title={`Remove This Temp Dir: ${path.basename(prompt.temporaryDirSource)}`}
-            icon={Icon.Eject}
-            style={Action.Style.Destructive}
-            onAction={() => {
-              if (prompt.temporaryDirSource) {
-                removeTemporaryDirectory(prompt.temporaryDirSource);
-                promptManager.reloadPrompts();
-                onRefreshNeeded();
-              }
-            }}
-          />,
-        );
-      }
-
-      const otherTemporaryDirs = temporaryDirs.filter(
-        (dir) => !(prompt.isTemporary && prompt.temporaryDirSource === dir.path),
-      );
-
-      otherTemporaryDirs.forEach((dir) => {
-        actionsList.push(
-          <Action
-            key={`remove-listed-temp-dir-${dir.path}`}
-            title={`Remove: ${path.basename(dir.path)}`}
-            icon={Icon.Trash}
-            onAction={() => {
-              removeTemporaryDirectory(dir.path);
-              promptManager.reloadPrompts();
-              onRefreshNeeded();
-            }}
-          />,
-        );
-      });
-
-      // Action to remove all temporary directories
-      if (temporaryDirs.length > 0) {
-        actionsList.push(
-          <Action
-            key="remove-all-temp-dirs"
-            title="Remove All Temporary Directories"
-            icon={Icon.DeleteDocument}
-            style={Action.Style.Destructive}
-            onAction={() => {
-              removeAllTemporaryDirectories();
-              promptManager.reloadPrompts();
-              onRefreshNeeded();
-            }}
-          />,
-        );
-      }
-      return <>{actionsList}</>;
     } else if (prompt.identifier === "open-custom-prompts-dir") {
       return handleCustomPromptsDirectoryActions();
     } else if (prompt.identifier === "open-scripts-dir") {
@@ -458,15 +363,6 @@ export function PromptListItem({
 
   // Create accessories to display remaining time
   const getAccessories = () => {
-    if (prompt.identifier === "manage-temporary-directory" && temporaryDirs.length > 0) {
-      return temporaryDirs.map((dir) => ({
-        tag: {
-          value: `${path.basename(dir.path)}: ${dir.remainingText}`,
-          color: dir.remainingMs < 3600000 ? Color.Red : Color.SecondaryText, // Less than 1 hour shows red
-        },
-      }));
-    }
-
     if (prompt.identifier === "manage-temporary-directory") {
       return [];
     }
@@ -605,7 +501,7 @@ export function PromptListItem({
                               key={index}
                               title={item.text.length > 100 ? item.text.substring(0, 100) + "..." : item.text}
                               accessories={[
-                                { text: index === 0 ? "Current" : ""},
+                                { text: index === 0 ? "Current" : "" },
                               ]}
                               actions={
                                 <ActionPanel>
