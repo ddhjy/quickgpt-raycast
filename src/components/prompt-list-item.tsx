@@ -505,66 +505,144 @@ export function PromptListItem({
       actions={
         <ActionPanel>
           {promptActions}
-          {!searchMode && addToHistory && setCurrentInput && (
-            <Action
-              title="Show Input History"
-              icon={Icon.Clock}
-              shortcut={{ modifiers: ["cmd"], key: "y" }}
-              onAction={() => {
-                const history = inputHistoryStore.getHistory();
-                navigation.push(
-                  <List>
-                    {history.map((item: string, index: number) => (
-                      <List.Item
-                        key={index}
-                        title={item}
-                        actions={
-                          <ActionPanel>
-                            <Action
-                              title="Use This Input"
-                              onAction={() => {
-                                navigation.pop();
-                                setCurrentInput(item);
-                              }}
-                            />
-                            <Action
-                              title="Delete"
-                              style={Action.Style.Destructive}
-                              onAction={() => {
-                                inputHistoryStore.removeFromHistory(item);
-                                // Refresh the list by re-creating it
-                                navigation.pop();
-                                navigation.push(
-                                  <List>
-                                    {inputHistoryStore.getHistory().map((historyItem: string, historyIndex: number) => (
-                                      <List.Item
-                                        key={historyIndex}
-                                        title={historyItem}
-                                        actions={
-                                          <ActionPanel>
-                                            <Action
-                                              title="Use This Input"
-                                              onAction={() => {
-                                                navigation.pop();
-                                                setCurrentInput(historyItem);
-                                              }}
-                                            />
-                                          </ActionPanel>
-                                        }
-                                      />
-                                    ))}
-                                  </List>,
-                                );
-                              }}
-                            />
-                          </ActionPanel>
+          {!searchMode && (
+            <>
+              {addToHistory && setCurrentInput && (
+                <Action
+                  title="Show Input History"
+                  icon={Icon.Clock}
+                  shortcut={{ modifiers: ["cmd"], key: "y" }}
+                  onAction={() => {
+                    const history = inputHistoryStore.getHistory();
+                    navigation.push(
+                      <List>
+                        {history.map((item: string, index: number) => (
+                          <List.Item
+                            key={index}
+                            title={item}
+                            actions={
+                              <ActionPanel>
+                                <Action
+                                  title="Use This Input"
+                                  onAction={() => {
+                                    navigation.pop();
+                                    setCurrentInput(item);
+                                  }}
+                                />
+                                <Action
+                                  title="Delete"
+                                  style={Action.Style.Destructive}
+                                  onAction={() => {
+                                    inputHistoryStore.removeFromHistory(item);
+                                    // Refresh the list by re-creating it
+                                    navigation.pop();
+                                    navigation.push(
+                                      <List>
+                                        {inputHistoryStore.getHistory().map((historyItem: string, historyIndex: number) => (
+                                          <List.Item
+                                            key={historyIndex}
+                                            title={historyItem}
+                                            actions={
+                                              <ActionPanel>
+                                                <Action
+                                                  title="Use This Input"
+                                                  onAction={() => {
+                                                    navigation.pop();
+                                                    setCurrentInput(historyItem);
+                                                  }}
+                                                />
+                                              </ActionPanel>
+                                            }
+                                          />
+                                        ))}
+                                      </List>,
+                                    );
+                                  }}
+                                />
+                              </ActionPanel>
+                            }
+                          />
+                        ))}
+                      </List>,
+                    );
+                  }}
+                />
+              )}
+              <Action
+                title="Show Clipboard History"
+                icon={Icon.CopyClipboard}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "y" }}
+                onAction={async () => {
+                  try {
+                    // Read clipboard history (up to 6 items)
+                    const clipboardHistory: { text: string; offset: number }[] = [];
+
+                    for (let offset = 0; offset < 6; offset++) {
+                      try {
+                        const text = await Clipboard.readText({ offset });
+                        if (text) {
+                          clipboardHistory.push({ text, offset });
                         }
-                      />
-                    ))}
-                  </List>,
-                );
-              }}
-            />
+                      } catch (error) {
+                        // If reading fails, no more history available
+                        break;
+                      }
+                    }
+
+                    if (clipboardHistory.length === 0) {
+                      await showToast({
+                        style: Toast.Style.Failure,
+                        title: "No clipboard history available",
+                      });
+                      return;
+                    }
+
+                    navigation.push(
+                      <List>
+                        <List.Section title="Clipboard History" subtitle={`${clipboardHistory.length} items`}>
+                          {clipboardHistory.map((item, index) => (
+                            <List.Item
+                              key={index}
+                              title={item.text.length > 100 ? item.text.substring(0, 100) + "..." : item.text}
+                              accessories={[
+                                { text: index === 0 ? "Current" : ""},
+                              ]}
+                              actions={
+                                <ActionPanel>
+                                  <Action
+                                    title="Copy to Clipboard"
+                                    icon={Icon.Clipboard}
+                                    onAction={async () => {
+                                      await Clipboard.copy(item.text);
+                                      navigation.pop();
+                                      await showToast({
+                                        style: Toast.Style.Success,
+                                        title: "Copied to clipboard",
+                                      });
+                                    }}
+                                  />
+                                  <Action.CopyToClipboard
+                                    title="Copy Text"
+                                    content={item.text}
+                                  />
+                                </ActionPanel>
+                              }
+                            />
+                          ))}
+                        </List.Section>
+                      </List>,
+                    );
+                  } catch (error) {
+                    console.error("Failed to read clipboard history:", error);
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: "Failed to read clipboard history",
+                      message: String(error),
+                    });
+                  }
+                }}
+              />
+            </>
           )}
           {prompt.identifier !== "manage-temporary-directory" && (
             <>
