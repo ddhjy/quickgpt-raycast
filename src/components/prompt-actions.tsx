@@ -153,6 +153,26 @@ export function generatePromptActions(
       ),
     },
     {
+      name: "copyOriginalPrompt",
+      displayName: "Copy Prompt",
+      condition: true,
+      action: (
+        <Action
+          title="Copy Prompt"
+          icon={Icon.Document}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "o" }}
+          onAction={wrapActionHandler(async () => {
+            const title = prompt.title || "";
+            const originalContent = prompt.content || "";
+            const formattedContent = title + "\n---\n" + originalContent;
+            await Clipboard.copy(formattedContent);
+            await showToast(Toast.Style.Success, "Copied Original Prompt");
+            await closeMainWindow({ clearRootSearch: true });
+          })}
+        />
+      ),
+    },
+    {
       name: "paste",
       displayName: "Paste",
       condition: true,
