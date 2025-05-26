@@ -28,6 +28,8 @@ import path from "path";
 interface Preferences {
   primaryAction: string;
   scriptsDirectory?: string;
+  scriptsDirectory1?: string;
+  scriptsDirectory2?: string;
 }
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
@@ -106,8 +108,6 @@ export function generatePromptActions(
     return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
   };
 
-
-
   const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
     name: `script_${scriptName}`,
     displayName: scriptName,
@@ -132,8 +132,6 @@ export function generatePromptActions(
       />
     ),
   }));
-
-
 
   const baseActionItems: ActionItem[] = [
     {

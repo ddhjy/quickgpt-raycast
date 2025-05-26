@@ -59,6 +59,20 @@
           "type": "directory"
         },
         {
+          "name": "scriptsDirectory1",
+          "title": "Scripts Directory 1",
+          "required": false,
+          "description": "First additional directory containing AppleScript scripts",
+          "type": "directory"
+        },
+        {
+          "name": "scriptsDirectory2",
+          "title": "Scripts Directory 2",
+          "required": false,
+          "description": "Second additional directory containing AppleScript scripts",
+          "type": "directory"
+        },
+        {
           "name": "primaryAction",
           "title": "Actions",
           "required": false,

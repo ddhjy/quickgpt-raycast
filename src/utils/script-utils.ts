@@ -54,21 +54,30 @@ export function scanScriptsDirectory(dir: string, relativePath = "", result: Scr
 }
 
 /**
- * Retrieves a list of all available AppleScript files from the user-configured scripts directory.
- * Handles cases where the directory is not configured or is inaccessible.
+ * Retrieves a list of all available AppleScript files from the user-configured scripts directories.
+ * Handles cases where directories are not configured or are inaccessible.
  *
- * @param scriptsDirectory The path to the user's custom scripts directory, as configured in preferences.
- * @returns An array of ScriptInfo objects for all discovered scripts. Returns an empty array if the directory is not set or an error occurs.
+ * @param scriptsDirectories Array of paths to the user's custom scripts directories, as configured in preferences.
+ * @returns An array of ScriptInfo objects for all discovered scripts. Returns an empty array if no directories are set or errors occur.
  */
-export function getAvailableScripts(scriptsDirectory: string | undefined): ScriptInfo[] {
+export function getAvailableScripts(scriptsDirectories: (string | undefined)[]): ScriptInfo[] {
   const scripts: ScriptInfo[] = [];
+  const scriptNames = new Set<string>(); // Used for deduplication
 
-  if (scriptsDirectory) {
-    try {
-      const userScripts = scanScriptsDirectory(scriptsDirectory);
-      scripts.push(...userScripts);
-    } catch (error) {
-      console.error("Failed to read scripts directory:", error);
+  for (const scriptsDirectory of scriptsDirectories) {
+    if (scriptsDirectory) {
+      try {
+        const userScripts = scanScriptsDirectory(scriptsDirectory);
+        // Avoid duplicate script names
+        userScripts.forEach((script) => {
+          if (!scriptNames.has(script.name)) {
+            scripts.push(script);
+            scriptNames.add(script.name);
+          }
+        });
+      } catch (error) {
+        console.error(`Failed to read scripts directory ${scriptsDirectory}:`, error);
+      }
     }
   }
 

@@ -46,7 +46,7 @@ export function PromptList({
   externalOnRefreshNeeded,
 }: PromptListProps) {
   // Replace original searchText state with input history hook
-  const { currentInput, setCurrentInput, navigateHistory, resetHistory, addToHistory } = useInputHistory("");
+  const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
   const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
   const preferences = getPreferenceValues<{
@@ -56,6 +56,8 @@ export function PromptList({
     customPromptsDirectory3?: string;
     customPromptsDirectory4?: string;
     scriptsDirectory?: string;
+    scriptsDirectory1?: string;
+    scriptsDirectory2?: string;
   }>();
   const [selectedAction, setSelectedAction] = useState<string>(
     () => defaultActionPreferenceStore.getDefaultActionPreference() || "",
@@ -218,8 +220,10 @@ export function PromptList({
   const activeSearchText = searchMode ? "" : searchText;
 
   const scripts = useMemo(
-    () => initialScripts ?? getAvailableScripts(preferences.scriptsDirectory),
-    [initialScripts, preferences.scriptsDirectory],
+    () =>
+      initialScripts ??
+      getAvailableScripts([preferences.scriptsDirectory, preferences.scriptsDirectory1, preferences.scriptsDirectory2]),
+    [initialScripts, preferences.scriptsDirectory, preferences.scriptsDirectory1, preferences.scriptsDirectory2],
   );
 
   const promptItems = displayPrompts

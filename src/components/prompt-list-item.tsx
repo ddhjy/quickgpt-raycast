@@ -44,6 +44,8 @@ interface QuickGPTExtensionPreferences {
   customPromptsDirectory3?: string;
   customPromptsDirectory4?: string;
   scriptsDirectory?: string;
+  scriptsDirectory1?: string;
+  scriptsDirectory2?: string;
   customEditor: Application;
 }
 
@@ -284,25 +286,60 @@ export function PromptListItem({
     } else if (prompt.identifier === "open-custom-prompts-dir") {
       return handleCustomPromptsDirectoryActions();
     } else if (prompt.identifier === "open-scripts-dir") {
-      return (
-        <Action
-          title="Open"
-          icon={Icon.Folder}
-          onAction={async () => {
-            const preferences = getPreferenceValues();
-            if (preferences.scriptsDirectory) {
-              await runAppleScript(`do shell script "open -a Cursor '${preferences.scriptsDirectory}'"`);
+      const preferences = getPreferenceValues<{
+        scriptsDirectory?: string;
+        scriptsDirectory1?: string;
+        scriptsDirectory2?: string;
+      }>();
+
+      const scriptDirs = [
+        preferences.scriptsDirectory,
+        preferences.scriptsDirectory1,
+        preferences.scriptsDirectory2,
+      ].filter(Boolean);
+
+      if (scriptDirs.length === 0) {
+        return (
+          <Action
+            title="Configure"
+            icon={Icon.Gear}
+            onAction={() => {
+              openExtensionPreferences();
+              closeMainWindow();
+            }}
+          />
+        );
+      } else if (scriptDirs.length === 1) {
+        return (
+          <Action
+            title="Open"
+            icon={Icon.Folder}
+            onAction={async () => {
+              await runAppleScript(`do shell script "open -a Cursor '${scriptDirs[0]}'"`);
               await closeMainWindow();
-            } else {
-              await showToast({
-                title: "Error",
-                message: "Scripts directory not configured",
-                style: Toast.Style.Failure,
-              });
-            }
-          }}
-        />
-      );
+            }}
+          />
+        );
+      } else {
+        return (
+          <>
+            {scriptDirs.map((dir, index) => {
+              const dirName = path.basename(dir as string);
+              return (
+                <Action
+                  key={index}
+                  title={`Open ${dirName}`}
+                  icon={Icon.Folder}
+                  onAction={async () => {
+                    await runAppleScript(`do shell script "open -a Cursor '${dir}'"`);
+                    await closeMainWindow();
+                  }}
+                />
+              );
+            })}
+          </>
+        );
+      }
     } else if (prompt.identifier === "open-preferences") {
       return (
         <Action
