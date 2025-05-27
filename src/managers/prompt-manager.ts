@@ -177,6 +177,14 @@ class PromptManager {
       }
 
       return prompts.map((prompt: PromptProps) => {
+        // Handle actions field: convert string format to array if needed
+        if (typeof (prompt as any).actions === 'string') {
+          prompt.actions = ((prompt as any).actions as string)
+            .split(',')
+            .map(action => action.trim())
+            .filter(action => action.length > 0);
+        }
+
         // loadPromptContentFromFileSync remains largely unchanged unless content needs file loading
         const processedPrompt = this.loadPromptContentFromFileSync(prompt, baseDir);
         processedPrompt.filePath = filePath; // Assign the file path
@@ -309,6 +317,14 @@ class PromptManager {
       const originalFilePath = prompt.filePath;
 
       prompt = { ...baseProperties, ...prompt };
+
+      // Handle actions field: convert string format to array if needed
+      if (typeof (prompt as any).actions === 'string') {
+        prompt.actions = ((prompt as any).actions as string)
+          .split(',')
+          .map(action => action.trim())
+          .filter(action => action.length > 0);
+      }
 
       if (originalFilePath) {
         prompt.filePath = originalFilePath;
