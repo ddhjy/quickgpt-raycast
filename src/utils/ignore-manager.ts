@@ -104,7 +104,7 @@ class IgnoreManager {
     ".sqlite",
   ]);
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): IgnoreManager {
     if (!IgnoreManager.instance) {
@@ -125,14 +125,14 @@ class IgnoreManager {
     const ig = ignore();
     ig.add(this.defaultIgnorePatterns);
 
-    const gitignoreFiles = this.findGitignoreFiles(dirPath);
+    const ignoreFiles = this.findIgnoreFiles(dirPath);
 
-    for (const gitignorePath of gitignoreFiles) {
+    for (const ignorePath of ignoreFiles) {
       try {
-        const content = fs.readFileSync(gitignorePath, "utf-8");
+        const content = fs.readFileSync(ignorePath, "utf-8");
         ig.add(content);
       } catch (error) {
-        console.debug(`Failed to read .gitignore at ${gitignorePath}:`, error);
+        console.debug(`Failed to read ignore file at ${ignorePath}:`, error);
       }
     }
 
@@ -141,21 +141,30 @@ class IgnoreManager {
   }
 
   /**
-   * Find all .gitignore files from root directory to specified directory
+   * Find all ignore files (.quickgptignore and .gitignore) from root directory to specified directory
+   * .quickgptignore files have higher priority than .gitignore files
    */
-  private findGitignoreFiles(dirPath: string): string[] {
-    const gitignoreFiles: string[] = [];
+  private findIgnoreFiles(dirPath: string): string[] {
+    const ignoreFiles: string[] = [];
     let currentDir = dirPath;
 
     while (currentDir && currentDir !== path.dirname(currentDir)) {
+      // Check for .quickgptignore file (higher priority)
+      const quickgptIgnorePath = path.join(currentDir, ".quickgptignore");
+      if (fs.existsSync(quickgptIgnorePath)) {
+        ignoreFiles.unshift(quickgptIgnorePath);
+      }
+
+      // Check for .gitignore file
       const gitignorePath = path.join(currentDir, ".gitignore");
       if (fs.existsSync(gitignorePath)) {
-        gitignoreFiles.unshift(gitignorePath);
+        ignoreFiles.unshift(gitignorePath);
       }
+
       currentDir = path.dirname(currentDir);
     }
 
-    return gitignoreFiles;
+    return ignoreFiles;
   }
 
   /**
