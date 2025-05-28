@@ -378,7 +378,7 @@ export function PromptListItem({
     }
 
     return [
-      prompt.pinned ? { tag: { value: "PIN", color: Color.SecondaryText } } : {},
+      prompt.pinned ? { tag: { value: "PIN", color: Color.Blue } } : {},
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
