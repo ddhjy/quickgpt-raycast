@@ -178,11 +178,11 @@ class PromptManager {
 
       return prompts.map((prompt: PromptProps) => {
         // Handle actions field: convert string format to array if needed
-        if (typeof (prompt as any).actions === 'string') {
+        if (typeof (prompt as any).actions === "string") {
           prompt.actions = ((prompt as any).actions as string)
-            .split(',')
-            .map(action => action.trim())
-            .filter(action => action.length > 0);
+            .split(",")
+            .map((action) => action.trim())
+            .filter((action) => action.length > 0);
         }
 
         // loadPromptContentFromFileSync remains largely unchanged unless content needs file loading
@@ -319,11 +319,11 @@ class PromptManager {
       prompt = { ...baseProperties, ...prompt };
 
       // Handle actions field: convert string format to array if needed
-      if (typeof (prompt as any).actions === 'string') {
+      if (typeof (prompt as any).actions === "string") {
         prompt.actions = ((prompt as any).actions as string)
-          .split(',')
-          .map(action => action.trim())
-          .filter(action => action.length > 0);
+          .split(",")
+          .map((action) => action.trim())
+          .filter((action) => action.length > 0);
       }
 
       if (originalFilePath) {

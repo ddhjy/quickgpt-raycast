@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { getSelectedText, getFrontmostApplication, BrowserExtension, getSelectedFinderItems, getApplications } from "@raycast/api";
+import {
+  getSelectedText,
+  getFrontmostApplication,
+  BrowserExtension,
+  getSelectedFinderItems,
+  getApplications,
+} from "@raycast/api";
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -92,7 +98,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     const fetchAllApps = async (): Promise<string> => {
       try {
         const apps = await getApplications();
-        return apps.map(app => app.name).join(", ");
+        return apps.map((app) => app.name).join(", ");
       } catch (error) {
         console.info("Failed to fetch all applications:", error);
         return "";
@@ -101,9 +107,9 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
     const fetchData = async () => {
       const [fetchedFrontmostApp, fetchedSelectedText, fetchedAllApps] = await Promise.all([
-        fetchFrontmostApp(), 
+        fetchFrontmostApp(),
         fetchSelectedText(),
-        fetchAllApps()
+        fetchAllApps(),
       ]);
 
       let fetchedBrowserContent = "";

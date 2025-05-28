@@ -234,6 +234,24 @@ Prompts are defined in HJSON files with the following structure:
 | `{{property}}`       |          | Value from prompt property                         |
 | `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)             |
 
+### Fallback Chains with Directives
+
+You can use `option:` and `file:` directives within fallback chains:
+
+- `{{i|option:type}}` - Use input if available, otherwise use the first value from the `type` option array
+- `{{i|file:config.txt}}` - Use input if available, otherwise load content from `config.txt`
+- `{{selection|file:template.md|clipboard}}` - Try selection first, then file content, finally clipboard
+
+Example in HJSON:
+
+```hjson
+{
+  title: "Example Prompt"
+  content: "Process this: {{i|option:defaultType}}"
+  defaultType: ["text", "code", "markdown"]
+}
+```
+
 Placeholder usage example:
 
 [example/prompt/prompt-template.hjson](example/prompt/prompt-template.hjson)

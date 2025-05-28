@@ -254,7 +254,7 @@ export function placeholderFormatter(
         return match;
       }
 
-      const result = processPlaceholder(directive, body, incoming, map);
+      const result = processPlaceholder(directive, body, incoming, map, root, options);
       if (result !== match) {
         changedInIteration = true;
       }
@@ -281,7 +281,7 @@ export function placeholderFormatter(
 
     if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
       if (trimmedBody.includes("|")) {
-        const result = processPlaceholder(directive, trimmedBody, incoming, map);
+        const result = processPlaceholder(directive, trimmedBody, incoming, map, root, options);
         if (result !== match) {
           return result;
         }
@@ -311,7 +311,7 @@ export function placeholderFormatter(
       return `{{option:${trimmedBody}}}`;
     }
 
-    const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map);
+    const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map, root, options);
 
     if (resolvedValue.startsWith(FINDER_SELECTION_MARKER)) {
       const actualValue = resolvedValue.substring(FINDER_SELECTION_MARKER.length);
@@ -391,6 +391,8 @@ export function resolvePlaceholders(
  * @param body The placeholder body text (without {{}})
  * @param incoming The replacement values and properties object
  * @param map The processed map of standard placeholders
+ * @param root The root directory for file placeholder resolution (optional)
+ * @param options Additional options for formatting
  * @returns The processed value for the placeholder
  */
 function processPlaceholder(
@@ -398,6 +400,8 @@ function processPlaceholder(
   body: string,
   incoming: SpecificReplacements & Record<string, unknown>,
   map: Map<PlaceholderKey, string>,
+  root?: string,
+  options: { resolveFile?: boolean } = { resolveFile: false },
 ): string {
   const content = body.trim();
 
@@ -433,13 +437,46 @@ function processPlaceholder(
     return `[Path not found: ${content}]`;
   }
 
-  for (const part of content.split("|")) {
-    const key = toPlaceholderKey(part.trim());
-    if (!key) continue;
+  // Handle fallback chain or single placeholder
+  const parts = content.includes("|") ? content.split("|") : [content];
 
-    const standardValue = map.get(key);
-    if (standardValue !== undefined && standardValue !== "") {
-      return standardValue;
+  for (const part of parts) {
+    const trimmedPart = part.trim();
+
+    // Check if this part has a directive (e.g., "option:key" or "file:path")
+    const directiveMatch = trimmedPart.match(/^(option|file):(.+)$/);
+
+    if (directiveMatch) {
+      const [, partDirective, partBody] = directiveMatch;
+
+      if (partDirective === "option") {
+        const optionValue = getPropertyByPath(incoming, partBody);
+        if (optionValue !== undefined) {
+          if (Array.isArray(optionValue)) {
+            return String(optionValue[0]);
+          }
+          if (optionValue && typeof optionValue === "object") {
+            const firstKey = Object.keys(optionValue)[0];
+            return String((optionValue as Record<string, unknown>)[firstKey]);
+          }
+          return String(optionValue);
+        }
+      } else if (partDirective === "file" && options.resolveFile) {
+        const fileContent = resolveFilePlaceholderSync(partBody, root);
+        if (!fileContent.startsWith("[")) {
+          // Not an error message
+          return fileContent;
+        }
+      }
+    } else {
+      // Handle regular placeholder key
+      const key = toPlaceholderKey(trimmedPart);
+      if (!key) continue;
+
+      const standardValue = map.get(key);
+      if (standardValue !== undefined && standardValue !== "") {
+        return standardValue;
+      }
     }
   }
 

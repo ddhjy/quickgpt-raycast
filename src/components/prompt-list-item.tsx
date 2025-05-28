@@ -21,6 +21,7 @@ import { SpecificReplacements } from "../utils/placeholder-formatter";
 import path from "path";
 import { generatePromptActions } from "./prompt-actions";
 import { getPlaceholderIcons, findOptionPlaceholders } from "../utils/prompt-formatting-utils";
+import { findUsedOptionPlaceholders } from "../utils/option-placeholder-utils";
 import { ScriptInfo } from "../utils/script-utils";
 import { placeholderFormatter } from "../utils/placeholder-formatter";
 import { PromptList } from "./prompt-list";
@@ -183,9 +184,7 @@ export function PromptListItem({
         <Action.Push
           title="Open"
           icon={Icon.List}
-          target={
-            <TemporaryDirectoryManager onRefreshNeeded={onRefreshNeeded} />
-          }
+          target={<TemporaryDirectoryManager onRefreshNeeded={onRefreshNeeded} />}
         />
       );
     } else if (prompt.identifier === "open-custom-prompts-dir") {
@@ -310,9 +309,13 @@ export function PromptListItem({
       return <>{folderActions}</>; // Return wrapped in React Fragment
     } else {
       // Default actions for regular prompts
-      const optionKeys = findOptionPlaceholders(prompt);
-      if (optionKeys.length > 0) {
-        // Action for prompts with option placeholders (needs options form)
+      // Check which option placeholders would actually be used given current replacements
+      const usedOptionKeys = findUsedOptionPlaceholders(prompt, replacements);
+      const directOptionKeys = findOptionPlaceholders(prompt);
+      const allOptionKeys = [...new Set([...usedOptionKeys, ...directOptionKeys])];
+
+      if (allOptionKeys.length > 0) {
+        // Action for prompts with option placeholders that would actually be used
         return (
           <Action.Push
             title="Configure Options"
@@ -320,7 +323,7 @@ export function PromptListItem({
             target={
               <PromptOptionsForm
                 prompt={prompt}
-                optionKeys={optionKeys}
+                optionKeys={allOptionKeys}
                 baseReplacements={replacements}
                 scripts={scripts}
               />
@@ -365,10 +368,12 @@ export function PromptListItem({
   // Create accessories to display remaining time
   const getAccessories = () => {
     // For settings-related options, don't display any accessory icons
-    if (prompt.identifier === "manage-temporary-directory" ||
+    if (
+      prompt.identifier === "manage-temporary-directory" ||
       prompt.identifier === "open-preferences" ||
       prompt.identifier === "open-custom-prompts-dir" ||
-      prompt.identifier === "open-scripts-dir") {
+      prompt.identifier === "open-scripts-dir"
+    ) {
       return [];
     }
 
@@ -377,22 +382,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-            ...accessory,
-            tooltip:
-              prompt.content ??
-              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-          }
+              ...accessory,
+              tooltip:
+                prompt.content ??
+                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+            }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-          {
-            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-            tooltip:
-              prompt.content ??
-              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-          },
-        ]
+            {
+              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+              tooltip:
+                prompt.content ??
+                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+            },
+          ]
         : []),
     ];
   };
@@ -439,23 +444,25 @@ export function PromptListItem({
                                     navigation.pop();
                                     navigation.push(
                                       <List>
-                                        {inputHistoryStore.getHistory().map((historyItem: string, historyIndex: number) => (
-                                          <List.Item
-                                            key={historyIndex}
-                                            title={historyItem}
-                                            actions={
-                                              <ActionPanel>
-                                                <Action
-                                                  title="Use This Input"
-                                                  onAction={() => {
-                                                    navigation.pop();
-                                                    setCurrentInput(historyItem);
-                                                  }}
-                                                />
-                                              </ActionPanel>
-                                            }
-                                          />
-                                        ))}
+                                        {inputHistoryStore
+                                          .getHistory()
+                                          .map((historyItem: string, historyIndex: number) => (
+                                            <List.Item
+                                              key={historyIndex}
+                                              title={historyItem}
+                                              actions={
+                                                <ActionPanel>
+                                                  <Action
+                                                    title="Use This Input"
+                                                    onAction={() => {
+                                                      navigation.pop();
+                                                      setCurrentInput(historyItem);
+                                                    }}
+                                                  />
+                                                </ActionPanel>
+                                              }
+                                            />
+                                          ))}
                                       </List>,
                                     );
                                   }}
@@ -505,9 +512,7 @@ export function PromptListItem({
                             <List.Item
                               key={index}
                               title={item.text.length > 100 ? item.text.substring(0, 100) + "..." : item.text}
-                              accessories={[
-                                { text: index === 0 ? "Current" : "" },
-                              ]}
+                              accessories={[{ text: index === 0 ? "Current" : "" }]}
                               actions={
                                 <ActionPanel>
                                   <Action
@@ -522,10 +527,7 @@ export function PromptListItem({
                                       });
                                     }}
                                   />
-                                  <Action.CopyToClipboard
-                                    title="Copy Text"
-                                    content={item.text}
-                                  />
+                                  <Action.CopyToClipboard title="Copy Text" content={item.text} />
                                 </ActionPanel>
                               }
                             />
@@ -568,64 +570,65 @@ export function PromptListItem({
                 )}`}
                 icon={Icon.Link}
               />
-              {prompt.filePath && (() => {
-                const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
-                const editorApp = preferences.customEditor;
-                let editorDisplayName = editorApp.name;
-                if (editorDisplayName.endsWith(".app")) {
-                  editorDisplayName = editorDisplayName.slice(0, -4);
-                }
+              {prompt.filePath &&
+                (() => {
+                  const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
+                  const editorApp = preferences.customEditor;
+                  let editorDisplayName = editorApp.name;
+                  if (editorDisplayName.endsWith(".app")) {
+                    editorDisplayName = editorDisplayName.slice(0, -4);
+                  }
 
-                return (
-                  <Action
-                    title={`Edit with ${editorDisplayName}`}
-                    shortcut={{ modifiers: ["cmd"], key: "e" }}
-                    icon={Icon.Pencil}
-                    onAction={async () => {
-                      if (!prompt.filePath) return;
+                  return (
+                    <Action
+                      title={`Edit with ${editorDisplayName}`}
+                      shortcut={{ modifiers: ["cmd"], key: "e" }}
+                      icon={Icon.Pencil}
+                      onAction={async () => {
+                        if (!prompt.filePath) return;
 
-                      await Clipboard.copy(prompt.title);
+                        await Clipboard.copy(prompt.title);
 
-                      const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
-                      const editorApp = preferences.customEditor;
+                        const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
+                        const editorApp = preferences.customEditor;
 
-                      let editorDisplayName = editorApp.name;
-                      if (editorDisplayName.endsWith(".app")) {
-                        editorDisplayName = editorDisplayName.slice(0, -4);
-                      }
-
-                      try {
-                        let openCommand: string;
-                        const configDir = path.dirname(prompt.filePath);
-                        if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                          openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
-                        } else {
-                          openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                        let editorDisplayName = editorApp.name;
+                        if (editorDisplayName.endsWith(".app")) {
+                          editorDisplayName = editorDisplayName.slice(0, -4);
                         }
 
-                        await runAppleScript(`do shell script "${openCommand}"`);
+                        try {
+                          let openCommand: string;
+                          const configDir = path.dirname(prompt.filePath);
+                          if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                            openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
+                          } else {
+                            openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                          }
 
-                        await closeMainWindow();
+                          await runAppleScript(`do shell script "${openCommand}"`);
 
-                        const fileName = path.basename(prompt.filePath);
+                          await closeMainWindow();
 
-                        await showToast({
-                          title: "Opening File",
-                          message: `Opening ${fileName} with ${editorDisplayName}`,
-                          style: Toast.Style.Success,
-                        });
-                      } catch (error) {
-                        console.error("Failed to open editor:", error);
-                        await showToast({
-                          title: "Error Opening Editor",
-                          message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
-                          style: Toast.Style.Failure,
-                        });
-                      }
-                    }}
-                  />
-                );
-              })()}
+                          const fileName = path.basename(prompt.filePath);
+
+                          await showToast({
+                            title: "Opening File",
+                            message: `Opening ${fileName} with ${editorDisplayName}`,
+                            style: Toast.Style.Success,
+                          });
+                        } catch (error) {
+                          console.error("Failed to open editor:", error);
+                          await showToast({
+                            title: "Error Opening Editor",
+                            message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                            style: Toast.Style.Failure,
+                          });
+                        }
+                      }}
+                    />
+                  );
+                })()}
             </>
           )}
         </ActionPanel>
