@@ -162,10 +162,31 @@ export function PromptListItem({
     }
   }
 
-  // Handle Settings related options icons
   if (prompt.identifier === "open-custom-prompts-dir") {
+    const preferences = getPreferenceValues<{
+      customPromptsDirectory?: string;
+      customPromptsDirectory1?: string;
+      customPromptsDirectory2?: string;
+      customPromptsDirectory3?: string;
+      customPromptsDirectory4?: string;
+    }>();
+
+    const promptDirs = [
+      preferences.customPromptsDirectory,
+      preferences.customPromptsDirectory1,
+      preferences.customPromptsDirectory2,
+      preferences.customPromptsDirectory3,
+      preferences.customPromptsDirectory4,
+    ].filter(Boolean);
+
+    if (promptDirs.length > 0) {
+      displayTitle = `Open Custom Prompts Directory (${promptDirs.length})`;
+    }
     displayIcon = Icon.Folder;
-  } else if (prompt.identifier === "open-scripts-dir") {
+  }
+
+  // Handle Settings related options icons
+  if (prompt.identifier === "open-scripts-dir") {
     displayIcon = Icon.Code;
   } else if (prompt.identifier === "open-preferences") {
     displayIcon = Icon.Gear;
@@ -382,22 +403,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-              ...accessory,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            }
+            ...accessory,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-            {
-              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            },
-          ]
+          {
+            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          },
+        ]
         : []),
     ];
   };
