@@ -154,7 +154,7 @@ export function PromptListItem({
 
   if (prompt.identifier === "manage-temporary-directory") {
     if (temporaryDirs.length > 0) {
-      displayTitle = `Manage Temporary Directory (${temporaryDirs.length})`;
+      displayTitle = `Temporary Prompts Directory (${temporaryDirs.length})`;
       displayIcon = Icon.Folder;
     } else {
       displayTitle = "Add temporary directory";
@@ -180,7 +180,7 @@ export function PromptListItem({
     ].filter(Boolean);
 
     if (promptDirs.length > 0) {
-      displayTitle = `Open Custom Prompts Directory (${promptDirs.length})`;
+      displayTitle = `Prompts Directory (${promptDirs.length})`;
     }
     displayIcon = Icon.Folder;
   }
