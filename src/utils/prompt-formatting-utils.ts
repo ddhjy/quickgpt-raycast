@@ -25,6 +25,7 @@ const placeholderIcons: { [key: string]: Icon } = {
   allApp: Icon.AppWindowGrid2x2,
   browserContent: Icon.Globe,
   promptTitles: Icon.List,
+  file: Icon.Document,
 };
 
 /**
@@ -201,6 +202,11 @@ export function getPlaceholderIcons(
       placeholderIconsArray.push({ icon });
     }
   });
+
+  const fileRegex = /{{file:[^}]+}}/g;
+  if (fileRegex.test(content)) {
+    placeholderIconsArray.push({ icon: placeholderIcons.file });
+  }
 
   return placeholderIconsArray;
 }
