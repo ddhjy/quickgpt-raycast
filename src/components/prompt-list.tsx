@@ -78,6 +78,22 @@ export function PromptList({
   const forceUpdate = () => setRefreshKey((prev) => prev + 1);
   const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
 
+  // Function to get display text for "Last Used" option
+  const getLastUsedActionDisplay = () => {
+    const lastAction = defaultActionPreferenceStore.getLastExecutedAction();
+    if (!lastAction || lastAction === "" || lastAction === "lastUsed") return "Last Used";
+
+    // Parse action name for display
+    if (lastAction === "copyToClipboard") return "Last Used (Copy)";
+    if (lastAction === "paste") return "Last Used (Paste)";
+    if (lastAction === "copyOriginalPrompt") return "Last Used (Copy Prompt)";
+    if (lastAction.startsWith("script_")) {
+      const scriptName = lastAction.replace("script_", "");
+      return `Last Used (${scriptName})`;
+    }
+    return "Last Used";
+  };
+
   const handlePinToggle = (prompt: PromptProps) => {
     const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
     if (isCurrentlyPinned) {
@@ -318,12 +334,13 @@ export function PromptList({
               showToast({
                 style: Toast.Style.Success,
                 title: "Set preferred action",
-                message: newValue,
+                message: newValue === "lastUsed" ? getLastUsedActionDisplay() : newValue,
               });
               forceUpdate();
             }}
           >
             <List.Dropdown.Item key="" title="Off" value="" />
+            <List.Dropdown.Item key="lastUsed" title={getLastUsedActionDisplay()} value="lastUsed" />
             <List.Dropdown.Section title="Actions">
               <List.Dropdown.Item key="copyToClipboard" title="Copy" value="copyToClipboard" />
               <List.Dropdown.Item key="paste" title="Paste" value="paste" />

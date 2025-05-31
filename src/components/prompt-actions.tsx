@@ -72,8 +72,13 @@ export function generatePromptActions(
   const promptDefinedActions = actions || [];
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
-  const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void)) => {
+  const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void), actionName?: string) => {
     return async () => {
+      // Record the actual executed action (excluding lastUsed)
+      if (actionName && actionName !== "lastUsed") {
+        defaultActionPreferenceStore.saveLastExecutedAction(actionName);
+      }
+
       // Save input to history if there's any input
       if (baseReplacements.input && baseReplacements.input.trim()) {
         inputHistoryStore.addToHistory(baseReplacements.input);
@@ -128,7 +133,7 @@ export function generatePromptActions(
             console.error(`Failed to execute script ${scriptName}:`, error);
             await showToast(Toast.Style.Failure, "Script Error", `Failed to run ${scriptName}: ${String(error)}`);
           }
-        })}
+        }, `script_${scriptName}`)}
       />
     ),
   }));
@@ -148,7 +153,7 @@ export function generatePromptActions(
             await Clipboard.copy(finalContent);
             await showToast(Toast.Style.Success, "Copied");
             await closeMainWindow({ clearRootSearch: true });
-          })}
+          }, "copyToClipboard")}
         />
       ),
     },
@@ -168,7 +173,7 @@ export function generatePromptActions(
             await Clipboard.copy(formattedContent);
             await showToast(Toast.Style.Success, "Copied Original Prompt");
             await closeMainWindow({ clearRootSearch: true });
-          })}
+          }, "copyOriginalPrompt")}
         />
       ),
     },
@@ -186,7 +191,7 @@ export function generatePromptActions(
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
             await showToast(Toast.Style.Success, "Pasted");
-          })}
+          }, "paste")}
         />
       ),
     },
@@ -241,7 +246,17 @@ export function generatePromptActions(
 
   const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
   let defaultActionItem: ActionItem | undefined;
-  if (defaultActionPreference) {
+
+  if (defaultActionPreference === "lastUsed") {
+    // Get the last actually executed action
+    const lastExecutedAction = defaultActionPreferenceStore.getLastExecutedAction();
+    if (lastExecutedAction) {
+      const preferenceBaseName = lastExecutedAction.replace(/^(script_|call\s+)/, "");
+      defaultActionItem = eligibleActions.find(
+        (item) => item.name.toLowerCase().replace(/^script_/, "") === preferenceBaseName.toLowerCase(),
+      );
+    }
+  } else if (defaultActionPreference) {
     const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+)/, "");
     defaultActionItem = eligibleActions.find(
       (item) => item.name.toLowerCase().replace(/^script_/, "") === preferenceBaseName.toLowerCase(),
