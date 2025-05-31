@@ -1,18 +1,6 @@
 { title: "Writing Assistant"
   icon: "✍️"
   identifier: "writing-assistant-demo"
-  
-  // Main prompt with placeholders
-  content:
-  '''
-  As a professional writing assistant, help me {{option:task}} the following text:
-  
-  {{i|s|c}}
-  
-  Style: {{style}}
-  Tone: {{tone}}
-  '''
-  
   // Properties that can be referenced
   style: "Clear and concise"
   tone: "Professional yet friendly"
