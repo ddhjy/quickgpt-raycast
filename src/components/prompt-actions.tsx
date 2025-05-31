@@ -74,8 +74,8 @@ export function generatePromptActions(
 
   const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void), actionName?: string) => {
     return async () => {
-      // Record the actual executed action (excluding lastUsed)
-      if (actionName && actionName !== "lastUsed") {
+      // Only record script actions in Last Used (exclude basic actions like Copy, Paste)
+      if (actionName && actionName !== "lastUsed" && actionName.startsWith("script_")) {
         defaultActionPreferenceStore.saveLastExecutedAction(actionName);
       }
 

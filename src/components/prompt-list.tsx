@@ -83,10 +83,7 @@ export function PromptList({
     const lastAction = defaultActionPreferenceStore.getLastExecutedAction();
     if (!lastAction || lastAction === "" || lastAction === "lastUsed") return "Last Used";
 
-    // Parse action name for display
-    if (lastAction === "copyToClipboard") return "Last Used (Copy)";
-    if (lastAction === "paste") return "Last Used (Paste)";
-    if (lastAction === "copyOriginalPrompt") return "Last Used (Copy Prompt)";
+    // Only scripts are recorded in Last Used now
     if (lastAction.startsWith("script_")) {
       const scriptName = lastAction.replace("script_", "");
       return `Last Used (${scriptName})`;
