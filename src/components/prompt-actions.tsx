@@ -198,11 +198,11 @@ export function generatePromptActions(
     const tempDirSourcePath = prompt.temporaryDirSource;
     allActionItems.push({
       name: `remove_temp_dir_source_${path.basename(tempDirSourcePath)}`,
-      displayName: `Remove Temp Dir: ${path.basename(tempDirSourcePath)}`,
+      displayName: "Remove Temp Dir",
       condition: true,
       action: (
         <Action
-          title={`Remove Temp Dir: ${path.basename(tempDirSourcePath)}`}
+          title="Remove Temp Dir"
           icon={Icon.Eject}
           style={Action.Style.Destructive}
           onAction={async () => {

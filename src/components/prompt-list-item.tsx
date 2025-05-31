@@ -307,7 +307,7 @@ export function PromptListItem({
         folderActions.push(
           <Action
             key={`remove-folder-temp-dir-${tempDirSourcePath}`}
-            title={`Remove Temp Dir: ${path.basename(tempDirSourcePath)}`}
+            title="Remove Temp Dir"
             icon={Icon.Eject} // Or Icon.Trash
             style={Action.Style.Destructive}
             onAction={async () => {
