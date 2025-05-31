@@ -235,6 +235,14 @@ export function generatePromptActions(
     const nameA = getNameForSort(a.name);
     const nameB = getNameForSort(b.name);
 
+    // 首先按类型排序：脚本操作优先于基础操作
+    const isScriptA = a.name.startsWith("script_");
+    const isScriptB = b.name.startsWith("script_");
+
+    if (isScriptA && !isScriptB) return -1;
+    if (!isScriptA && isScriptB) return 1;
+
+    // 同类型内部按照 finalActions 中的顺序排序
     const indexA = finalActions.findIndex((name) => name.toLowerCase() === nameA);
     const indexB = finalActions.findIndex((name) => name.toLowerCase() === nameB);
 
