@@ -276,19 +276,14 @@ export function generatePromptActions(
   const actionNames = new Set<string>();
 
   // Separate actions into groups
+  const pinnedActionsGroup: ActionItem[] = [];
   const scriptActionsGroup: ActionItem[] = [];
   const baseActionsGroup: ActionItem[] = [];
   const otherActionsGroup: ActionItem[] = [];
 
-  // Add default action to the appropriate group
+  // Add default action to pinned group
   if (defaultActionItem) {
-    if (defaultActionItem.name.startsWith("script_")) {
-      scriptActionsGroup.push(defaultActionItem);
-    } else if (["copyToClipboard", "copyOriginalPrompt", "paste"].includes(defaultActionItem.name)) {
-      baseActionsGroup.push(defaultActionItem);
-    } else {
-      otherActionsGroup.push(defaultActionItem);
-    }
+    pinnedActionsGroup.push(defaultActionItem);
     actionNames.add(defaultActionItem.name);
   }
 
@@ -307,6 +302,23 @@ export function generatePromptActions(
   });
 
   // Create sections for grouped display
+  // Pinned actions group (always show if exists, but only create section if multiple actions)
+  if (pinnedActionsGroup.length > 0) {
+    if (pinnedActionsGroup.length === 1) {
+      // Single pinned action, don't create section
+      resultActions.push(React.cloneElement(pinnedActionsGroup[0].action, { key: pinnedActionsGroup[0].name }));
+    } else {
+      // Multiple pinned actions, create section
+      resultActions.push(
+        <ActionPanel.Section key="pinned-actions" title="Pinned Actions">
+          {pinnedActionsGroup.map((item) =>
+            React.cloneElement(item.action, { key: item.name })
+          ) as any}
+        </ActionPanel.Section>
+      );
+    }
+  }
+
   if (scriptActionsGroup.length > 0) {
     if (scriptActionsGroup.length === 1) {
       // Single script action, don't create section
@@ -324,8 +336,8 @@ export function generatePromptActions(
   }
 
   if (baseActionsGroup.length > 0) {
-    if (scriptActionsGroup.length === 0 && baseActionsGroup.length <= 2) {
-      // No scripts and few base actions, don't create section
+    if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length <= 2) {
+      // No pinned actions, no scripts, and few base actions, don't create section
       baseActionsGroup.forEach((item) => {
         resultActions.push(React.cloneElement(item.action, { key: item.name }));
       });
@@ -342,7 +354,7 @@ export function generatePromptActions(
   }
 
   if (otherActionsGroup.length > 0) {
-    if (scriptActionsGroup.length === 0 && baseActionsGroup.length === 0) {
+    if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length === 0) {
       // Only other actions, don't create section
       otherActionsGroup.forEach((item) => {
         resultActions.push(React.cloneElement(item.action, { key: item.name }));
