@@ -281,11 +281,24 @@ export function generatePromptActions(
   const baseActionsGroup: ActionItem[] = [];
   const otherActionsGroup: ActionItem[] = [];
 
-  // Add default action to pinned group
+  // Add default action to pinned group (highest priority)
   if (defaultActionItem) {
     pinnedActionsGroup.push(defaultActionItem);
     actionNames.add(defaultActionItem.name);
   }
+
+  // Add actions specified in finalActions to pinned group (in order)
+  finalActions.forEach((actionName) => {
+    const matchingAction = eligibleActions.find((item) => {
+      const itemName = item.name.toLowerCase().replace(/^script_/, "");
+      return itemName === actionName.toLowerCase();
+    });
+
+    if (matchingAction && !actionNames.has(matchingAction.name)) {
+      pinnedActionsGroup.push(matchingAction);
+      actionNames.add(matchingAction.name);
+    }
+  });
 
   // Categorize remaining actions
   eligibleActions.forEach((item) => {
