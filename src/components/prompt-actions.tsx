@@ -2,6 +2,7 @@ import React from "react";
 import {
   getPreferenceValues,
   Action,
+  ActionPanel,
   Icon,
   Clipboard,
   Toast,
@@ -32,7 +33,7 @@ interface Preferences {
   scriptsDirectory2?: string;
 }
 
-type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }>;
+type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> & React.ReactNode;
 
 interface ActionItem {
   name: string;
@@ -274,18 +275,91 @@ export function generatePromptActions(
   const resultActions: React.ReactElement[] = [];
   const actionNames = new Set<string>();
 
+  // Separate actions into groups
+  const scriptActionsGroup: ActionItem[] = [];
+  const baseActionsGroup: ActionItem[] = [];
+  const otherActionsGroup: ActionItem[] = [];
+
+  // Add default action to the appropriate group
   if (defaultActionItem) {
-    resultActions.push(React.cloneElement(defaultActionItem.action, { key: defaultActionItem.name }));
+    if (defaultActionItem.name.startsWith("script_")) {
+      scriptActionsGroup.push(defaultActionItem);
+    } else if (["copyToClipboard", "copyOriginalPrompt", "paste"].includes(defaultActionItem.name)) {
+      baseActionsGroup.push(defaultActionItem);
+    } else {
+      otherActionsGroup.push(defaultActionItem);
+    }
     actionNames.add(defaultActionItem.name);
   }
 
+  // Categorize remaining actions
   eligibleActions.forEach((item) => {
     if (!actionNames.has(item.name)) {
-      resultActions.push(React.cloneElement(item.action, { key: item.name }));
+      if (item.name.startsWith("script_")) {
+        scriptActionsGroup.push(item);
+      } else if (["copyToClipboard", "copyOriginalPrompt", "paste"].includes(item.name)) {
+        baseActionsGroup.push(item);
+      } else {
+        otherActionsGroup.push(item);
+      }
       actionNames.add(item.name);
     }
   });
 
+  // Create sections for grouped display
+  if (scriptActionsGroup.length > 0) {
+    if (scriptActionsGroup.length === 1) {
+      // Single script action, don't create section
+      resultActions.push(React.cloneElement(scriptActionsGroup[0].action, { key: scriptActionsGroup[0].name }));
+    } else {
+      // Multiple script actions, create section
+      resultActions.push(
+        <ActionPanel.Section key="script-actions" title="Script Actions">
+          {scriptActionsGroup.map((item) =>
+            React.cloneElement(item.action, { key: item.name })
+          ) as any}
+        </ActionPanel.Section>
+      );
+    }
+  }
+
+  if (baseActionsGroup.length > 0) {
+    if (scriptActionsGroup.length === 0 && baseActionsGroup.length <= 2) {
+      // No scripts and few base actions, don't create section
+      baseActionsGroup.forEach((item) => {
+        resultActions.push(React.cloneElement(item.action, { key: item.name }));
+      });
+    } else {
+      // Create section for base actions
+      resultActions.push(
+        <ActionPanel.Section key="base-actions" title="Basic Actions">
+          {baseActionsGroup.map((item) =>
+            React.cloneElement(item.action, { key: item.name })
+          ) as any}
+        </ActionPanel.Section>
+      );
+    }
+  }
+
+  if (otherActionsGroup.length > 0) {
+    if (scriptActionsGroup.length === 0 && baseActionsGroup.length === 0) {
+      // Only other actions, don't create section
+      otherActionsGroup.forEach((item) => {
+        resultActions.push(React.cloneElement(item.action, { key: item.name }));
+      });
+    } else {
+      // Create section for other actions
+      resultActions.push(
+        <ActionPanel.Section key="other-actions" title="Other Actions">
+          {otherActionsGroup.map((item) =>
+            React.cloneElement(item.action, { key: item.name })
+          ) as any}
+        </ActionPanel.Section>
+      );
+    }
+  }
+
+  // Fallback: if no actions were added, add the default copy action
   if (resultActions.length === 0) {
     const copyAction = baseActionItems.find((a) => a.name === "copyToClipboard");
     if (copyAction) {
