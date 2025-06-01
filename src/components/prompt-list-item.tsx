@@ -35,18 +35,6 @@ import {
 import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
 
-interface QuickGPTExtensionPreferences {
-  customPromptsDirectory?: string;
-  customPromptsDirectory1?: string;
-  customPromptsDirectory2?: string;
-  customPromptsDirectory3?: string;
-  customPromptsDirectory4?: string;
-  scriptsDirectory?: string;
-  scriptsDirectory1?: string;
-  scriptsDirectory2?: string;
-  customEditor: Application;
-}
-
 interface PromptListItemProps {
   prompt: PromptProps;
   index: number;
