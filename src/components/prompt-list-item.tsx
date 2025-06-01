@@ -13,7 +13,6 @@ import {
   Clipboard,
   Image,
   useNavigation,
-  Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/prompt-manager";
