@@ -80,12 +80,12 @@ export function PromptList({
 
   // Function to get display text for "Last Used" option
   const getLastUsedActionDisplay = () => {
-    const lastAction = defaultActionPreferenceStore.getLastExecutedAction();
-    if (!lastAction || lastAction === "" || lastAction === "lastUsed") return "Last Used";
+    const mostFrequentAction = defaultActionPreferenceStore.getLastExecutedAction();
+    if (!mostFrequentAction || mostFrequentAction === "" || mostFrequentAction === "lastUsed") return "Last Used";
 
     // Only scripts are recorded in Last Used now
-    if (lastAction.startsWith("script_")) {
-      const scriptName = lastAction.replace("script_", "");
+    if (mostFrequentAction.startsWith("script_")) {
+      const scriptName = mostFrequentAction.replace("script_", "");
       return `Last Used (${scriptName})`;
     }
     return "Last Used";
