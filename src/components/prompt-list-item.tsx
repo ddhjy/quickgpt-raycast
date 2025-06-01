@@ -13,6 +13,7 @@ import {
   Clipboard,
   Image,
   useNavigation,
+  Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/prompt-manager";
@@ -288,7 +289,56 @@ export function PromptListItem({
         />,
       );
 
-      // 2. If sourced from temporary directory, add action to remove source directory
+      // 2. Add "Edit with xxx" action for folders
+      if (prompt.filePath) {
+        const preferences = getPreferenceValues<{ customEditor: Application }>();
+        const editorApp = preferences.customEditor;
+        let editorDisplayName = editorApp.name;
+        if (editorDisplayName.endsWith(".app")) {
+          editorDisplayName = editorDisplayName.slice(0, -4);
+        }
+
+        folderActions.push(
+          <Action
+            key="edit-folder-with-editor"
+            title={`Edit with ${editorDisplayName}`}
+            shortcut={{ modifiers: ["cmd"], key: "e" }}
+            icon={Icon.Pencil}
+            onAction={async () => {
+              await Clipboard.copy(prompt.title);
+
+              try {
+                let openCommand: string;
+                const configDir = path.dirname(prompt.filePath!);
+                if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                  openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
+                } else {
+                  openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                }
+
+                await runAppleScript(`do shell script "${openCommand}"`);
+                await closeMainWindow();
+
+                const fileName = path.basename(prompt.filePath!);
+                await showToast({
+                  title: "Opening File",
+                  message: `Opening ${fileName} with ${editorDisplayName}`,
+                  style: Toast.Style.Success,
+                });
+              } catch (error) {
+                console.error("Failed to open editor:", error);
+                await showToast({
+                  title: "Error Opening Editor",
+                  message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                  style: Toast.Style.Failure,
+                });
+              }
+            }}
+          />,
+        );
+      }
+
+      // 3. If sourced from temporary directory, add action to remove source directory
       if (prompt.isTemporary && prompt.temporaryDirSource) {
         const tempDirSourcePath = prompt.temporaryDirSource; // Closure capture
         folderActions.push(
