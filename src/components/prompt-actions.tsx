@@ -9,6 +9,7 @@ import {
   closeMainWindow,
   showToast,
   Navigation,
+  Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -24,6 +25,7 @@ import {
   removeTemporaryDirectory,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
+import pinsManager from "../managers/pins-manager";
 import path from "path";
 
 interface Preferences {
@@ -31,6 +33,7 @@ interface Preferences {
   scriptsDirectory?: string;
   scriptsDirectory1?: string;
   scriptsDirectory2?: string;
+  customEditor: Application;
 }
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> & React.ReactNode;
@@ -53,6 +56,7 @@ interface ActionItem {
  * @param scripts An array of available script information.
  * @param navigation The Navigation object from useNavigation() hook.
  * @param onRefreshNeeded A callback function to be called when the prompt manager needs to refresh
+ * @param onPinToggle A callback function to handle pinning/unpinning prompts
  * @returns An array of React elements representing the sorted Raycast Actions.
  */
 export function generatePromptActions(
@@ -63,6 +67,7 @@ export function generatePromptActions(
   scripts: ScriptInfo[],
   navigation: Navigation,
   onRefreshNeeded?: () => void,
+  onPinToggle?: (prompt: PromptProps) => void,
 ) {
   const preferences = getPreferenceValues<Preferences>();
   const configuredActions =
@@ -196,6 +201,75 @@ export function generatePromptActions(
         />
       ),
     },
+    {
+      name: "editWithEditor",
+      displayName: "Edit with Editor",
+      condition: !!prompt.filePath,
+      action: (() => {
+        const editorApp = preferences.customEditor;
+        let editorDisplayName = editorApp.name;
+        if (editorDisplayName.endsWith(".app")) {
+          editorDisplayName = editorDisplayName.slice(0, -4);
+        }
+
+        return (
+          <Action
+            title={`Edit with ${editorDisplayName}`}
+            shortcut={{ modifiers: ["cmd"], key: "e" }}
+            icon={Icon.Pencil}
+            onAction={wrapActionHandler(async () => {
+              if (!prompt.filePath) return;
+
+              await Clipboard.copy(prompt.title);
+
+              try {
+                let openCommand: string;
+                const configDir = path.dirname(prompt.filePath);
+                if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                  openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
+                } else {
+                  openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                }
+
+                await runAppleScript(`do shell script "${openCommand}"`);
+                await closeMainWindow();
+
+                const fileName = path.basename(prompt.filePath);
+                await showToast({
+                  title: "Opening File",
+                  message: `Opening ${fileName} with ${editorDisplayName}`,
+                  style: Toast.Style.Success,
+                });
+              } catch (error) {
+                console.error("Failed to open editor:", error);
+                await showToast({
+                  title: "Error Opening Editor",
+                  message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                  style: Toast.Style.Failure,
+                });
+              }
+            }, "editWithEditor")}
+          />
+        );
+      })(),
+    },
+    {
+      name: "pin",
+      displayName: "Pin",
+      condition: prompt.identifier !== "manage-temporary-directory" && !!onPinToggle,
+      action: (
+        <Action
+          title={prompt.pinned ? "Unpin" : "Pin"}
+          icon={Icon.Pin}
+          onAction={wrapActionHandler(() => {
+            if (onPinToggle) {
+              onPinToggle(prompt);
+            }
+          }, "pin")}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+        />
+      ),
+    },
   ];
 
   const allActionItems: ActionItem[] = [...scriptActions, ...baseActionItems];
@@ -305,7 +379,7 @@ export function generatePromptActions(
     if (!actionNames.has(item.name)) {
       if (item.name.startsWith("script_")) {
         scriptActionsGroup.push(item);
-      } else if (["copyToClipboard", "copyOriginalPrompt", "paste"].includes(item.name)) {
+      } else if (["copyToClipboard", "copyOriginalPrompt", "paste", "editWithEditor", "pin"].includes(item.name)) {
         baseActionsGroup.push(item);
       } else {
         otherActionsGroup.push(item);

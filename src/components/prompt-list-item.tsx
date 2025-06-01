@@ -370,6 +370,7 @@ export function PromptListItem({
           scripts,
           navigation,
           onRefreshNeeded,
+          onPinToggle,
         );
         return generated ? <>{generated}</> : null;
       }
@@ -570,12 +571,6 @@ export function PromptListItem({
           )}
           {prompt.identifier !== "manage-temporary-directory" && (
             <>
-              <Action
-                title={prompt.pinned ? "Unpin" : "Pin"}
-                icon={Icon.Pin}
-                onAction={() => onPinToggle(prompt)}
-                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
-              />
               <Action.CopyToClipboard
                 title="Copy Identifier"
                 content={`quickgpt-${prompt.identifier}`}
@@ -591,65 +586,6 @@ export function PromptListItem({
                 )}`}
                 icon={Icon.Link}
               />
-              {prompt.filePath &&
-                (() => {
-                  const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
-                  const editorApp = preferences.customEditor;
-                  let editorDisplayName = editorApp.name;
-                  if (editorDisplayName.endsWith(".app")) {
-                    editorDisplayName = editorDisplayName.slice(0, -4);
-                  }
-
-                  return (
-                    <Action
-                      title={`Edit with ${editorDisplayName}`}
-                      shortcut={{ modifiers: ["cmd"], key: "e" }}
-                      icon={Icon.Pencil}
-                      onAction={async () => {
-                        if (!prompt.filePath) return;
-
-                        await Clipboard.copy(prompt.title);
-
-                        const preferences = getPreferenceValues<QuickGPTExtensionPreferences>();
-                        const editorApp = preferences.customEditor;
-
-                        let editorDisplayName = editorApp.name;
-                        if (editorDisplayName.endsWith(".app")) {
-                          editorDisplayName = editorDisplayName.slice(0, -4);
-                        }
-
-                        try {
-                          let openCommand: string;
-                          const configDir = path.dirname(prompt.filePath);
-                          if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                            openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
-                          } else {
-                            openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
-                          }
-
-                          await runAppleScript(`do shell script "${openCommand}"`);
-
-                          await closeMainWindow();
-
-                          const fileName = path.basename(prompt.filePath);
-
-                          await showToast({
-                            title: "Opening File",
-                            message: `Opening ${fileName} with ${editorDisplayName}`,
-                            style: Toast.Style.Success,
-                          });
-                        } catch (error) {
-                          console.error("Failed to open editor:", error);
-                          await showToast({
-                            title: "Error Opening Editor",
-                            message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
-                            style: Toast.Style.Failure,
-                          });
-                        }
-                      }}
-                    />
-                  );
-                })()}
             </>
           )}
         </ActionPanel>

@@ -112,6 +112,8 @@ export function PromptOptionsForm({
               prompt.actions,
               scripts,
               navigation,
+              undefined,
+              undefined,
             )}
           </>
         </ActionPanel>
