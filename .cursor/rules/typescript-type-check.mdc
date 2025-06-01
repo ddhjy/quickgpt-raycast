@@ -7,6 +7,6 @@ alwaysApply: true
 
 Before finalizing TypeScript code changes or generating new TypeScript code, please ensure its type correctness by running the following command in the terminal:
 
-`npx tsc --noEmit`
+`npx tsc --noEmit` and `npx eslint ./src/`
 
 This command will check the entire project for TypeScript errors without generating any output files. This helps catch potential issues early.
