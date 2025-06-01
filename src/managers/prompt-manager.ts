@@ -178,8 +178,8 @@ class PromptManager {
 
       return prompts.map((prompt: PromptProps) => {
         // Handle actions field: convert string format to array if needed
-        if (typeof (prompt as any).actions === "string") {
-          prompt.actions = ((prompt as any).actions as string)
+        if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
+          prompt.actions = ((prompt as PromptProps & { actions: string }).actions)
             .split(",")
             .map((action) => action.trim())
             .filter((action) => action.length > 0);
@@ -308,7 +308,7 @@ class PromptManager {
             const propKey = key as keyof PromptProps;
             if (!NON_INHERITED_PROPS.includes(propKey) && parentPrompt[propKey] !== undefined) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              baseProperties[propKey] = parentPrompt[propKey] as any;
+              (baseProperties as any)[propKey] = parentPrompt[propKey];
             }
           }
         }
@@ -319,8 +319,8 @@ class PromptManager {
       prompt = { ...baseProperties, ...prompt };
 
       // Handle actions field: convert string format to array if needed
-      if (typeof (prompt as any).actions === "string") {
-        prompt.actions = ((prompt as any).actions as string)
+      if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
+        prompt.actions = ((prompt as PromptProps & { actions: string }).actions)
           .split(",")
           .map((action) => action.trim())
           .filter((action) => action.length > 0);

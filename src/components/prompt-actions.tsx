@@ -25,7 +25,6 @@ import {
   removeTemporaryDirectory,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
-import pinsManager from "../managers/pins-manager";
 import path from "path";
 
 interface Preferences {
@@ -400,7 +399,7 @@ export function generatePromptActions(
         <ActionPanel.Section key="pinned-actions" title="Pinned Actions">
           {pinnedActionsGroup.map((item) =>
             React.cloneElement(item.action, { key: item.name })
-          ) as any}
+          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
         </ActionPanel.Section>
       );
     }
@@ -416,7 +415,7 @@ export function generatePromptActions(
         <ActionPanel.Section key="script-actions" title="Script Actions">
           {scriptActionsGroup.map((item) =>
             React.cloneElement(item.action, { key: item.name })
-          ) as any}
+          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
         </ActionPanel.Section>
       );
     }
@@ -434,7 +433,7 @@ export function generatePromptActions(
         <ActionPanel.Section key="base-actions" title="Basic Actions">
           {baseActionsGroup.map((item) =>
             React.cloneElement(item.action, { key: item.name })
-          ) as any}
+          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
         </ActionPanel.Section>
       );
     }
@@ -452,7 +451,7 @@ export function generatePromptActions(
         <ActionPanel.Section key="other-actions" title="Other Actions">
           {otherActionsGroup.map((item) =>
             React.cloneElement(item.action, { key: item.name })
-          ) as any}
+          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
         </ActionPanel.Section>
       );
     }
