@@ -83,10 +83,10 @@ class DefaultActionPreferenceStore {
 
   /**
    * Gets the most frequently used action from recent history.
-   * @param lookbackCount Number of recent actions to consider (default: 3)
+   * @param lookbackCount Number of recent actions to consider (default: 5)
    * @returns The most frequently used action or undefined.
    */
-  getMostFrequentlyUsedAction(lookbackCount: number = 3): string | undefined {
+  getMostFrequentlyUsedAction(lookbackCount: number = 5): string | undefined {
     const history = this.getExecutionHistory();
     if (history.length === 0) return undefined;
 
@@ -120,7 +120,7 @@ class DefaultActionPreferenceStore {
    */
   getLastExecutedAction(): string | undefined {
     // Use the most frequently used action from recent 10 uses
-    return this.getMostFrequentlyUsedAction(3);
+    return this.getMostFrequentlyUsedAction(5);
   }
 
   /**
