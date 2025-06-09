@@ -170,11 +170,18 @@ class IgnoreManager {
   /**
    * Check if file should be ignored
    */
-  shouldIgnore(filePath: string, basePath: string): boolean {
+  shouldIgnore(filePath: string, basePath: string, isDirectory: boolean): boolean {
     const ig = this.getIgnoreForDirectory(basePath);
     const relativePath = path.relative(basePath, filePath);
 
+    // First, test the path as-is. This handles file paths and most patterns.
     if (ig.ignores(relativePath)) {
+      return true;
+    }
+
+    // If it's a directory, also test it with a trailing slash.
+    // This ensures that directory-only patterns (e.g., `dist/`) are correctly matched against the directory itself.
+    if (isDirectory && ig.ignores(relativePath + path.sep)) {
       return true;
     }
 

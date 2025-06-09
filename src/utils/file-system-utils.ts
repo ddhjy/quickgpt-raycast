@@ -27,10 +27,11 @@ export const isBinaryOrMediaFile = (fileName: string): boolean => {
  *
  * @param itemPath The full path of the file or directory.
  * @param basePath The base path to calculate relative paths from.
+ * @param isDirectory Whether the item at itemPath is a directory.
  * @returns True if the item should be ignored, false otherwise.
  */
-export const isIgnoredItem = (itemPath: string, basePath: string): boolean => {
-  return ignoreManager.shouldIgnore(itemPath, basePath);
+export const isIgnoredItem = (itemPath: string, basePath: string, isDirectory: boolean): boolean => {
+  return ignoreManager.shouldIgnore(itemPath, basePath, isDirectory);
 };
 
 /**
@@ -52,7 +53,7 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
     const itemPath = path.join(dirPath, itemName);
     const relativePath = path.join(basePath, itemName);
 
-    if (isIgnoredItem(itemPath, dirPath) || isBinaryOrMediaFile(itemName)) {
+    if (isIgnoredItem(itemPath, dirPath, item.isDirectory())) {
       content += `File: ${relativePath} (content ignored)\n\n`;
     } else if (item.isDirectory()) {
       content += await readDirectoryContents(itemPath, relativePath);
@@ -90,7 +91,7 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
       const itemPath = path.join(dirPath, itemName);
       const relativePath = path.join(basePath, itemName);
 
-      if (ignoreManager.shouldIgnore(itemPath, dirPath)) {
+      if (ignoreManager.shouldIgnore(itemPath, dirPath, item.isDirectory())) {
         if (item.isDirectory()) {
           content += `Directory: ${relativePath} (ignored)\n\n`;
         } else if (item.isFile()) {
