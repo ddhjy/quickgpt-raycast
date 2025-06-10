@@ -42,9 +42,12 @@ export const isIgnoredItem = (itemPath: string, basePath: string, isDirectory: b
  *
  * @param dirPath The absolute path to the directory to read.
  * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
+ * @param rootPath The root directory path for ignore rule calculation. If not provided, uses dirPath.
  * @returns A promise resolving to a string containing the formatted directory contents.
  */
-export const readDirectoryContents = async (dirPath: string, basePath: string = ""): Promise<string> => {
+export const readDirectoryContents = async (dirPath: string, basePath: string = "", rootPath: string = ""): Promise<string> => {
+  // If rootPath is not provided, use the initial dirPath as root
+  const actualRootPath = rootPath || dirPath;
   let content = "";
   const items = await fsPromises.readdir(dirPath, { withFileTypes: true });
 
@@ -53,10 +56,12 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
     const itemPath = path.join(dirPath, itemName);
     const relativePath = path.join(basePath, itemName);
 
-    if (isIgnoredItem(itemPath, dirPath, item.isDirectory())) {
+    // Use actualRootPath as the base for ignore rule calculation
+    if (isIgnoredItem(itemPath, actualRootPath, item.isDirectory())) {
       content += `File: ${relativePath} (content ignored)\n\n`;
     } else if (item.isDirectory()) {
-      content += await readDirectoryContents(itemPath, relativePath);
+      // Pass the actualRootPath to recursive calls
+      content += await readDirectoryContents(itemPath, relativePath, actualRootPath);
     } else {
       try {
         const fileContent = await fsPromises.readFile(itemPath, "utf-8");
@@ -78,9 +83,12 @@ export const readDirectoryContents = async (dirPath: string, basePath: string = 
  *
  * @param dirPath The absolute path to the directory to read.
  * @param basePath The base path used for constructing relative paths in the output string. Initially empty.
+ * @param rootPath The root directory path for ignore rule calculation. If not provided, uses dirPath.
  * @returns A string containing the formatted directory contents.
  */
-export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""): string => {
+export const readDirectoryContentsSync = (dirPath: string, basePath: string = "", rootPath: string = ""): string => {
+  // If rootPath is not provided, use the initial dirPath as root
+  const actualRootPath = rootPath || dirPath;
   let content = "";
 
   try {
@@ -91,7 +99,8 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
       const itemPath = path.join(dirPath, itemName);
       const relativePath = path.join(basePath, itemName);
 
-      if (ignoreManager.shouldIgnore(itemPath, dirPath, item.isDirectory())) {
+      // Use actualRootPath as the base for ignore rule calculation
+      if (ignoreManager.shouldIgnore(itemPath, actualRootPath, item.isDirectory())) {
         if (item.isDirectory()) {
           content += `Directory: ${relativePath} (ignored)\n\n`;
         } else if (item.isFile()) {
@@ -103,7 +112,8 @@ export const readDirectoryContentsSync = (dirPath: string, basePath: string = ""
       try {
         if (item.isDirectory()) {
           content += `Directory: ${relativePath}${path.sep}\n`;
-          content += readDirectoryContentsSync(itemPath, relativePath);
+          // Pass the actualRootPath to recursive calls
+          content += readDirectoryContentsSync(itemPath, relativePath, actualRootPath);
         } else if (item.isFile()) {
           if (ignoreManager.isBinaryFile(itemPath)) {
             content += `File: ${relativePath} (binary/media, content ignored)\n\n`;
