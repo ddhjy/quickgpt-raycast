@@ -1,6 +1,7 @@
 import ignore, { Ignore } from "ignore";
 import fs from "fs";
 import path from "path";
+import DEFAULT_IGNORE_RULES from "./default-ignore-rules";
 
 /**
  * Singleton class for managing file ignore rules using standard gitignore mechanism
@@ -14,79 +15,7 @@ class IgnoreManager {
    * Default ignore rules in gitignore syntax
    * These rules are always applied as if they were in a .gitignore file at the root
    */
-  private readonly defaultIgnoreRules = `
-# Directories to ignore
-node_modules/
-.git/
-dist/
-build/
-coverage/
-tmp/
-logs/
-.cache/
-.vscode/
-.idea/
-__pycache__/
-bower_components/
-jspm_packages/
-*.xcodeproj/
-*.xcworkspace/
-
-# Files to ignore
-.DS_Store
-*.log
-.env
-.env.local
-*.pyc
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-.npmrc
-.yarnrc
-# *
-.#*
-
-# Binary and media files
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.webp
-*.ico
-*.svg
-*.mp3
-*.wav
-*.flac
-*.mp4
-*.avi
-*.mkv
-*.mov
-*.wmv
-*.exe
-*.dll
-*.bin
-*.iso
-*.dmg
-*.pkg
-*.zip
-*.rar
-*.tar
-*.gz
-*.7z
-*.bz2
-*.pdf
-*.doc
-*.docx
-*.xls
-*.xlsx
-*.ppt
-*.pptx
-*.tiktoken
-*.db
-*.sqlite
-`.trim();
+  private readonly defaultIgnoreRules = DEFAULT_IGNORE_RULES;
 
   private constructor() { }
 
