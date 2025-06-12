@@ -289,7 +289,22 @@ export function PromptListItem({
         />,
       );
 
-      // 2. Add "Edit with xxx" action for folders
+      // 2. Add Pin/Unpin action for folders
+      if (onPinToggle) {
+        folderActions.push(
+          <Action
+            key="pin-folder"
+            title={prompt.pinned ? "Unpin" : "Pin"}
+            icon={Icon.Pin}
+            onAction={() => {
+              onPinToggle(prompt);
+            }}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+          />,
+        );
+      }
+
+      // 3. Add "Edit with xxx" action for folders
       if (prompt.filePath) {
         const preferences = getPreferenceValues<{ customEditor: Application }>();
         const editorApp = preferences.customEditor;
@@ -338,7 +353,7 @@ export function PromptListItem({
         );
       }
 
-      // 3. If sourced from temporary directory, add action to remove source directory
+      // 4. If sourced from temporary directory, add action to remove source directory
       if (prompt.isTemporary && prompt.temporaryDirSource) {
         const tempDirSourcePath = prompt.temporaryDirSource; // Closure capture
         folderActions.push(
