@@ -86,9 +86,9 @@ export function PromptList({
     // Only scripts are recorded in Last Used now
     if (mostFrequentAction.startsWith("script_")) {
       const scriptName = mostFrequentAction.replace("script_", "");
-      return `Last used: ${scriptName}`;
+      return `Last: ${scriptName}`;
     }
-    return "Last used";
+    return "Last Used";
   };
 
   const handlePinToggle = (prompt: PromptProps) => {
