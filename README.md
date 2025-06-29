@@ -5,11 +5,11 @@
 
 A professional prompt management extension for Raycast that **streamlines** your workflow by providing efficient access to a comprehensive library of **prompts** with advanced placeholder capabilities.
 
-1. **Efficient prompts management**: Management 200+ prompts with HJSON format and git version control, develop prompts like a project
+1. **Manage prompts like code**: Iterate and maintain 200+ prompts with HJSON format and git version control, develop prompts like a software project
 
 <img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="图片描述" >
 
-2. **Seamless workflow integration**: Integrated with PopClip and Gemini, a prompt is a tool
+2. **Use prompts like tools**: Seamlessly integrated with PopClip and Gemini, every prompt becomes a powerful tool in your workflow
 
 <video src="https://github.com/user-attachments/assets/e1a222b3-2df2-496f-bf8d-7726f7fab5d0">
 </video>
