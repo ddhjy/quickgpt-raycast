@@ -1,6 +1,6 @@
 # QuickGPT for Raycast
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AsyncFuncAI/deepwiki-open)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ddhjy/quickgpt-raycast)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A professional prompt management extension for Raycast that **streamlines** your workflow by providing efficient access to a comprehensive library of **prompts** with advanced placeholder capabilities.
