@@ -138,7 +138,7 @@ export function PromptListItem({
   }
 
   // Dynamic title and icon
-  let displayIcon: string | Image.Asset = prompt.icon ?? "";
+  let displayIcon: string | Image.Asset = prompt.icon ?? "🔖";
 
   if (prompt.identifier === "manage-temporary-directory") {
     if (temporaryDirs.length > 0) {
