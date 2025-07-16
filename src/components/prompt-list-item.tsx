@@ -382,15 +382,17 @@ export function PromptListItem({
       return <>{folderActions}</>; // Return wrapped in React Fragment
     } else {
       // Default actions for regular prompts
-      // Check which option placeholders would actually be used given current replacements
       const usedOptionKeys = findUsedOptionPlaceholders(prompt, replacements);
       const directOptionKeys = findOptionPlaceholders(prompt);
       const allOptionKeys = [...new Set([...usedOptionKeys, ...directOptionKeys])];
 
-      if (allOptionKeys.length > 0) {
-        // Action for prompts with option placeholders that would actually be used
-        return (
+      const hasOptions = allOptionKeys.length > 0 || (prompt.options && Object.keys(prompt.options).length > 0);
+
+      if (hasOptions) {
+        // If prompt has options, show "Configure Options" and "Edit with Editor"
+        const optionActions = [
           <Action.Push
+            key="configure-options"
             title="Configure Options"
             icon={Icon.Gear}
             target={
@@ -401,19 +403,63 @@ export function PromptListItem({
                 scripts={scripts}
               />
             }
-          />
-        );
-      } else if (prompt.options && Object.keys(prompt.options).length > 0) {
-        // Action for prompts defined with options object (needs options form)
-        return (
-          <Action.Push
-            title="Configure Options"
-            icon={Icon.Gear}
-            target={<PromptOptionsForm prompt={prompt} baseReplacements={replacements} scripts={scripts} />}
-          />
-        );
+          />,
+        ];
+
+        // Add "Edit with Editor" action if the prompt has a file path
+        if (prompt.filePath) {
+          const preferences = getPreferenceValues<{ customEditor: Application }>();
+          const editorApp = preferences.customEditor;
+          let editorDisplayName = editorApp.name;
+          if (editorDisplayName.endsWith(".app")) {
+            editorDisplayName = editorDisplayName.slice(0, -4);
+          }
+
+          optionActions.push(
+            <Action
+              key="edit-with-editor"
+              title={`Edit with ${editorDisplayName}`}
+              shortcut={{ modifiers: ["cmd"], key: "e" }}
+              icon={Icon.Pencil}
+              onAction={async () => {
+                if (!prompt.filePath) return;
+
+                await Clipboard.copy(prompt.title);
+
+                try {
+                  let openCommand: string;
+                  const configDir = path.dirname(prompt.filePath);
+                  if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
+                    openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
+                  } else {
+                    openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
+                  }
+
+                  await runAppleScript(`do shell script "${openCommand}"`);
+                  await closeMainWindow();
+
+                  const fileName = path.basename(prompt.filePath);
+                  await showToast({
+                    title: "Opening File",
+                    message: `Opening ${fileName} with ${editorDisplayName}`,
+                    style: Toast.Style.Success,
+                  });
+                } catch (error) {
+                  console.error("Failed to open editor:", error);
+                  await showToast({
+                    title: "Error Opening Editor",
+                    message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                    style: Toast.Style.Failure,
+                  });
+                }
+              }}
+            />,
+          );
+        }
+
+        return <>{optionActions}</>;
       } else {
-        // Generate standard actions
+        // For prompts without options, generate the standard set of actions
         const generated = generatePromptActions(
           prompt,
           replacements,
