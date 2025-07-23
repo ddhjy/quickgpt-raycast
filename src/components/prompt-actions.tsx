@@ -130,10 +130,10 @@ export function generatePromptActions(
           try {
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
-            await closeMainWindow({ clearRootSearch: true });
             const scriptContent = fs.readFileSync(scriptPath, "utf8");
             const args = scriptName.endsWith("ChatGPT") ? [finalContent] : [];
             await runAppleScript(scriptContent, args);
+            await closeMainWindow({ clearRootSearch: true });
           } catch (error) {
             console.error(`Failed to execute script ${scriptName}:`, error);
             await showToast(Toast.Style.Failure, "Script Error", `Failed to run ${scriptName}: ${String(error)}`);
