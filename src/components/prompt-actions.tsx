@@ -19,6 +19,7 @@ import inputHistoryStore from "../stores/input-history-store";
 import { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/prompt-formatting-utils";
+import { generateGitLink } from "../utils/git-utils";
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
@@ -201,6 +202,38 @@ export function generatePromptActions(
       ),
     },
     {
+      name: "sharePrompt",
+      displayName: "Share Prompt",
+      condition: !!prompt.filePath,
+      action: (
+        <Action
+          title="Share Prompt"
+          icon={Icon.Link}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "s" }}
+          onAction={wrapActionHandler(async () => {
+            if (!prompt.filePath) {
+              await showToast(Toast.Style.Failure, "Cannot share this prompt", "It is not a file-based prompt.");
+              return;
+            }
+            const gitLink = await generateGitLink(prompt.filePath);
+
+            if (gitLink) {
+              const markdownLink = `[${prompt.title}](${gitLink})`;
+              await Clipboard.copy(markdownLink);
+              await showToast(Toast.Style.Success, "Copied Share Link", "Markdown link copied to clipboard.");
+              await closeMainWindow({ clearRootSearch: true });
+            } else {
+              await showToast(
+                Toast.Style.Failure,
+                "Could Not Generate Git Link",
+                "File is not in a Git repository with a remote 'origin'."
+              );
+            }
+          }, "sharePrompt")}
+        />
+      ),
+    },
+    {
       name: "editWithEditor",
       displayName: "Edit with Editor",
       condition: !!prompt.filePath,
@@ -378,7 +411,7 @@ export function generatePromptActions(
     if (!actionNames.has(item.name)) {
       if (item.name.startsWith("script_")) {
         scriptActionsGroup.push(item);
-      } else if (["copyToClipboard", "copyOriginalPrompt", "paste", "editWithEditor", "pin"].includes(item.name)) {
+      } else if (["copyToClipboard", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(item.name)) {
         baseActionsGroup.push(item);
       } else {
         otherActionsGroup.push(item);
