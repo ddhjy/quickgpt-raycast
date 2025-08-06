@@ -218,7 +218,7 @@ export function generatePromptActions(
             const gitLink = await generateGitLink(prompt.filePath);
 
             if (gitLink) {
-              const markdownLink = `[${prompt.title}](${gitLink})`;
+              const markdownLink = `[prompt:${prompt.title}](${gitLink})`;
               await Clipboard.copy(markdownLink);
               await showToast(Toast.Style.Success, "Copied Share Link", "Markdown link copied to clipboard.");
               await closeMainWindow({ clearRootSearch: true });
