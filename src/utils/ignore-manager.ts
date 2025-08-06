@@ -1,4 +1,5 @@
-import ignore, { Ignore } from "ignore";
+import ignore from "ignore";
+import type { Ignore } from "ignore";
 import fs from "fs";
 import path from "path";
 import DEFAULT_IGNORE_RULES from "./default-ignore-rules";
