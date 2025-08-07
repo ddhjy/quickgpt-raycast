@@ -42,7 +42,7 @@ async function findRepoRoot(startPath: string): Promise<string | null> {
       if (stats.isDirectory()) {
         return currentPath;
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
     currentPath = path.dirname(currentPath);

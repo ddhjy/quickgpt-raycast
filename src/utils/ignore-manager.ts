@@ -18,7 +18,7 @@ class IgnoreManager {
    */
   private readonly defaultIgnoreRules = DEFAULT_IGNORE_RULES;
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): IgnoreManager {
     if (!IgnoreManager.instance) {
@@ -188,11 +188,11 @@ class IgnoreManager {
     const relativePath = path.relative(basePath, filePath);
 
     // Normalize path separators for cross-platform compatibility
-    const normalizedPath = relativePath.replace(/\\/g, '/');
+    const normalizedPath = relativePath.replace(/\\/g, "/");
 
     // For directories, also test with trailing slash
     if (isDirectory) {
-      return ig.ignores(normalizedPath) || ig.ignores(normalizedPath + '/');
+      return ig.ignores(normalizedPath) || ig.ignores(normalizedPath + "/");
     }
 
     return ig.ignores(normalizedPath);
@@ -213,16 +213,16 @@ class IgnoreManager {
    * Extract binary file patterns from default rules
    */
   private getBinaryFilePatterns(): string {
-    const lines = this.defaultIgnoreRules.split('\n');
+    const lines = this.defaultIgnoreRules.split("\n");
     const binarySection: string[] = [];
     let inBinarySection = false;
 
     for (const line of lines) {
-      if (line.includes('# Binary and media files')) {
+      if (line.includes("# Binary and media files")) {
         inBinarySection = true;
         continue;
       }
-      if (inBinarySection && line.startsWith('#') && !line.includes('Binary')) {
+      if (inBinarySection && line.startsWith("#") && !line.includes("Binary")) {
         break;
       }
       if (inBinarySection && line.trim()) {
@@ -230,7 +230,7 @@ class IgnoreManager {
       }
     }
 
-    return binarySection.join('\n');
+    return binarySection.join("\n");
   }
 
   /**

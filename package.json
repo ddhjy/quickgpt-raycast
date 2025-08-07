@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "quickgpt",
-  "title": "QuickGPT",
+  "title": "Quickgpt",
   "description": "A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.",
   "icon": "command-icon.png",
   "author": "ddhjy2012",

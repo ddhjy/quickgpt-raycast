@@ -45,7 +45,11 @@ export const isIgnoredItem = (itemPath: string, basePath: string, isDirectory: b
  * @param rootPath The root directory path for ignore rule calculation. If not provided, uses dirPath.
  * @returns A promise resolving to a string containing the formatted directory contents.
  */
-export const readDirectoryContents = async (dirPath: string, basePath: string = "", rootPath: string = ""): Promise<string> => {
+export const readDirectoryContents = async (
+  dirPath: string,
+  basePath: string = "",
+  rootPath: string = "",
+): Promise<string> => {
   // If rootPath is not provided, use the initial dirPath as root
   const actualRootPath = rootPath || dirPath;
   let content = "";

@@ -72,4 +72,4 @@ pnpm-lock.yaml
 *.sqlite
 `.trim();
 
-export default DEFAULT_IGNORE_RULES; 
+export default DEFAULT_IGNORE_RULES;

@@ -49,14 +49,14 @@ export function useInitialContext(initialSelectionText?: string, target?: string
           }
           return content.trim();
         }
-      } catch (finderError) {
+      } catch {
         console.debug("Failed to get selected Finder items");
       }
 
       try {
         const text = await getSelectedText();
         return text || "";
-      } catch (error) {
+      } catch {
         console.info("No text selected or failed to get text");
         return "";
       }

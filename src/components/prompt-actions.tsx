@@ -36,7 +36,8 @@ interface Preferences {
   customEditor: Application;
 }
 
-type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> & React.ReactNode;
+type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
+  React.ReactNode;
 
 interface ActionItem {
   name: string;
@@ -78,7 +79,10 @@ export function generatePromptActions(
   const promptDefinedActions = actions || [];
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
-  const wrapActionHandler = (originalHandler: (() => Promise<void>) | undefined | (() => void), actionName?: string) => {
+  const wrapActionHandler = (
+    originalHandler: (() => Promise<void>) | undefined | (() => void),
+    actionName?: string,
+  ) => {
     return async () => {
       // Only record script actions in Last Used (exclude basic actions like Copy, Paste)
       if (actionName && actionName !== "lastUsed" && actionName.startsWith("script_")) {
@@ -226,7 +230,7 @@ export function generatePromptActions(
               await showToast(
                 Toast.Style.Failure,
                 "Could Not Generate Git Link",
-                "File is not in a Git repository with a remote 'origin'."
+                "File is not in a Git repository with a remote 'origin'.",
               );
             }
           }, "sharePrompt")}
@@ -411,7 +415,9 @@ export function generatePromptActions(
     if (!actionNames.has(item.name)) {
       if (item.name.startsWith("script_")) {
         scriptActionsGroup.push(item);
-      } else if (["copyToClipboard", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(item.name)) {
+      } else if (
+        ["copyToClipboard", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(item.name)
+      ) {
         baseActionsGroup.push(item);
       } else {
         otherActionsGroup.push(item);
@@ -430,10 +436,12 @@ export function generatePromptActions(
       // Multiple pinned actions, create section
       resultActions.push(
         <ActionPanel.Section key="pinned-actions" title="Pinned Actions">
-          {pinnedActionsGroup.map((item) =>
-            React.cloneElement(item.action, { key: item.name })
-          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
-        </ActionPanel.Section>
+          {
+            pinnedActionsGroup.map((item) =>
+              React.cloneElement(item.action, { key: item.name }),
+            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
+          }
+        </ActionPanel.Section>,
       );
     }
   }
@@ -446,10 +454,12 @@ export function generatePromptActions(
       // Multiple script actions, create section
       resultActions.push(
         <ActionPanel.Section key="script-actions" title="Script Actions">
-          {scriptActionsGroup.map((item) =>
-            React.cloneElement(item.action, { key: item.name })
-          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
-        </ActionPanel.Section>
+          {
+            scriptActionsGroup.map((item) =>
+              React.cloneElement(item.action, { key: item.name }),
+            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
+          }
+        </ActionPanel.Section>,
       );
     }
   }
@@ -464,10 +474,12 @@ export function generatePromptActions(
       // Create section for base actions
       resultActions.push(
         <ActionPanel.Section key="base-actions" title="Basic Actions">
-          {baseActionsGroup.map((item) =>
-            React.cloneElement(item.action, { key: item.name })
-          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
-        </ActionPanel.Section>
+          {
+            baseActionsGroup.map((item) =>
+              React.cloneElement(item.action, { key: item.name }),
+            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
+          }
+        </ActionPanel.Section>,
       );
     }
   }
@@ -482,10 +494,12 @@ export function generatePromptActions(
       // Create section for other actions
       resultActions.push(
         <ActionPanel.Section key="other-actions" title="Other Actions">
-          {otherActionsGroup.map((item) =>
-            React.cloneElement(item.action, { key: item.name })
-          ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
-        </ActionPanel.Section>
+          {
+            otherActionsGroup.map((item) =>
+              React.cloneElement(item.action, { key: item.name }),
+            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
+          }
+        </ActionPanel.Section>,
       );
     }
   }

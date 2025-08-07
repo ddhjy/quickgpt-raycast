@@ -20,7 +20,13 @@ class DefaultActionPreferenceStore {
    * @param historyKey The cache key under which to store the execution history. Defaults to "actionExecutionHistory".
    * @param historySize The maximum size of the execution history. Defaults to 20.
    */
-  constructor(cache: Cache, key = "lastSelectedAction", lastExecutedKey = "lastExecutedAction", historyKey = "actionExecutionHistory", historySize = 20) {
+  constructor(
+    cache: Cache,
+    key = "lastSelectedAction",
+    lastExecutedKey = "lastExecutedAction",
+    historyKey = "actionExecutionHistory",
+    historySize = 20,
+  ) {
     this.cache = cache;
     this.key = key;
     this.lastExecutedKey = lastExecutedKey;
@@ -95,7 +101,7 @@ class DefaultActionPreferenceStore {
 
     // Count frequencies
     const frequencyMap = new Map<string, number>();
-    recentHistory.forEach(action => {
+    recentHistory.forEach((action) => {
       frequencyMap.set(action, (frequencyMap.get(action) || 0) + 1);
     });
 

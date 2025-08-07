@@ -179,7 +179,7 @@ class PromptManager {
       return prompts.map((prompt: PromptProps) => {
         // Handle actions field: convert string format to array if needed
         if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
-          prompt.actions = ((prompt as PromptProps & { actions: string }).actions)
+          prompt.actions = (prompt as PromptProps & { actions: string }).actions
             .split(",")
             .map((action) => action.trim())
             .filter((action) => action.length > 0);
@@ -320,7 +320,7 @@ class PromptManager {
 
       // Handle actions field: convert string format to array if needed
       if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
-        prompt.actions = ((prompt as PromptProps & { actions: string }).actions)
+        prompt.actions = (prompt as PromptProps & { actions: string }).actions
           .split(",")
           .map((action) => action.trim())
           .filter((action) => action.length > 0);
