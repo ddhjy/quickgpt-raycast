@@ -228,7 +228,14 @@ export function PromptListItem({
             title="Open"
             icon={Icon.Folder}
             onAction={async () => {
-              await runAppleScript(`do shell script "open -a Cursor '${scriptDirs[0]}'"`);
+              const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+              let openCommand: string;
+              if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
+                openCommand = `open -b '${customEditor.bundleId}' '${scriptDirs[0]}'`;
+              } else {
+                openCommand = `open -a '${customEditor.path}' '${scriptDirs[0]}'`;
+              }
+              await runAppleScript(`do shell script "${openCommand}"`);
               await closeMainWindow();
             }}
           />
@@ -244,7 +251,14 @@ export function PromptListItem({
                   title={`Open ${dirName}`}
                   icon={Icon.Folder}
                   onAction={async () => {
-                    await runAppleScript(`do shell script "open -a Cursor '${dir}'"`);
+                    const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+                    let openCommand: string;
+                    if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
+                      openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
+                    } else {
+                      openCommand = `open -a '${customEditor.path}' '${dir}'`;
+                    }
+                    await runAppleScript(`do shell script "${openCommand}"`);
                     await closeMainWindow();
                   }}
                 />
@@ -685,7 +699,14 @@ function handleCustomPromptsDirectoryActions() {
         icon={Icon.Folder}
         onAction={async () => {
           try {
-            await runAppleScript(`do shell script "open -a Cursor '${promptDirs[0]}'"`);
+            const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+            let openCommand: string;
+            if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
+              openCommand = `open -b '${customEditor.bundleId}' '${promptDirs[0]}'`;
+            } else {
+              openCommand = `open -a '${customEditor.path}' '${promptDirs[0]}'`;
+            }
+            await runAppleScript(`do shell script "${openCommand}"`);
             closeMainWindow();
           } catch (error) {
             console.error("Failed to open prompt directory:", error);
@@ -707,7 +728,14 @@ function handleCustomPromptsDirectoryActions() {
               icon={Icon.Folder}
               onAction={async () => {
                 try {
-                  await runAppleScript(`do shell script "open -a Cursor '${dir}'"`);
+                  const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+                  let openCommand: string;
+                  if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
+                    openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
+                  } else {
+                    openCommand = `open -a '${customEditor.path}' '${dir}'`;
+                  }
+                  await runAppleScript(`do shell script "${openCommand}"`);
                   closeMainWindow();
                 } catch (error) {
                   console.error(`Failed to open prompt directory ${dir}:`, error);
