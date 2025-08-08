@@ -20,7 +20,7 @@ const IDENTIFIER_PREFIX = "quickgpt-";
 const placeholderIcons: { [key: string]: Icon } = {
   input: Icon.TextInput,
   clipboard: Icon.Clipboard,
-  selection: Icon.Text,
+  selection: Icon.TextCursor,
   currentApp: Icon.Window,
   allApp: Icon.AppWindowGrid2x2,
   browserContent: Icon.Globe,
