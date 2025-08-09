@@ -83,19 +83,22 @@ export function PromptListItem({
 }: PromptListItemProps) {
   const navigation = useNavigation();
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
-  const [refreshTimer, setRefreshTimer] = useState(0);
 
   useEffect(() => {
+    // Only the special "manage-temporary-directory" item needs periodic refresh
+    if (prompt.identifier !== "manage-temporary-directory") {
+      return;
+    }
+
     setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
 
     const timer = setInterval(() => {
       setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
-      setRefreshTimer((prev) => prev + 1);
     }, 1000);
 
-    // Clean up timer when component unmounts
+    // Clean up timer when component unmounts or identifier changes
     return () => clearInterval(timer);
-  }, []);
+  }, [prompt.identifier]);
 
   const rawTitle = prompt.title || "";
   const mergedForTitle = {
@@ -449,7 +452,6 @@ export function PromptListItem({
     navigation,
     onRefreshNeeded,
     temporaryDirs,
-    refreshTimer,
   ]);
 
   // Create accessories to display remaining time
