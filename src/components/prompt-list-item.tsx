@@ -85,19 +85,10 @@ export function PromptListItem({
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
 
   useEffect(() => {
-    // Only the special "manage-temporary-directory" item needs periodic refresh
-    if (prompt.identifier !== "manage-temporary-directory") {
-      return;
-    }
-
-    setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
-
-    const timer = setInterval(() => {
+    // For manage-temporary-directory item, perform a one-time fetch only; no periodic refresh
+    if (prompt.identifier === "manage-temporary-directory") {
       setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
-    }, 1000);
-
-    // Clean up timer when component unmounts or identifier changes
-    return () => clearInterval(timer);
+    }
   }, [prompt.identifier]);
 
   const rawTitle = prompt.title || "";
