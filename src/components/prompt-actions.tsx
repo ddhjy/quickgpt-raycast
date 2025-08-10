@@ -270,10 +270,8 @@ export function generatePromptActions(
                 await runAppleScript(`do shell script "${openCommand}"`);
                 await closeMainWindow();
 
-                const fileName = path.basename(prompt.filePath);
                 await showToast({
-                  title: "Opening File",
-                  message: `Opening ${fileName} with ${editorDisplayName}`,
+                  title: `Opening File and Copy Title`,
                   style: Toast.Style.Success,
                 });
               } catch (error) {

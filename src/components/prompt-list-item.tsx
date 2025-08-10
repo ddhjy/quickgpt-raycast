@@ -342,10 +342,8 @@ export function PromptListItem({
                 await runAppleScript(`do shell script "${openCommand}"`);
                 await closeMainWindow();
 
-                const fileName = path.basename(prompt.filePath!);
                 await showToast({
-                  title: "Opening File",
-                  message: `Opening ${fileName} with ${editorDisplayName}`,
+                  title: `Opening File and Copy Title`,
                   style: Toast.Style.Success,
                 });
               } catch (error) {
@@ -462,22 +460,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-              ...accessory,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            }
+            ...accessory,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-            {
-              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-              tooltip:
-                prompt.content ??
-                prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
-            },
-          ]
+          {
+            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+            tooltip:
+              prompt.content ??
+              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+          },
+        ]
         : []),
     ];
   };
