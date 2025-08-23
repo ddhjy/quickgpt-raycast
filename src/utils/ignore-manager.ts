@@ -239,14 +239,6 @@ class IgnoreManager {
   clearCache(): void {
     this.ignoreCache.clear();
   }
-
-  /**
-   * Add custom ignore rules (in gitignore syntax)
-   */
-  addCustomIgnoreRules(rules: string): void {
-    console.warn(`addCustomIgnoreRules is not implemented in the new architecture. Received rules: ${rules}`);
-    this.clearCache();
-  }
 }
 
 export default IgnoreManager.getInstance();

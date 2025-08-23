@@ -53,7 +53,7 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 const PH_REG = /{{(?:(file|option):)?([^}]+)}}/g;
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
-const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
+export const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
   (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
 
 // Special marker for Finder-selected files
@@ -90,7 +90,7 @@ function isRecursivePlaceholder(directive: string | undefined, body: string): bo
  * @param raw The raw replacement values to process
  * @returns A Map of valid placeholder keys to their replacement values
  */
-function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<string, unknown>) {
+export function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<string, unknown>) {
   const m = new Map<PlaceholderKey, string>();
   // Only process standard placeholder keys defined in SpecificReplacements
   Object.entries(raw).forEach(([k, v]) => {

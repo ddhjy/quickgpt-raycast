@@ -18,7 +18,7 @@ import { ScriptInfo } from "../utils/script-utils";
 import inputHistoryStore from "../stores/input-history-store";
 import { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
-import { buildFormattedPromptContent, getIndentedPromptTitles } from "../utils/prompt-formatting-utils";
+import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
 import {
   updateTemporaryDirectoryUsage,
@@ -118,7 +118,6 @@ export function generatePromptActions(
       ...baseReplacements,
       clipboard: currentClipboard,
       now: new Date().toLocaleString(),
-      promptTitles: getIndentedPromptTitles(),
     };
     return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
   };

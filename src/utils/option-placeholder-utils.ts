@@ -1,5 +1,5 @@
 import { PromptProps } from "../managers/prompt-manager";
-import { SpecificReplacements, getPropertyByPath } from "./placeholder-formatter";
+import { SpecificReplacements, getPropertyByPath, toPlaceholderKey, buildEffectiveMap } from "./placeholder-formatter";
 
 /**
  * Find option placeholders that would actually be used in fallback chains given current replacement values.
@@ -14,50 +14,8 @@ export function findUsedOptionPlaceholders(prompt: PromptProps, replacements: Sp
   const usedOptionKeys: string[] = [];
   if (!prompt.content) return usedOptionKeys;
 
-  // Define placeholder alias mapping locally for this function
-  const ALIAS_TO_KEY = new Map<string, keyof SpecificReplacements>([
-    ["i", "input"],
-    ["s", "selection"],
-    ["c", "clipboard"],
-    ["n", "now"],
-    ["pt", "promptTitles"],
-  ]);
-
-  const toPlaceholderKey = (p: string): keyof SpecificReplacements | undefined => {
-    const aliasKey = ALIAS_TO_KEY.get(p);
-    if (aliasKey) return aliasKey;
-
-    // Check if it's a valid key
-    const validKeys: (keyof SpecificReplacements)[] = [
-      "input",
-      "selection",
-      "clipboard",
-      "currentApp",
-      "allApp",
-      "browserContent",
-      "now",
-      "promptTitles",
-    ];
-    return validKeys.includes(p as keyof SpecificReplacements) ? (p as keyof SpecificReplacements) : undefined;
-  };
-
-  // Build effective replacement map like in placeholderFormatter
-  const map = new Map<keyof SpecificReplacements, string>();
-  Object.entries(replacements).forEach(([k, v]) => {
-    const validKeys: (keyof SpecificReplacements)[] = [
-      "input",
-      "selection",
-      "clipboard",
-      "currentApp",
-      "allApp",
-      "browserContent",
-      "now",
-      "promptTitles",
-    ];
-    if (validKeys.includes(k as keyof SpecificReplacements) && typeof v === "string" && v.trim() !== "") {
-      map.set(k as keyof SpecificReplacements, v.trim());
-    }
-  });
+  // Build effective replacement map using shared formatter util
+  const map = buildEffectiveMap(replacements as SpecificReplacements & Record<string, unknown>);
 
   // Regex to find all placeholders including fallback chains
   const regex = /{{(?:(file|option):)?([^}]+)}}/g;

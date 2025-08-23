@@ -1,4 +1,4 @@
-import { Cache, showToast, Toast } from "@raycast/api";
+import { Cache } from "@raycast/api";
 
 const CACHE_KEY = "temporaryPromptDirectories";
 const EXPIRY_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
@@ -85,7 +85,6 @@ export function isPathInTemporaryDirectories(dirPath: string): boolean {
 // Add a new temporary directory
 export function addTemporaryDirectory(dirPath: string): void {
   if (isPathInTemporaryDirectories(dirPath)) {
-    showToast(Toast.Style.Failure, "Directory already added as temporary directory");
     return;
   }
 
@@ -96,7 +95,6 @@ export function addTemporaryDirectory(dirPath: string): void {
   dirInfos.push(newInfo);
 
   cache.set(CACHE_KEY, JSON.stringify(dirInfos));
-  showToast(Toast.Style.Success, "Temporary directory added", dirPath);
   console.log(`Temporary directory added: ${dirPath}`);
 }
 
@@ -128,7 +126,6 @@ export function removeTemporaryDirectory(dirPath: string): void {
 
   if (filteredDirs.length !== dirInfos.length) {
     cache.set(CACHE_KEY, JSON.stringify(filteredDirs));
-    showToast(Toast.Style.Success, "Temporary directory removed", dirPath);
     console.log(`Temporary directory removed: ${dirPath}`);
   }
 }
@@ -139,17 +136,6 @@ export function removeAllTemporaryDirectories(): void {
 
   if (dirInfos.length > 0) {
     cache.remove(CACHE_KEY);
-    showToast(Toast.Style.Success, `Removed all ${dirInfos.length} temporary directories`);
     console.log("All temporary directories removed");
   }
-}
-
-export function getActiveTemporaryDirectory(): TemporaryDirectoryInfo | null {
-  const dirs = getActiveTemporaryDirectories();
-  return dirs.length > 0 ? dirs[0] : null;
-}
-
-export function setTemporaryDirectory(dirPath: string): void {
-  removeAllTemporaryDirectories();
-  addTemporaryDirectory(dirPath);
 }
