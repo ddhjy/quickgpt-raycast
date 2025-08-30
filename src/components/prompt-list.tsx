@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { List, getPreferenceValues, showToast, Toast, clearSearchBar, useNavigation } from "@raycast/api";
+import { List, showToast, Toast, clearSearchBar, useNavigation } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
 import { PromptProps } from "../managers/prompt-manager";
@@ -9,6 +9,7 @@ import { MemoizedPromptListItem } from "./prompt-list-item";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
 import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
 import { useInputHistory } from "../hooks/use-input-history";
+import configurationManager from "../managers/configuration-manager";
 
 interface PromptListProps {
   prompts: PromptProps[];
@@ -51,16 +52,6 @@ export function PromptList({
   const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
   const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
-  const preferences = getPreferenceValues<{
-    customPromptsDirectory?: string;
-    customPromptsDirectory1?: string;
-    customPromptsDirectory2?: string;
-    customPromptsDirectory3?: string;
-    customPromptsDirectory4?: string;
-    scriptsDirectory?: string;
-    scriptsDirectory1?: string;
-    scriptsDirectory2?: string;
-  }>();
   const [selectedAction, setSelectedAction] = useState<string>(
     () => defaultActionPreferenceStore.getDefaultActionPreference() || "",
   );
@@ -102,13 +93,7 @@ export function PromptList({
     forceUpdate();
   };
 
-  const configuredRootDirs = [
-    preferences.customPromptsDirectory,
-    preferences.customPromptsDirectory1,
-    preferences.customPromptsDirectory2,
-    preferences.customPromptsDirectory3,
-    preferences.customPromptsDirectory4,
-  ].filter((dir): dir is string => typeof dir === "string" && dir.trim() !== "");
+  const configuredRootDirs = configurationManager.getDirectories("prompts");
 
   const filteredPrompts = useMemo(() => {
     let result;
@@ -219,10 +204,8 @@ export function PromptList({
   const activeSearchText = searchMode ? "" : searchText;
 
   const scripts = useMemo(
-    () =>
-      initialScripts ??
-      getAvailableScripts([preferences.scriptsDirectory, preferences.scriptsDirectory1, preferences.scriptsDirectory2]),
-    [initialScripts, preferences.scriptsDirectory, preferences.scriptsDirectory1, preferences.scriptsDirectory2],
+    () => initialScripts ?? getAvailableScripts(configurationManager.getDirectories("scripts")),
+    [initialScripts],
   );
 
   const promptItems = displayPrompts

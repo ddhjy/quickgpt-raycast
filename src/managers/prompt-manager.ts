@@ -1,17 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import md5 from "md5";
-import { getPreferenceValues } from "@raycast/api";
 import * as hjson from "hjson";
 import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
-
-type Preferences = {
-  customPromptsDirectory?: string;
-  customPromptsDirectory1?: string;
-  customPromptsDirectory2?: string;
-  customPromptsDirectory3?: string;
-  customPromptsDirectory4?: string;
-};
+import configurationManager from "./configuration-manager";
 
 export type PromptProps = {
   identifier: string;
@@ -62,8 +54,7 @@ class PromptManager {
    * and loading all prompts from those paths.
    */
   constructor() {
-    const preferences = getPreferenceValues<Preferences>();
-    this.promptFilePaths = this.getPromptFilePaths(preferences);
+    this.promptFilePaths = this.getPromptFilePaths();
     this.loadAllPrompts();
   }
 
@@ -72,17 +63,10 @@ class PromptManager {
    * Combines default paths, user-configured files, and user-configured directories
    * specified in the extension preferences. Always includes the system prompts file.
    *
-   * @param preferences The extension preferences object.
    * @returns An array of absolute file and directory paths.
    */
-  private getPromptFilePaths(preferences: Preferences): string[] {
-    const customPromptDirectories = [
-      preferences.customPromptsDirectory,
-      preferences.customPromptsDirectory1,
-      preferences.customPromptsDirectory2,
-      preferences.customPromptsDirectory3,
-      preferences.customPromptsDirectory4,
-    ].filter(Boolean) as string[];
+  private getPromptFilePaths(): string[] {
+    const customPromptDirectories = configurationManager.getDirectories("prompts");
 
     const allPaths = [...customPromptDirectories];
 
@@ -458,8 +442,9 @@ class PromptManager {
    */
   public reloadPrompts(): void {
     console.log("Reloading prompts...");
-    const preferences = getPreferenceValues<Preferences>();
-    this.promptFilePaths = this.getPromptFilePaths(preferences);
+    // Clear configuration cache to ensure fresh preferences are used
+    configurationManager.clearCache();
+    this.promptFilePaths = this.getPromptFilePaths();
     this.loadAllPrompts();
   }
 }

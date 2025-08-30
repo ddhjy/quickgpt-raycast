@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  getPreferenceValues,
   Action,
   ActionPanel,
   Icon,
@@ -27,14 +26,7 @@ import {
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import path from "path";
-
-interface Preferences {
-  primaryAction: string;
-  scriptsDirectory?: string;
-  scriptsDirectory1?: string;
-  scriptsDirectory2?: string;
-  customEditor: Application;
-}
+import configurationManager from "../managers/configuration-manager";
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
   React.ReactNode;
@@ -70,9 +62,9 @@ export function generatePromptActions(
   onRefreshNeeded?: () => void,
   onPinToggle?: (prompt: PromptProps) => void,
 ) {
-  const preferences = getPreferenceValues<Preferences>();
+  const primaryAction = configurationManager.getPreference("primaryAction") as string;
   const configuredActions =
-    preferences.primaryAction
+    primaryAction
       ?.split(",")
       .map((action) => action.trim())
       .filter(Boolean) || [];
@@ -241,7 +233,7 @@ export function generatePromptActions(
       displayName: "Edit with Editor",
       condition: !!prompt.filePath,
       action: (() => {
-        const editorApp = preferences.customEditor;
+        const editorApp = configurationManager.getPreference("customEditor") as unknown as Application;
         let editorDisplayName = editorApp.name;
         if (editorDisplayName.endsWith(".app")) {
           editorDisplayName = editorDisplayName.slice(0, -4);

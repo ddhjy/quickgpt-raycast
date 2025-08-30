@@ -18,6 +18,7 @@ import {
 import { runAppleScript } from "@raycast/utils";
 import { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
+import configurationManager from "../managers/configuration-manager";
 import path from "path";
 import { generatePromptActions } from "./prompt-actions";
 import { getPlaceholderIcons, findOptionPlaceholders } from "../utils/prompt-formatting-utils";
@@ -145,21 +146,7 @@ export function PromptListItem({
   }
 
   if (prompt.identifier === "open-custom-prompts-dir") {
-    const preferences = getPreferenceValues<{
-      customPromptsDirectory?: string;
-      customPromptsDirectory1?: string;
-      customPromptsDirectory2?: string;
-      customPromptsDirectory3?: string;
-      customPromptsDirectory4?: string;
-    }>();
-
-    const promptDirs = [
-      preferences.customPromptsDirectory,
-      preferences.customPromptsDirectory1,
-      preferences.customPromptsDirectory2,
-      preferences.customPromptsDirectory3,
-      preferences.customPromptsDirectory4,
-    ].filter(Boolean);
+    const promptDirs = configurationManager.getDirectories("prompts");
 
     if (promptDirs.length > 0) {
       displayTitle = `Prompts Directory (${promptDirs.length})`;
@@ -193,17 +180,7 @@ export function PromptListItem({
     } else if (prompt.identifier === "open-custom-prompts-dir") {
       return handleCustomPromptsDirectoryActions();
     } else if (prompt.identifier === "open-scripts-dir") {
-      const preferences = getPreferenceValues<{
-        scriptsDirectory?: string;
-        scriptsDirectory1?: string;
-        scriptsDirectory2?: string;
-      }>();
-
-      const scriptDirs = [
-        preferences.scriptsDirectory,
-        preferences.scriptsDirectory1,
-        preferences.scriptsDirectory2,
-      ].filter(Boolean);
+      const scriptDirs = configurationManager.getDirectories("scripts");
 
       if (scriptDirs.length === 0) {
         return (
@@ -222,7 +199,7 @@ export function PromptListItem({
             title="Open"
             icon={Icon.Folder}
             onAction={async () => {
-              const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+              const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
               let openCommand: string;
               if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
                 openCommand = `open -b '${customEditor.bundleId}' '${scriptDirs[0]}'`;
@@ -245,7 +222,7 @@ export function PromptListItem({
                   title={`Open ${dirName}`}
                   icon={Icon.Folder}
                   onAction={async () => {
-                    const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+                    const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
                     let openCommand: string;
                     if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
                       openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
@@ -314,8 +291,8 @@ export function PromptListItem({
 
       // 3. Add "Edit with xxx" action for folders
       if (prompt.filePath) {
-        const preferences = getPreferenceValues<{ customEditor: Application }>();
-        const editorApp = preferences.customEditor;
+        const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
+        const editorApp = customEditor;
         let editorDisplayName = editorApp.name;
         if (editorDisplayName.endsWith(".app")) {
           editorDisplayName = editorDisplayName.slice(0, -4);
@@ -654,22 +631,8 @@ export function PromptListItem({
 export const MemoizedPromptListItem = React.memo(PromptListItem);
 
 function handleCustomPromptsDirectoryActions() {
-  const preferences = getPreferenceValues<{
-    customPromptsDirectory?: string;
-    customPromptsDirectory1?: string;
-    customPromptsDirectory2?: string;
-    customPromptsDirectory3?: string;
-    customPromptsDirectory4?: string;
-  }>();
-
-  // Create an array of all possible prompt directories
-  const promptDirs = [
-    preferences.customPromptsDirectory,
-    preferences.customPromptsDirectory1,
-    preferences.customPromptsDirectory2,
-    preferences.customPromptsDirectory3,
-    preferences.customPromptsDirectory4,
-  ].filter(Boolean);
+  // Get all configured prompt directories using the configuration manager
+  const promptDirs = configurationManager.getDirectories("prompts");
 
   if (promptDirs.length === 0) {
     return (
@@ -719,7 +682,7 @@ function handleCustomPromptsDirectoryActions() {
               icon={Icon.Folder}
               onAction={async () => {
                 try {
-                  const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
+                  const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
                   let openCommand: string;
                   if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
                     openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
