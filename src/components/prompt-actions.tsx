@@ -19,6 +19,7 @@ import { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
+import { findRepoRoot } from "../utils/git-utils";
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
@@ -251,7 +252,15 @@ export function generatePromptActions(
 
               try {
                 let openCommand: string;
-                const configDir = path.dirname(prompt.filePath);
+                // 默认打开仓库根目录，而不是文件所在目录
+                const fileDir = path.dirname(prompt.filePath);
+                let configDir = fileDir;
+                const repoRoot = await findRepoRoot(prompt.filePath);
+
+                if (repoRoot) {
+                  configDir = repoRoot;
+                }
+
                 if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
                   openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
                 } else {

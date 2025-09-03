@@ -35,6 +35,7 @@ import {
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
+import { findRepoRoot } from "../utils/git-utils";
 
 interface PromptListItemProps {
   prompt: PromptProps;
@@ -305,11 +306,21 @@ export function PromptListItem({
             shortcut={{ modifiers: ["cmd"], key: "e" }}
             icon={Icon.Pencil}
             onAction={async () => {
+              if (!prompt.filePath) return;
+
               await Clipboard.copy(prompt.title);
 
               try {
                 let openCommand: string;
-                const configDir = path.dirname(prompt.filePath!);
+                // 默认打开仓库根目录，而不是文件所在目录
+                const fileDir = path.dirname(prompt.filePath);
+                let configDir = fileDir;
+                const repoRoot = await findRepoRoot(prompt.filePath);
+
+                if (repoRoot) {
+                  configDir = repoRoot;
+                }
+
                 if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
                   openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
                 } else {

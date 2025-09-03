@@ -33,20 +33,26 @@ function convertGitUrlToWebUrl(gitUrl: string): string | null {
  * @param startPath - The path to start searching from
  * @returns Repository root path or null
  */
-async function findRepoRoot(startPath: string): Promise<string | null> {
+export async function findRepoRoot(startPath: string): Promise<string | null> {
   let currentPath = startPath;
-  while (currentPath !== path.dirname(currentPath)) {
+  let iterations = 0;
+
+  while (currentPath !== path.dirname(currentPath) && iterations < 20) {
+    iterations++;
     const gitPath = path.join(currentPath, ".git");
+
     try {
       const stats = await fs.stat(gitPath);
       if (stats.isDirectory()) {
         return currentPath;
       }
     } catch {
-      // ignore
+      // .git not found, continue searching parent directories
     }
+
     currentPath = path.dirname(currentPath);
   }
+
   return null;
 }
 
