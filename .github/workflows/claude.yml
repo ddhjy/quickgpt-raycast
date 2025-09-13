@@ -50,7 +50,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
           # 手动触发时使用输入的 prompt
           prompt: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prompt || '' }}
           claude_args: "--max-turns ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.max_turns || '3' }}"
@@ -70,6 +69,5 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
           prompt: "/review"
           claude_args: "--max-turns 5"
