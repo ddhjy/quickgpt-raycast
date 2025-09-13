@@ -1,139 +1,75 @@
-name: Claude Code via GLM-4.5
+name: Claude Code
 
-# Workflow configuration for Claude Code integration with GLM-4.5
-# This workflow provides a template for integrating Claude Code functionality
-# using the GLM-4.5 model through BigModel's API
+# 官方 Claude Code GitHub Actions 工作流
+# 支持 Issue/PR 评论触发和手动触发
+# 使用 Anthropic 官方 claude-code-action
 
-# Trigger configuration
 on:
+  # Issue 评论触发
+  issue_comment:
+    types: [created]
+
+  # PR 评论触发
+  pull_request_review_comment:
+    types: [created]
+
+  # PR 事件触发（用于自动代码评审）
+  pull_request:
+    types: [opened, synchronize]
+
+  # 手动触发
   workflow_dispatch:
     inputs:
       prompt:
-        description: 'Code request or question'
+        description: "代码请求或问题"
         required: true
         type: string
-      language:
-        description: 'Programming language'
+      max_turns:
+        description: "最大对话轮数"
         required: false
-        type: choice
-        default: 'auto-detect'
-        options:
-          - 'auto-detect'
-          - 'javascript'
-          - 'typescript'
-          - 'python'
-          - 'java'
-          - 'go'
-          - 'rust'
-          - 'cpp'
-          - 'other'
+        default: "3"
+        type: string
 
-# Job definition
 jobs:
-  claude-code:
+  # 交互式 Claude 响应（评论触发）
+  claude-interactive:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Install dependencies
-      run: |
-        npm install axios
-        
-    - name: Claude Code Processing
-      env:
-        # Note: Replace ZAI_PROXY_API_KEY with your actual API key
-        # Configure this in repository secrets as described in the instructions
-        ANTHROPIC_API_KEY: ${{ secrets.ZAI_PROXY_API_KEY }}
-        ANTHROPIC_BASE_URL: ${{ vars.ANTHROPIC_BASE_URL }}
-        ANTHROPIC_MODEL: ""
-        USER_PROMPT: ${{ github.event.inputs.prompt }}
-        LANGUAGE: ${{ github.event.inputs.language }}
-      run: |
-        # Create a simple Node.js script to interact with GLM-4.5
-        cat > claude_code.js << 'EOF'
-        const axios = require('axios');
-        
-        async function generateCode() {
-          const apiKey = process.env.ANTHROPIC_API_KEY;
-          const baseUrl = process.env.ANTHROPIC_BASE_URL;
-          const model = process.env.ANTHROPIC_MODEL;
-          const userPrompt = process.env.USER_PROMPT;
-          const language = process.env.LANGUAGE;
-          
-          if (!apiKey || apiKey === 'xxxx') {
-            console.log('⚠️  API Key not configured properly.');
-            console.log('Please update the ZAI_PROXY_API_KEY secret with your actual API key.');
-            console.log('Current key value: ' + (apiKey || 'not set'));
-            return;
-          }
-          
-          try {
-            const prompt = language === 'auto-detect' 
-              ? `As a coding assistant, help with this request: ${userPrompt}`
-              : `As a coding assistant, help with this ${language} request: ${userPrompt}`;
-              
-            console.log('🚀 Sending request to GLM-4.5...');
-            console.log('Model:', model);
-            console.log('Base URL:', baseUrl);
-            console.log('Language:', language);
-            console.log('Prompt:', userPrompt);
-            console.log('');
-            
-            const response = await axios.post(baseUrl, {
-              model: model,
-              messages: [
-                {
-                  role: 'user',
-                  content: prompt
-                }
-              ],
-              temperature: 0.7,
-              max_tokens: 2000
-            }, {
-              headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            console.log('✅ Response received:');
-            console.log('==========================================');
-            console.log(response.data.choices[0].message.content);
-            console.log('==========================================');
-            
-          } catch (error) {
-            console.error('❌ Error calling GLM-4.5 API:');
-            if (error.response) {
-              console.error('Status:', error.response.status);
-              console.error('Data:', error.response.data);
-            } else {
-              console.error('Error:', error.message);
-            }
-          }
-        }
-        
-        generateCode();
-        EOF
-        
-        # Execute the script
-        node claude_code.js
-        
-    - name: Configuration Check
-      run: |
-        echo "📋 Configuration Summary:"
-        echo "Model: ${{ vars.ANTHROPIC_MODEL }}"
-        echo "Base URL: ${{ vars.ANTHROPIC_BASE_URL }}"
-        echo "API Key configured: ${{ secrets.ZAI_PROXY_API_KEY != '' }}"
-        echo ""
-        echo "🔧 Setup Instructions:"
-        echo "1. Go to Repository Settings → Secrets and variables → Actions"
-        echo "2. Update ZAI_PROXY_API_KEY secret with your actual API key"
-        echo "3. Verify variables ANTHROPIC_MODEL and ANTHROPIC_BASE_URL are set correctly"
-        echo "4. Run workflow via Actions tab with your code request"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Claude Code Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
+          # 手动触发时使用输入的 prompt
+          prompt: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prompt || '' }}
+          claude_args: "--max-turns ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.max_turns || '3' }}"
+
+  # 自动代码评审（PR 触发）
+  claude-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
+          prompt: "/review"
+          claude_args: "--max-turns 5"
