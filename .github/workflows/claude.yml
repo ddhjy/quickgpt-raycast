@@ -52,7 +52,7 @@ jobs:
         # Configure this in repository secrets as described in the instructions
         ANTHROPIC_API_KEY: ${{ secrets.ZAI_PROXY_API_KEY }}
         ANTHROPIC_BASE_URL: ${{ vars.ANTHROPIC_BASE_URL }}
-        ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+        ANTHROPIC_MODEL: ""
         USER_PROMPT: ${{ github.event.inputs.prompt }}
         LANGUAGE: ${{ github.event.inputs.language }}
       run: |
