@@ -1,7 +1,7 @@
 import { Cache } from "@raycast/api";
 
 const CACHE_KEY = "temporaryPromptDirectories";
-const EXPIRY_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const EXPIRY_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days (1 month) in milliseconds
 
 export interface TemporaryDirectoryInfo {
   path: string;
