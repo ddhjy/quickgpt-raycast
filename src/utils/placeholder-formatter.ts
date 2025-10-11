@@ -127,7 +127,8 @@ function safeResolveAbsolute(given: string, root?: string): string | Error {
   const resolved = path.resolve(root, trimmed);
   console.log(`Resolved relative path: "${trimmed}" => "${resolved}"`);
 
-  if (!resolved.startsWith(root)) {
+  const normalizedRoot = path.resolve(root);
+  if (resolved !== normalizedRoot && !resolved.startsWith(normalizedRoot + path.sep)) {
     const error = `Path traversal detected for: ${trimmed}`;
     console.error(error);
     return new Error(error);
