@@ -48,7 +48,7 @@ export function findUsedOptionPlaceholders(prompt: PromptProps, replacements: Sp
               const prevPart = parts[i].trim();
 
               // Check if previous part has value
-              if (prevPart.startsWith("option:") || prevPart.startsWith("file:")) {
+              if (prevPart.startsWith("option:") || prevPart.startsWith("file:") || prevPart.startsWith("content:")) {
                 // Skip directive parts in fallback evaluation for simplicity
                 continue;
               } else {

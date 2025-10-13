@@ -50,7 +50,7 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 
 /* Utility Functions */
 
-const PH_REG = /{{(?:(file|option):)?([^}]+)}}/g;
+const PH_REG = /{{(?:(file|option|content):)?([^}]+)}}/g;
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
 export const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
@@ -164,6 +164,38 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
       // Escape placeholders in directory content
       const escapedContent = content.replace(/{{/g, "\\{\\{");
       return `${header}${escapedContent}`;
+    }
+    return `[Unsupported path type: ${body}]`;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return `[Path not found: ${body}]`;
+    if (code === "EACCES") return `[Permission denied: ${body}]`;
+    return `[Error accessing path: ${body}]`;
+  }
+}
+
+/**
+ * Resolves a content placeholder synchronously, reading file or directory contents without a prefix.
+ *
+ * @param body The file path to resolve
+ * @param root The root directory for relative paths
+ * @returns Formatted string containing file/directory content or error message
+ */
+function resolveContentPlaceholderSync(body: string, root?: string): string {
+  const absOrErr = safeResolveAbsolute(body, root);
+  if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
+
+  try {
+    const stats = fs.statSync(absOrErr);
+    if (stats.isFile()) {
+      let fileContent = fs.readFileSync(absOrErr, "utf-8");
+      fileContent = fileContent.replace(/{{/g, "\\{\\{");
+      return fileContent;
+    }
+    if (stats.isDirectory()) {
+      const content = readDirectoryContentsSync(absOrErr, "");
+      const escapedContent = content.replace(/{{/g, "\\{\\{");
+      return escapedContent;
     }
     return `[Unsupported path type: ${body}]`;
   } catch (e) {
@@ -295,6 +327,13 @@ export function placeholderFormatter(
         return `{{file:${trimmedBody}}}`;
       }
       return resolveFilePlaceholderSync(trimmedBody, root);
+    }
+
+    if (directive === "content") {
+      if (!options.resolveFile) {
+        return `{{content:${trimmedBody}}}`;
+      }
+      return resolveContentPlaceholderSync(trimmedBody, root);
     }
 
     if (directive === "option") {
@@ -445,7 +484,7 @@ function processPlaceholder(
     const trimmedPart = part.trim();
 
     // Check if this part has a directive (e.g., "option:key" or "file:path")
-    const directiveMatch = trimmedPart.match(/^(option|file):(.+)$/);
+    const directiveMatch = trimmedPart.match(/^(option|file|content):(.+)$/);
 
     if (directiveMatch) {
       const [, partDirective, partBody] = directiveMatch;
@@ -467,6 +506,12 @@ function processPlaceholder(
         if (!fileContent.startsWith("[")) {
           // Not an error message
           return fileContent;
+        }
+      } else if (partDirective === "content" && options.resolveFile) {
+        const contentResult = resolveContentPlaceholderSync(partBody, root);
+        if (!contentResult.startsWith("[")) {
+          // Not an error message
+          return contentResult;
         }
       }
     } else {

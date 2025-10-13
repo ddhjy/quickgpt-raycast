@@ -203,7 +203,7 @@ export function getPlaceholderIcons(
     }
   });
 
-  const fileRegex = /{{file:[^}]+}}/g;
+  const fileRegex = /{{(file|content):[^}]+}}/g;
   if (fileRegex.test(content)) {
     placeholderIconsArray.push({ icon: placeholderIcons.file });
   }
