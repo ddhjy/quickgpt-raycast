@@ -408,6 +408,7 @@ export function PromptListItem({
                 prompt={prompt}
                 optionKeys={allOptionKeys}
                 baseReplacements={replacements}
+                promptSpecificRootDir={promptSpecificRootDir}
                 scripts={scripts}
               />
             }
