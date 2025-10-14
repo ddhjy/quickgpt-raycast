@@ -11,6 +11,19 @@ import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
 import { useInputHistory } from "../hooks/use-input-history";
 import configurationManager from "../managers/configuration-manager";
 
+/**
+ * Normalizes text for search by removing all spaces and punctuation,
+ * keeping only Unicode letters and numbers, and converting to lowercase.
+ * This enables flexible matching that ignores formatting differences.
+ *
+ * @param text The text to normalize
+ * @returns The normalized text
+ */
+const normalizeTextForSearch = (text: string): string => {
+  // Remove all non-letter and non-number Unicode characters, then convert to lowercase
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+};
+
 interface PromptListProps {
   prompts: PromptProps[];
   searchMode?: boolean;
@@ -102,9 +115,18 @@ export function PromptList({
     const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : initialPrompts;
 
     if (searchMode && searchText.trim().length > 0) {
+      const trimmedSearchText = searchText.trim();
+      // Normalize the search text for flexible matching
+      const normalizedSearchText = normalizeTextForSearch(trimmedSearchText);
+
       result = sourcePrompts.filter((prompt) => {
-        const titleMatch = prompt.title.toLowerCase().includes(searchText.trim().toLowerCase());
-        const pinyinMatch = !!match(prompt.title, searchText.trim(), { continuous: true });
+        // Normalize the title to match against the normalized search text
+        const normalizedTitle = normalizeTextForSearch(prompt.title);
+        const titleMatch = normalizedTitle.includes(normalizedSearchText);
+
+        // Keep the original pinyin matching logic with the original text
+        const pinyinMatch = !!match(prompt.title, trimmedSearchText, { continuous: true });
+
         return titleMatch || pinyinMatch;
       });
     } else {
