@@ -26,6 +26,7 @@ export type SpecificReplacements = {
   browserContent?: string;
   now?: string;
   promptTitles?: string;
+  prompts?: string;
   diff?: string;
 };
 
@@ -41,6 +42,7 @@ const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   browserContent: {},
   now: { alias: "n" },
   promptTitles: { alias: "pt" },
+  prompts: { alias: "ps" },
   diff: {},
 };
 

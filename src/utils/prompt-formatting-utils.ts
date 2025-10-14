@@ -170,6 +170,7 @@ export function buildFormattedPromptContent(
     ...prompt,
     ...replacements,
     promptTitles: replacements.promptTitles || getIndentedPromptTitles(),
+    prompts: replacements.prompts || getIndentedPromptsWithContent(),
   };
 
   const formattedContent = placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
@@ -251,6 +252,44 @@ export function getIndentedPromptTitles(): string {
     }
 
     result.push(`${indent}${prompt.title}${contentSummary}`);
+
+    if (prompt.subprompts && prompt.subprompts.length > 0) {
+      prompt.subprompts.forEach((subprompt) => {
+        processPrompt(subprompt, level + 1);
+      });
+    }
+  }
+
+  rootPrompts.forEach((prompt) => {
+    processPrompt(prompt);
+  });
+
+  return result.join("\n");
+}
+
+/**
+ * Generates a string containing a hierarchically indented list of all prompt titles and their content.
+ * Used for the `{{prompts}}` placeholder.
+ *
+ * @returns A newline-separated string of indented prompt titles and content.
+ */
+export function getIndentedPromptsWithContent(): string {
+  const rootPrompts = promptManager.getRootPrompts();
+  const result: string[] = [];
+
+  function processPrompt(prompt: PromptProps, level: number = 0) {
+    const indent = "  ".repeat(level);
+    const icon = prompt.icon ? `${prompt.icon} ` : "";
+    result.push(`${indent}${icon}${prompt.title}`);
+
+    if (prompt.content) {
+      const contentIndent = "  ".repeat(level + 1);
+      const formattedContent = prompt.content
+        .split("\n")
+        .map((line) => `${contentIndent}${line}`)
+        .join("\n");
+      result.push(formattedContent);
+    }
 
     if (prompt.subprompts && prompt.subprompts.length > 0) {
       prompt.subprompts.forEach((subprompt) => {

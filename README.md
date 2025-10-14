@@ -111,17 +111,14 @@ This directory contains a comprehensive `prompt-template.hjson` file that demons
 ### Basic Operation
 
 1. **Launch QuickGPT**
-
    - Activate Raycast and type the command alias (default: `prompt` or `quickgpt`)
 
 2. **Browse and Search**
-
    - Navigate through prompts using arrow keys
    - Search by typing (supports Pinyin matching)
    - Pin frequently used prompts with `⌘ + Shift + P`
 
 3. **Input Modes**
-
    - **Search Mode**: Browse and filter prompts
    - **Input Mode**: Type text followed by space to provide input for `{{input}}` placeholder
 
@@ -219,20 +216,21 @@ Prompts are defined in HJSON files with the following structure:
 
 ## Placeholder Reference
 
-| Placeholder          | Alias    | Description                                        |
-| -------------------- | -------- | -------------------------------------------------- |
-| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field                |
-| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                          |
-| `{{selection}}`      | `{{s}}`  | Selected text or Finder items                      |
-| `{{currentApp}}`     |          | Name of frontmost application                      |
-| `{{allApp}}`         |          | Comma-separated list of all installed applications |
-| `{{browserContent}}` |          | Markdown content from active browser tab           |
-| `{{now}}`            | `{{n}}`  | Current date and time                              |
-| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                 |
-| `{{file:path}}`      |          | File or directory content                          |
-| `{{option:key}}`     |          | Dropdown selection from array property             |
-| `{{property}}`       |          | Value from prompt property                         |
-| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)             |
+| Placeholder          | Alias    | Description                                          |
+| -------------------- | -------- | ---------------------------------------------------- |
+| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field                  |
+| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                            |
+| `{{selection}}`      | `{{s}}`  | Selected text or Finder items                        |
+| `{{currentApp}}`     |          | Name of frontmost application                        |
+| `{{allApp}}`         |          | Comma-separated list of all installed applications   |
+| `{{browserContent}}` |          | Markdown content from active browser tab             |
+| `{{now}}`            | `{{n}}`  | Current date and time                                |
+| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                   |
+| `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content |
+| `{{file:path}}`      |          | File or directory content                            |
+| `{{option:key}}`     |          | Dropdown selection from array property               |
+| `{{property}}`       |          | Value from prompt property                           |
+| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)               |
 
 ### Fallback Chains with Directives
 
