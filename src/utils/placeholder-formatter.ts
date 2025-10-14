@@ -26,6 +26,7 @@ export type SpecificReplacements = {
   browserContent?: string;
   now?: string;
   promptTitles?: string;
+  diff?: string;
 };
 
 type PlaceholderKey = keyof SpecificReplacements;
@@ -40,6 +41,7 @@ const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   browserContent: {},
   now: { alias: "n" },
   promptTitles: { alias: "pt" },
+  diff: {},
 };
 
 const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(

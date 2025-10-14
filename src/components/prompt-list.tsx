@@ -18,6 +18,7 @@ interface PromptListProps {
   currentApp: string;
   allApp?: string;
   browserContent: string;
+  diff?: string;
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
   externalOnRefreshNeeded?: () => void;
@@ -44,6 +45,7 @@ export function PromptList({
   currentApp,
   allApp = "",
   browserContent,
+  diff,
   allowedActions,
   initialScripts,
   externalOnRefreshNeeded,
@@ -174,6 +176,7 @@ export function PromptList({
           currentApp={currentApp}
           allApp={allApp}
           browserContent={browserContent}
+          diff={diff}
           allowedActions={allowedActions}
           initialScripts={initialScripts}
           prompts={promptsToShow}
@@ -244,6 +247,7 @@ export function PromptList({
             allApp,
             browserContent,
             input: searchMode ? "" : activeSearchText,
+            diff,
           }}
           searchMode={searchMode}
           promptSpecificRootDir={promptSpecificRootDir}

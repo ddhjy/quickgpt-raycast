@@ -1,5 +1,9 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import { exec as callbackExec } from "child_process";
+import { promisify } from "util";
+
+const exec = promisify(callbackExec);
 
 /**
  * Convert git remote url (https/ssh) to browsable web url
@@ -93,5 +97,49 @@ export async function generateGitLink(filePath: string): Promise<string | null> 
   } catch (error) {
     console.error("Error generating git link:", error);
     return null;
+  }
+}
+
+/**
+ * Get diff between current branch and target branch (master/main)
+ * @param filePath - Any file path in the repository, used to locate repository root
+ * @returns Diff content string, or empty string/error message if failed
+ */
+export async function getGitDiff(filePath: string): Promise<string> {
+  const repoRoot = await findRepoRoot(filePath);
+  if (!repoRoot) {
+    return ""; // Not a Git repository, fail silently
+  }
+
+  try {
+    // Check if master branch exists
+    let targetBranch = "";
+    try {
+      await exec("git show-ref --verify --quiet refs/heads/master", { cwd: repoRoot });
+      targetBranch = "master";
+    } catch {
+      // master doesn't exist, check main branch
+      try {
+        await exec("git show-ref --verify --quiet refs/heads/main", { cwd: repoRoot });
+        targetBranch = "main";
+      } catch {
+        return "[Could not find target branch master or main]";
+      }
+    }
+
+    // Get current branch name
+    const { stdout: currentBranch } = await exec("git branch --show-current", { cwd: repoRoot });
+    if (!currentBranch.trim()) {
+      return "[Could not determine current branch]";
+    }
+
+    // Execute git diff command
+    const { stdout: diff } = await exec(`git diff ${targetBranch}...${currentBranch.trim()}`, { cwd: repoRoot });
+    return diff;
+  } catch (error) {
+    if (error instanceof Error) {
+      return `[Git command failed: ${error.message}]`;
+    }
+    return "[An unknown error occurred while running git diff]";
   }
 }

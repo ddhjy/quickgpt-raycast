@@ -26,6 +26,7 @@ const placeholderIcons: { [key: string]: Icon } = {
   browserContent: Icon.Globe,
   promptTitles: Icon.List,
   file: Icon.Document,
+  diff: Icon.CodeBlock,
 };
 
 /**

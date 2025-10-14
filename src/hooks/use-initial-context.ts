@@ -6,6 +6,7 @@ import {
   getSelectedFinderItems,
   getApplications,
 } from "@raycast/api";
+import { getGitDiff } from "../utils/git-utils";
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -23,45 +24,9 @@ export function useInitialContext(initialSelectionText?: string, target?: string
   const [currentApp, setCurrentApp] = useState("");
   const [allApp, setAllApp] = useState("");
   const [browserContent, setBrowserContent] = useState("");
+  const [diff, setDiff] = useState("");
 
   useEffect(() => {
-    /**
-     * Fetches the currently selected text or selected Finder items.
-     * Uses initial value if provided.
-     * Prioritizes selected Finder items, formatting them as `{{file:path}}` placeholders.
-     * Falls back to `getSelectedText()`.
-     * Handles potential errors gracefully by returning an empty string.
-     *
-     * @returns A promise resolving to the selected text/Finder items or an empty string.
-     */
-    const fetchSelectedText = async (): Promise<string> => {
-      if (initialSelectionText && initialSelectionText.length > 0) {
-        return initialSelectionText;
-      }
-
-      try {
-        const selectedItems = await getSelectedFinderItems();
-        if (selectedItems.length > 0) {
-          let content = "";
-          const finderMarker = "__IS_FINDER_SELECTION__";
-          for (const item of selectedItems) {
-            content += `${finderMarker}{{file:${item.path}}}\n`;
-          }
-          return content.trim();
-        }
-      } catch {
-        console.debug("Failed to get selected Finder items");
-      }
-
-      try {
-        const text = await getSelectedText();
-        return text || "";
-      } catch {
-        console.info("No text selected or failed to get text");
-        return "";
-      }
-    };
-
     /**
      * Fetches the name of the frontmost application.
      *
@@ -106,9 +71,8 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     };
 
     const fetchData = async () => {
-      const [fetchedFrontmostApp, fetchedSelectedText, fetchedAllApps] = await Promise.all([
+      const [fetchedFrontmostApp, fetchedAllApps] = await Promise.all([
         fetchFrontmostApp(),
-        fetchSelectedText(),
         fetchAllApps(),
       ]);
 
@@ -118,10 +82,35 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         fetchedBrowserContent = await fetchBrowserContent();
       }
 
+      // Get selection text and diff
+      let fetchedSelectedText = "";
+      let fetchedDiff = "";
+      try {
+        const selectedItems = await getSelectedFinderItems();
+        if (selectedItems.length > 0) {
+          let content = "";
+          const finderMarker = "__IS_FINDER_SELECTION__";
+          for (const item of selectedItems) {
+            content += `${finderMarker}{{file:${item.path}}}\n`;
+          }
+          fetchedSelectedText = content.trim();
+          fetchedDiff = await getGitDiff(selectedItems[0].path);
+        } else {
+          fetchedSelectedText = await getSelectedText();
+        }
+      } catch {
+        try {
+          fetchedSelectedText = (await getSelectedText()) || "";
+        } catch {
+          fetchedSelectedText = "";
+        }
+      }
+
       setSelectionText(fetchedSelectedText);
       setCurrentApp(fetchedFrontmostApp);
       setAllApp(fetchedAllApps);
       setBrowserContent(fetchedBrowserContent);
+      setDiff(fetchedDiff);
     };
 
     const timer = setTimeout(() => {
@@ -138,5 +127,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     currentApp,
     allApp,
     browserContent,
+    diff,
   };
 }
