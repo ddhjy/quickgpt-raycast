@@ -101,7 +101,10 @@ export async function generateGitLink(filePath: string): Promise<string | null> 
 }
 
 /**
- * Get diff between current branch and target branch (master/main)
+ * Get all diffs including:
+ * 1. Uncommitted changes (working directory)
+ * 2. Staged changes
+ * 3. Committed changes between current branch and target branch (master/main)
  * @param filePath - Any file path in the repository, used to locate repository root
  * @returns Diff content string, or empty string/error message if failed
  */
@@ -112,30 +115,67 @@ export async function getGitDiff(filePath: string): Promise<string> {
   }
 
   try {
-    // Check if master branch exists
+    const diffSections: string[] = [];
+
+    // 1. Get unstaged changes (working directory changes)
+    try {
+      const { stdout: unstagedDiff } = await exec("git diff", { cwd: repoRoot });
+      if (unstagedDiff.trim()) {
+        diffSections.push("=== Unstaged Changes (Working Directory) ===\n\n" + unstagedDiff);
+      }
+    } catch {
+      // Ignore if command fails
+    }
+
+    // 2. Get staged changes (changes added to index)
+    try {
+      const { stdout: stagedDiff } = await exec("git diff --cached", { cwd: repoRoot });
+      if (stagedDiff.trim()) {
+        diffSections.push("=== Staged Changes (Index) ===\n\n" + stagedDiff);
+      }
+    } catch {
+      // Ignore if command fails
+    }
+
+    // 3. Get committed changes between current branch and target branch
     let targetBranch = "";
     try {
       await exec("git show-ref --verify --quiet refs/heads/master", { cwd: repoRoot });
       targetBranch = "master";
     } catch {
-      // master doesn't exist, check main branch
       try {
         await exec("git show-ref --verify --quiet refs/heads/main", { cwd: repoRoot });
         targetBranch = "main";
       } catch {
-        return "[Could not find target branch master or main]";
+        // If no master/main branch, skip branch comparison
+        targetBranch = "";
       }
     }
 
-    // Get current branch name
-    const { stdout: currentBranch } = await exec("git branch --show-current", { cwd: repoRoot });
-    if (!currentBranch.trim()) {
-      return "[Could not determine current branch]";
+    if (targetBranch) {
+      try {
+        const { stdout: currentBranch } = await exec("git branch --show-current", { cwd: repoRoot });
+        if (currentBranch.trim() && currentBranch.trim() !== targetBranch) {
+          const { stdout: branchDiff } = await exec(`git diff ${targetBranch}...${currentBranch.trim()}`, {
+            cwd: repoRoot,
+          });
+          if (branchDiff.trim()) {
+            diffSections.push(
+              `=== Committed Changes (${currentBranch.trim()} vs ${targetBranch}) ===\n\n` + branchDiff,
+            );
+          }
+        }
+      } catch {
+        // Ignore if branch comparison fails
+      }
     }
 
-    // Execute git diff command
-    const { stdout: diff } = await exec(`git diff ${targetBranch}...${currentBranch.trim()}`, { cwd: repoRoot });
-    return diff;
+    // Combine all diff sections
+    if (diffSections.length === 0) {
+      return ""; // No changes found
+    }
+
+    return diffSections.join("\n\n");
   } catch (error) {
     if (error instanceof Error) {
       return `[Git command failed: ${error.message}]`;
