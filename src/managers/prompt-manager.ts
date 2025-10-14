@@ -320,6 +320,11 @@ class PromptManager {
 
       prompt = this.processPrompt(prompt);
 
+      // 如果 content 为空，则把 title 复制一份给 content
+      if (!prompt.content) {
+        prompt.content = prompt.title;
+      }
+
       const currentPath = parentPrompt?.path ? `${parentPrompt.path} / ${prompt.title}` : prompt.title;
       prompt.path = currentPath;
 
