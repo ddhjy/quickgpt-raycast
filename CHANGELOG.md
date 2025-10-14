@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Added DeepLink placeholder parameter support**: Now you can pass custom placeholder values directly through DeepLink URLs. Any non-system field in the DeepLink arguments will be treated as a placeholder parameter (e.g., `{"target":"quickgpt-translate","input":"Hello","language":"Chinese"}`). DeepLink parameters have the highest priority and will override context values.
 - Added input history feature that automatically saves previously entered inputs. Access history using Cmd+Y shortcut in input mode. History stores up to 50 most recent unique inputs.
 - Added `suffix` property, similar to `prefix`, but appends placeholders to the end of content. Usage is the same as `prefix`, with comma-separated property key list, e.g. `suffix: "finalNote, signature"`.
 - Adds the ability to select a temporary directory as a source for prompts.

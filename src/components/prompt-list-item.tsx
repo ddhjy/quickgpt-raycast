@@ -40,7 +40,8 @@ import { findRepoRoot } from "../utils/git-utils";
 interface PromptListItemProps {
   prompt: PromptProps;
   index: number;
-  replacements: Omit<SpecificReplacements, "clipboard">;
+  // 更新类型定义，允许任意的字符串键
+  replacements: Omit<SpecificReplacements, "clipboard"> & Record<string, unknown>;
   searchMode?: boolean;
   promptSpecificRootDir?: string;
   allowedActions?: string[];
@@ -254,6 +255,10 @@ export function PromptListItem({
       // Actions for folder type prompts
       const folderActions: React.ReactElement[] = [];
 
+      // Extract custom placeholder arguments from replacements
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { selection, currentApp, allApp, browserContent, input, diff, clipboard, ...customPlaceholderArgs } = replacements;
+
       // 1. Open folder action (usually the primary action)
       folderActions.push(
         <Action.Push
@@ -270,6 +275,7 @@ export function PromptListItem({
               allowedActions={allowedActions || prompt.actions} // These are actions for sub-items
               initialScripts={scripts}
               externalOnRefreshNeeded={onRefreshNeeded} // Pass refresh callback
+              placeholderArgs={customPlaceholderArgs} // Pass custom placeholder args to nested PromptList
             />
           }
         />,

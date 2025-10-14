@@ -45,6 +45,8 @@ interface PromptListProps {
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
   externalOnRefreshNeeded?: () => void;
+  // 为接口添加 placeholderArgs 属性
+  placeholderArgs?: Record<string, unknown>;
 }
 
 /**
@@ -72,6 +74,8 @@ export function PromptList({
   allowedActions,
   initialScripts,
   externalOnRefreshNeeded,
+  // 解构 placeholderArgs 并设置默认值
+  placeholderArgs = {},
 }: PromptListProps) {
   // Replace original searchText state with input history hook
   const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
@@ -214,6 +218,7 @@ export function PromptList({
           prompts={promptsToShow}
           searchMode={false}
           externalOnRefreshNeeded={externalOnRefreshNeeded}
+          placeholderArgs={placeholderArgs}
         />,
       );
       return;
@@ -230,6 +235,7 @@ export function PromptList({
     allowedActions,
     initialScripts,
     externalOnRefreshNeeded,
+    placeholderArgs,
   ]);
 
   const handleSearchTextChange = (text: string) => {
@@ -280,6 +286,8 @@ export function PromptList({
             browserContent,
             input: searchMode ? "" : activeSearchText,
             diff,
+            // 在此处合并占位符参数。如果存在同名键，这里的值将覆盖前面的值
+            ...placeholderArgs,
           }}
           searchMode={searchMode}
           promptSpecificRootDir={promptSpecificRootDir}

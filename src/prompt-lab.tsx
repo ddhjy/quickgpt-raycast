@@ -11,6 +11,8 @@ interface ExtendedArguments extends Arguments.PromptLab {
   target?: string;
   actions?: string;
   filePath?: string;
+  // 增加索引签名，以支持任意占位符参数
+  [key: string]: unknown;
 }
 
 /**
@@ -22,7 +24,8 @@ interface ExtendedArguments extends Arguments.PromptLab {
  * @param props.arguments Launch arguments, including potential initial text, target prompt identifier, and allowed actions.
  */
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
-  const { initialSelectionText, target, actions, filePath } = props.arguments;
+  // 使用 rest 语法捕获所有额外的参数作为占位符
+  const { initialSelectionText, target, actions, filePath, ...placeholderArgs } = props.arguments;
 
   // Convert actions string to array
   const allowedActions = actions?.split(",").filter(Boolean);
@@ -65,6 +68,8 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       browserContent={browserContent}
       allowedActions={allowedActions}
       diff={diff}
+      // 将捕获的占位符参数传递给子组件
+      placeholderArgs={placeholderArgs}
     />
   );
 }
