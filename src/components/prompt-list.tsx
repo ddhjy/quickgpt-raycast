@@ -12,16 +12,26 @@ import { useInputHistory } from "../hooks/use-input-history";
 import configurationManager from "../managers/configuration-manager";
 
 /**
- * Normalizes text for search by removing all spaces and punctuation,
+ * Normalizes text for search by removing spaces and punctuation,
  * keeping only Unicode letters and numbers, and converting to lowercase.
+ * Special characters at the beginning of the text are preserved.
  * This enables flexible matching that ignores formatting differences.
  *
  * @param text The text to normalize
  * @returns The normalized text
  */
 const normalizeTextForSearch = (text: string): string => {
-  // Remove all non-letter and non-number Unicode characters, then convert to lowercase
-  return text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  const lowerText = text.toLowerCase();
+
+  // Extract leading special characters (non-letter, non-number)
+  const leadingSpecialMatch = lowerText.match(/^[^\p{L}\p{N}]+/u);
+  const leadingSpecial = leadingSpecialMatch ? leadingSpecialMatch[0] : "";
+
+  // Remove all non-letter and non-number Unicode characters
+  const normalizedBody = lowerText.replace(/[^\p{L}\p{N}]/gu, "");
+
+  // Combine leading special characters with the normalized body
+  return leadingSpecial + normalizedBody;
 };
 
 interface PromptListProps {
