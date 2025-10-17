@@ -70,6 +70,7 @@ pnpm-lock.yaml
 *.tiktoken
 *.db
 *.sqlite
+*.ttf
 `.trim();
 
 export default DEFAULT_IGNORE_RULES;
