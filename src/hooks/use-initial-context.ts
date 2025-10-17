@@ -7,6 +7,7 @@ import {
   getApplications,
 } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
+import * as fs from "fs";
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -27,6 +28,24 @@ export function useInitialContext(initialSelectionText?: string, target?: string
   const [diff, setDiff] = useState("");
 
   useEffect(() => {
+    const finderMarker = "__IS_FINDER_SELECTION__";
+
+    const processSelectedText = (text: string): string => {
+      if (text && text.trim()) {
+        const potentialPath = text.trim();
+        if (potentialPath.startsWith("{{") && potentialPath.endsWith("}}")) {
+          return text;
+        }
+        try {
+          fs.statSync(potentialPath);
+          return `${finderMarker}{{file:${potentialPath}}}`;
+        } catch {
+          return text;
+        }
+      }
+      return text;
+    };
+
     /**
      * Fetches the name of the frontmost application.
      *
@@ -89,7 +108,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         const selectedItems = await getSelectedFinderItems();
         if (selectedItems.length > 0) {
           let content = "";
-          const finderMarker = "__IS_FINDER_SELECTION__";
           for (const item of selectedItems) {
             content += `${finderMarker}{{file:${item.path}}}\n`;
           }
@@ -97,10 +115,12 @@ export function useInitialContext(initialSelectionText?: string, target?: string
           fetchedDiff = await getGitDiff(selectedItems[0].path);
         } else {
           fetchedSelectedText = await getSelectedText();
+          fetchedSelectedText = processSelectedText(await getSelectedText());
         }
       } catch {
         try {
           fetchedSelectedText = (await getSelectedText()) || "";
+          fetchedSelectedText = processSelectedText((await getSelectedText()) || "");
         } catch {
           fetchedSelectedText = "";
         }
