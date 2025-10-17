@@ -71,6 +71,7 @@ pnpm-lock.yaml
 *.db
 *.sqlite
 *.ttf
+*.xsd
 `.trim();
 
 export default DEFAULT_IGNORE_RULES;
