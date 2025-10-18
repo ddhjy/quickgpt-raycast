@@ -101,6 +101,44 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         fetchedBrowserContent = await fetchBrowserContent();
       }
 
+      // If an initial selection text is provided (e.g., from URL arguments),
+      // prefer it and attempt to parse as a file path just like Finder selection.
+      if (initialSelectionText && initialSelectionText.trim()) {
+        const rawInitial = initialSelectionText.trim();
+        const processed = processSelectedText(rawInitial);
+
+        let initialDiff = "";
+        try {
+          // Try to extract path from placeholder/wrapped form or validate raw path
+          let pathCandidate: string | undefined;
+
+          const match = processed.match(/\{\{file:([^}]+)\}\}/);
+          if (match && match[1]) {
+            pathCandidate = match[1];
+          } else {
+            try {
+              fs.statSync(rawInitial);
+              pathCandidate = rawInitial;
+            } catch {
+              // Not a valid path; leave pathCandidate undefined
+            }
+          }
+
+          if (pathCandidate) {
+            initialDiff = await getGitDiff(pathCandidate);
+          }
+        } catch {
+          // Ignore diff errors
+        }
+
+        setSelectionText(processed);
+        setCurrentApp(fetchedFrontmostApp);
+        setAllApp(fetchedAllApps);
+        setBrowserContent(fetchedBrowserContent);
+        setDiff(initialDiff);
+        return; // Short-circuit: we've handled initialSelectionText
+      }
+
       // Get selection text and diff
       let fetchedSelectedText = "";
       let fetchedDiff = "";

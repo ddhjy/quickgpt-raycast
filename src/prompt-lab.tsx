@@ -8,6 +8,7 @@ import { PromptProps } from "./managers/prompt-manager";
 
 interface ExtendedArguments extends Arguments.PromptLab {
   initialSelectionText?: string;
+  selection?: string;
   target?: string;
   actions?: string;
   filePath?: string;
@@ -25,12 +26,14 @@ interface ExtendedArguments extends Arguments.PromptLab {
  */
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   // 使用 rest 语法捕获所有额外的参数作为占位符
-  const { initialSelectionText, target, actions, filePath, ...placeholderArgs } = props.arguments;
+  const { initialSelectionText, selection, target, actions, filePath, ...placeholderArgs } = props.arguments;
 
   // Convert actions string to array
   const allowedActions = actions?.split(",").filter(Boolean);
 
-  const { selectionText, currentApp, allApp, browserContent, diff } = useInitialContext(initialSelectionText, target);
+  const initialSelection = (typeof selection === "string" && selection) || initialSelectionText;
+
+  const { selectionText, currentApp, allApp, browserContent, diff } = useInitialContext(initialSelection, target);
 
   // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
