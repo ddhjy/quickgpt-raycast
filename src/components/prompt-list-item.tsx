@@ -9,7 +9,6 @@ import {
   Toast,
   closeMainWindow,
   openExtensionPreferences,
-  getPreferenceValues,
   Clipboard,
   Image,
   useNavigation,
@@ -27,7 +26,7 @@ import { ScriptInfo } from "../utils/script-utils";
 import { placeholderFormatter } from "../utils/placeholder-formatter";
 import { PromptList } from "./prompt-list";
 import { PromptOptionsForm } from "./prompt-options-form";
-import { TemporaryDirectoryManager } from "./temporary-directory-manager";
+import { DirectoryManager } from "./temporary-directory-manager";
 import {
   removeTemporaryDirectory,
   getActiveTemporaryDirectoriesWithExpiry,
@@ -158,6 +157,10 @@ export function PromptListItem({
 
   // Handle Settings related options icons
   if (prompt.identifier === "open-scripts-dir") {
+    const scriptDirs = configurationManager.getDirectories("scripts");
+    if (scriptDirs.length > 0) {
+      displayTitle = `Scripts Directory (${scriptDirs.length})`;
+    }
     displayIcon = Icon.Code;
   } else if (prompt.identifier === "open-preferences") {
     displayIcon = Icon.Gear;
@@ -176,11 +179,17 @@ export function PromptListItem({
         <Action.Push
           title="Open"
           icon={Icon.List}
-          target={<TemporaryDirectoryManager onRefreshNeeded={onRefreshNeeded} />}
+          target={<DirectoryManager type="temporary" onRefreshNeeded={onRefreshNeeded} />}
         />
       );
     } else if (prompt.identifier === "open-custom-prompts-dir") {
-      return handleCustomPromptsDirectoryActions();
+      return (
+        <Action.Push
+          title="Open"
+          icon={Icon.List}
+          target={<DirectoryManager type="prompts" />}
+        />
+      );
     } else if (prompt.identifier === "open-scripts-dir") {
       const scriptDirs = configurationManager.getDirectories("scripts");
 
@@ -195,49 +204,13 @@ export function PromptListItem({
             }}
           />
         );
-      } else if (scriptDirs.length === 1) {
-        return (
-          <Action
-            title="Open"
-            icon={Icon.Folder}
-            onAction={async () => {
-              const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
-              let openCommand: string;
-              if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
-                openCommand = `open -b '${customEditor.bundleId}' '${scriptDirs[0]}'`;
-              } else {
-                openCommand = `open -a '${customEditor.path}' '${scriptDirs[0]}'`;
-              }
-              await runAppleScript(`do shell script "${openCommand}"`);
-              await closeMainWindow();
-            }}
-          />
-        );
       } else {
         return (
-          <>
-            {scriptDirs.map((dir, index) => {
-              const dirName = path.basename(dir as string);
-              return (
-                <Action
-                  key={index}
-                  title={`Open ${dirName}`}
-                  icon={Icon.Folder}
-                  onAction={async () => {
-                    const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
-                    let openCommand: string;
-                    if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
-                      openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
-                    } else {
-                      openCommand = `open -a '${customEditor.path}' '${dir}'`;
-                    }
-                    await runAppleScript(`do shell script "${openCommand}"`);
-                    await closeMainWindow();
-                  }}
-                />
-              );
-            })}
-          </>
+          <Action.Push
+            title="Open"
+            icon={Icon.List}
+            target={<DirectoryManager type="scripts" />}
+          />
         );
       }
     } else if (prompt.identifier === "open-preferences") {
@@ -647,77 +620,3 @@ export function PromptListItem({
 
 // Use React.memo to prevent unnecessary re-renders
 export const MemoizedPromptListItem = React.memo(PromptListItem);
-
-function handleCustomPromptsDirectoryActions() {
-  // Get all configured prompt directories using the configuration manager
-  const promptDirs = configurationManager.getDirectories("prompts");
-
-  if (promptDirs.length === 0) {
-    return (
-      <Action
-        title="Configure"
-        icon={Icon.Gear}
-        onAction={() => {
-          openExtensionPreferences();
-          closeMainWindow();
-        }}
-      />
-    );
-  } else if (promptDirs.length === 1) {
-    // If there's only one directory, open it directly
-    return (
-      <Action
-        title="Open"
-        icon={Icon.Folder}
-        onAction={async () => {
-          try {
-            const { customEditor } = getPreferenceValues<{ customEditor: Application }>();
-            let openCommand: string;
-            if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
-              openCommand = `open -b '${customEditor.bundleId}' '${promptDirs[0]}'`;
-            } else {
-              openCommand = `open -a '${customEditor.path}' '${promptDirs[0]}'`;
-            }
-            await runAppleScript(`do shell script "${openCommand}"`);
-            closeMainWindow();
-          } catch (error) {
-            console.error("Failed to open prompt directory:", error);
-            await showToast(Toast.Style.Failure, "Error opening directory");
-          }
-        }}
-      />
-    );
-  } else {
-    // If there are multiple directories, provide actions for each
-    return (
-      <>
-        {promptDirs.map((dir, index) => {
-          const dirName = path.basename(dir as string);
-          return (
-            <Action
-              key={index}
-              title={`Open ${dirName}`}
-              icon={Icon.Folder}
-              onAction={async () => {
-                try {
-                  const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
-                  let openCommand: string;
-                  if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
-                    openCommand = `open -b '${customEditor.bundleId}' '${dir}'`;
-                  } else {
-                    openCommand = `open -a '${customEditor.path}' '${dir}'`;
-                  }
-                  await runAppleScript(`do shell script "${openCommand}"`);
-                  closeMainWindow();
-                } catch (error) {
-                  console.error(`Failed to open prompt directory ${dir}:`, error);
-                  await showToast(Toast.Style.Failure, "Error opening directory");
-                }
-              }}
-            />
-          );
-        })}
-      </>
-    );
-  }
-}

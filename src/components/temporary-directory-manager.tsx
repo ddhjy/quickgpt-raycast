@@ -10,7 +10,11 @@ import {
   Alert,
   confirmAlert,
   Color,
+  Application,
+  closeMainWindow,
+  openExtensionPreferences,
 } from "@raycast/api";
+import { runAppleScript } from "@raycast/utils";
 import path from "path";
 import fs from "fs";
 import {
@@ -18,42 +22,89 @@ import {
   addTemporaryDirectory,
   removeTemporaryDirectory,
   removeAllTemporaryDirectories,
-  TemporaryDirectoryWithExpiry,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
+import configurationManager from "../managers/configuration-manager";
 
-interface TemporaryDirectoryManagerProps {
-  onRefreshNeeded: () => void;
+export type DirectoryManagerType = "temporary" | "scripts" | "prompts";
+
+interface DirectoryManagerProps {
+  type: DirectoryManagerType;
+  onRefreshNeeded?: () => void;
+}
+
+interface DirectoryInfo {
+  path: string;
+  remainingText?: string;
+  remainingMs?: number;
+  addedAt?: number;
 }
 
 /**
- * Component for managing temporary prompt directories.
- * Displays a list of active temporary directories with their expiration times,
- * and provides actions to add, remove, and manage them.
+ * Generic component for managing directories (temporary, scripts, or prompts).
+ * Displays a list of directories with appropriate actions based on the type.
  */
-export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirectoryManagerProps) {
-  const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
+export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProps) {
+  const [directories, setDirectories] = useState<DirectoryInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Refresh temporary directories list
+  // Refresh directories list based on type
   const refreshDirectories = () => {
-    setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
+    if (type === "temporary") {
+      const tempDirs = getActiveTemporaryDirectoriesWithExpiry();
+      setDirectories(
+        tempDirs.map((dir) => ({
+          path: dir.path,
+          remainingText: dir.remainingText,
+          remainingMs: dir.remainingMs,
+          addedAt: dir.addedAt,
+        })),
+      );
+    } else if (type === "scripts" || type === "prompts") {
+      const dirs = configurationManager.getDirectories(type);
+      setDirectories(dirs.map((dir) => ({ path: dir })));
+    }
   };
 
   useEffect(() => {
     refreshDirectories();
     setIsLoading(false);
 
-    // Update every second to refresh remaining time
-    const timer = setInterval(() => {
-      refreshDirectories();
-    }, 1000);
+    // For temporary directories, update every second to refresh remaining time
+    if (type === "temporary") {
+      const timer = setInterval(() => {
+        refreshDirectories();
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [type]);
 
-    return () => clearInterval(timer);
-  }, []);
+  // Handle opening a directory
+  const handleOpenDirectory = async (dirPath: string) => {
+    try {
+      const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
+      let openCommand: string;
+      if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
+        openCommand = `open -b '${customEditor.bundleId}' '${dirPath}'`;
+      } else {
+        openCommand = `open -a '${customEditor.path}' '${dirPath}'`;
+      }
+      await runAppleScript(`do shell script "${openCommand}"`);
+      await closeMainWindow();
+    } catch (error) {
+      console.error(`Failed to open directory ${dirPath}:`, error);
+      await showToast({
+        title: "Error",
+        message: "Failed to open directory",
+        style: Toast.Style.Failure,
+      });
+    }
+  };
 
-  // Handle adding new temporary directory
+  // Handle adding new temporary directory (only for temporary type)
   const handleAddDirectory = async () => {
+    if (type !== "temporary") return;
+
     try {
       const selectedItems = await getSelectedFinderItems();
       if (selectedItems.length === 0) {
@@ -78,7 +129,9 @@ export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirector
 
       addTemporaryDirectory(selectedPath);
       promptManager.reloadPrompts();
-      onRefreshNeeded();
+      if (onRefreshNeeded) {
+        onRefreshNeeded();
+      }
       refreshDirectories();
 
       await showToast({
@@ -96,12 +149,16 @@ export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirector
     }
   };
 
-  // Handle removing a temporary directory
+  // Handle removing a temporary directory (only for temporary type)
   const handleRemoveDirectory = async (dirPath: string) => {
+    if (type !== "temporary") return;
+
     try {
       removeTemporaryDirectory(dirPath);
       promptManager.reloadPrompts();
-      onRefreshNeeded();
+      if (onRefreshNeeded) {
+        onRefreshNeeded();
+      }
       refreshDirectories();
 
       await showToast({
@@ -119,8 +176,10 @@ export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirector
     }
   };
 
-  // Handle removing all temporary directories
+  // Handle removing all temporary directories (only for temporary type)
   const handleRemoveAll = async () => {
+    if (type !== "temporary") return;
+
     try {
       const confirmed = await confirmAlert({
         title: "Remove All Temporary Directories",
@@ -134,7 +193,9 @@ export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirector
       if (confirmed) {
         removeAllTemporaryDirectories();
         promptManager.reloadPrompts();
-        onRefreshNeeded();
+        if (onRefreshNeeded) {
+          onRefreshNeeded();
+        }
         refreshDirectories();
 
         await showToast({
@@ -153,69 +214,137 @@ export function TemporaryDirectoryManager({ onRefreshNeeded }: TemporaryDirector
     }
   };
 
+  // Get navigation title and empty view text based on type
+  const getNavigationTitle = () => {
+    switch (type) {
+      case "temporary":
+        return "Manage Temporary Directories";
+      case "scripts":
+        return "Scripts Directories";
+      case "prompts":
+        return "Prompts Directories";
+    }
+  };
+
+  const getEmptyTitle = () => {
+    switch (type) {
+      case "temporary":
+        return "No Temporary Directories";
+      case "scripts":
+        return "No Scripts Directories";
+      case "prompts":
+        return "No Prompts Directories";
+    }
+  };
+
+  const getEmptyDescription = () => {
+    switch (type) {
+      case "temporary":
+        return "Add a temporary directory from Finder to get started";
+      case "scripts":
+        return "Configure scripts directories in extension preferences";
+      case "prompts":
+        return "Configure prompts directories in extension preferences";
+    }
+  };
+
   return (
     <List
       isLoading={isLoading}
-      navigationTitle="Manage Temporary Directories"
-      searchBarPlaceholder="Search temporary directories..."
+      navigationTitle={getNavigationTitle()}
+      searchBarPlaceholder={`Search ${type} directories...`}
     >
-      {temporaryDirs.length === 0 ? (
+      {directories.length === 0 ? (
         <List.EmptyView
           icon={Icon.Folder}
-          title="No Temporary Directories"
-          description="Add a temporary directory from Finder to get started"
+          title={getEmptyTitle()}
+          description={getEmptyDescription()}
           actions={
             <ActionPanel>
-              <Action title="Add Temporary Directory from Finder" icon={Icon.Plus} onAction={handleAddDirectory} />
+              {type === "temporary" ? (
+                <Action title="Add Temporary Directory from Finder" icon={Icon.Plus} onAction={handleAddDirectory} />
+              ) : (
+                <Action
+                  title="Configure"
+                  icon={Icon.Gear}
+                  onAction={() => {
+                    openExtensionPreferences();
+                    closeMainWindow();
+                  }}
+                />
+              )}
             </ActionPanel>
           }
         />
       ) : (
         <>
-          {temporaryDirs.map((dir) => (
-            <List.Item
-              key={dir.path}
-              title={path.basename(dir.path)}
-              subtitle={dir.path}
-              accessories={[
-                {
-                  tag: {
-                    value: dir.remainingText,
-                    color: dir.remainingMs < 3600000 ? Color.Red : Color.SecondaryText,
-                  },
+          {directories.map((dir) => {
+            const accessories: List.Item.Accessory[] = [];
+            if (type === "temporary" && dir.remainingText && dir.remainingMs !== undefined) {
+              accessories.push({
+                tag: {
+                  value: dir.remainingText,
+                  color: dir.remainingMs < 3600000 ? Color.Red : Color.SecondaryText,
                 },
-                { icon: Icon.Clock, tooltip: `Added: ${new Date(dir.addedAt).toLocaleString()}` },
-              ]}
-              actions={
-                <ActionPanel>
-                  <Action
-                    title="Remove"
-                    icon={Icon.Trash}
-                    style={Action.Style.Destructive}
-                    onAction={() => handleRemoveDirectory(dir.path)}
-                  />
-                  <Action
-                    title="Add New Directory from Finder"
-                    icon={Icon.Plus}
-                    onAction={handleAddDirectory}
-                    shortcut={{ modifiers: ["cmd"], key: "n" }}
-                  />
-                  {temporaryDirs.length > 1 && (
-                    <Action
-                      title="Remove All"
-                      icon={Icon.DeleteDocument}
-                      style={Action.Style.Destructive}
-                      onAction={handleRemoveAll}
-                      shortcut={{ modifiers: ["cmd", "shift"], key: "delete" }}
-                    />
-                  )}
-                  <Action.ShowInFinder path={dir.path} shortcut={{ modifiers: ["cmd", "shift"], key: "o" }} />
-                </ActionPanel>
+              });
+              if (dir.addedAt) {
+                accessories.push({
+                  icon: Icon.Clock,
+                  tooltip: `Added: ${new Date(dir.addedAt).toLocaleString()}`,
+                });
               }
-            />
-          ))}
+            }
+
+            return (
+              <List.Item
+                key={dir.path}
+                title={path.basename(dir.path)}
+                subtitle={dir.path}
+                accessories={accessories}
+                actions={
+                  <ActionPanel>
+                    {type === "temporary" ? (
+                      <>
+                        <Action
+                          title="Remove"
+                          icon={Icon.Trash}
+                          style={Action.Style.Destructive}
+                          onAction={() => handleRemoveDirectory(dir.path)}
+                        />
+                        <Action
+                          title="Add New Directory from Finder"
+                          icon={Icon.Plus}
+                          onAction={handleAddDirectory}
+                          shortcut={{ modifiers: ["cmd"], key: "n" }}
+                        />
+                        {directories.length > 1 && (
+                          <Action
+                            title="Remove All"
+                            icon={Icon.DeleteDocument}
+                            style={Action.Style.Destructive}
+                            onAction={handleRemoveAll}
+                            shortcut={{ modifiers: ["cmd", "shift"], key: "delete" }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Action title="Open" icon={Icon.Folder} onAction={() => handleOpenDirectory(dir.path)} />
+                    )}
+                    <Action.ShowInFinder path={dir.path} shortcut={{ modifiers: ["cmd", "shift"], key: "o" }} />
+                  </ActionPanel>
+                }
+              />
+            );
+          })}
         </>
       )}
     </List>
   );
+}
+
+/**
+ * Backward compatibility: export TemporaryDirectoryManager as an alias
+ */
+export function TemporaryDirectoryManager({ onRefreshNeeded }: { onRefreshNeeded: () => void }) {
+  return <DirectoryManager type="temporary" onRefreshNeeded={onRefreshNeeded} />;
 }
