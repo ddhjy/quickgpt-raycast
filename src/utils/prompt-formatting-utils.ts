@@ -21,7 +21,7 @@ const placeholderIcons: { [key: string]: Icon } = {
   input: Icon.TextInput,
   clipboard: Icon.Clipboard,
   selection: Icon.TextCursor,
-  currentApp: Icon.Window,
+  currentApp: Icon.AppWindow,
   allApp: Icon.AppWindowGrid2x2,
   browserContent: Icon.Globe,
   promptTitles: Icon.List,
