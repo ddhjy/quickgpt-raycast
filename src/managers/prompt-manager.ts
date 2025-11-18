@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import md5 from "md5";
 import * as hjson from "hjson";
+import { Cache } from "@raycast/api";
 import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
 import configurationManager from "./configuration-manager";
 
@@ -46,8 +47,11 @@ const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
 class PromptManager {
   private promptFilePaths: string[];
   private prompts: PromptProps[] = [];
-  private mergedRootProperties: Partial<PromptProps> = {}; // Stores merged root properties
-  private temporaryDirectoryPaths: string[] = []; // Modified to store multiple temporary directory paths
+  private mergedRootProperties: Partial<PromptProps> = {};
+  private temporaryDirectoryPaths: string[] = [];
+  private cache: Cache = new Cache();
+  private readonly CACHE_KEY_DATA = "prompts_data_v1";
+  private readonly CACHE_KEY_SIG = "prompts_signature_v1";
 
   /**
    * Initializes the PromptManager by determining prompt file paths based on preferences
@@ -191,13 +195,34 @@ class PromptManager {
    * Loads prompts from all configured file paths.
    * Distinguishes between files and directories, traversing directories recursively.
    * Processes the combined list of prompts after loading.
+   * Uses caching mechanism to improve performance by avoiding redundant file reads and parsing.
    */
   private loadAllPrompts(): void {
     this.prompts = [];
     this.mergedRootProperties = {};
 
+    const currentSignature = this.calculateWorkspaceSignature();
+
+    const cachedSignature = this.cache.get(this.CACHE_KEY_SIG);
+    const cachedData = this.cache.get(this.CACHE_KEY_DATA);
+
+    if (currentSignature && cachedSignature === currentSignature && cachedData) {
+      try {
+        const parsedData = JSON.parse(cachedData);
+        this.prompts = parsedData.prompts;
+        this.mergedRootProperties = parsedData.mergedRootProperties;
+        console.log("Prompts loaded from cache (Fast Mode) ⚡️");
+        return;
+      } catch (e) {
+        console.warn("Cache parse failed, falling back to file load", e);
+      }
+    }
+
+    console.log("Cache miss or outdated, reloading from disk...");
+
     this.prompts = this.promptFilePaths.flatMap((promptPath) => {
       try {
+        if (!fs.existsSync(promptPath)) return [];
         const stat = fs.lstatSync(promptPath);
         if (stat.isDirectory()) {
           return this.traverseDirectorySync(promptPath);
@@ -211,7 +236,19 @@ class PromptManager {
       }
       return [];
     });
+
     this.prompts = this.processPrompts(this.prompts);
+
+    try {
+      const cachePayload = {
+        prompts: this.prompts,
+        mergedRootProperties: this.mergedRootProperties,
+      };
+      this.cache.set(this.CACHE_KEY_DATA, JSON.stringify(cachePayload));
+      this.cache.set(this.CACHE_KEY_SIG, currentSignature);
+    } catch (e) {
+      console.error("Failed to save prompts to cache", e);
+    }
   }
 
   /**
@@ -255,6 +292,52 @@ class PromptManager {
   private isPromptFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
     return fileName.endsWith(".hjson");
+  }
+
+  /**
+   * Calculates a signature (fingerprint) of the current workspace state.
+   * The signature is based on file paths and modification times (mtime).
+   * Used to detect changes in prompt files and invalidate cache when necessary.
+   *
+   * @returns A unique hash representing the current state of all prompt files.
+   */
+  private calculateWorkspaceSignature(): string {
+    try {
+      const signatures: string[] = [];
+
+      signatures.push(JSON.stringify(this.promptFilePaths));
+
+      const processPath = (targetPath: string) => {
+        try {
+          if (!fs.existsSync(targetPath)) return;
+          const stat = fs.statSync(targetPath);
+
+          if (stat.isDirectory()) {
+            signatures.push(`${targetPath}:${stat.mtimeMs}`);
+            const entries = fs.readdirSync(targetPath);
+            signatures.push(entries.join(","));
+
+            entries.forEach((entry) => {
+              if (!entry.startsWith(".") && !entry.startsWith("#")) {
+                const fullPath = path.join(targetPath, entry);
+                processPath(fullPath);
+              }
+            });
+          } else if (this.isPromptFile(targetPath)) {
+            signatures.push(`${targetPath}:${stat.mtimeMs}`);
+          }
+        } catch {
+          // Ignore inaccessible files
+        }
+      };
+
+      this.promptFilePaths.forEach((p) => processPath(p));
+
+      return md5(signatures.join("|"));
+    } catch (error) {
+      console.error("Failed to calculate signature", error);
+      return Date.now().toString();
+    }
   }
 
   /**
@@ -444,11 +527,12 @@ class PromptManager {
   /**
    * Reloads all prompts from the configured file paths.
    * This clears the current prompts and re-runs the loading and processing steps.
+   * Also invalidates the cache to force a fresh load.
    */
   public reloadPrompts(): void {
     console.log("Reloading prompts...");
-    // Clear configuration cache to ensure fresh preferences are used
     configurationManager.clearCache();
+    this.cache.remove(this.CACHE_KEY_SIG);
     this.promptFilePaths = this.getPromptFilePaths();
     this.loadAllPrompts();
   }
