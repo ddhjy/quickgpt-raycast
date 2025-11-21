@@ -3,7 +3,6 @@ import { List, showToast, Toast, clearSearchBar, useNavigation } from "@raycast/
 import { match } from "pinyin-pro";
 import path from "path";
 import { PromptProps } from "../managers/prompt-manager";
-import promptManager from "../managers/prompt-manager";
 import pinsManager from "../managers/pins-manager";
 import { MemoizedPromptListItem } from "./prompt-list-item";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
@@ -34,6 +33,17 @@ const normalizeTextForSearch = (text: string): string => {
   return leadingSpecial + normalizedBody;
 };
 
+const getAllDescendants = (prompts: PromptProps[]): PromptProps[] => {
+  let results: PromptProps[] = [];
+  prompts.forEach((prompt) => {
+    results.push(prompt);
+    if (prompt.subprompts) {
+      results = results.concat(getAllDescendants(prompt.subprompts));
+    }
+  });
+  return results;
+};
+
 interface PromptListProps {
   prompts: PromptProps[];
   searchMode?: boolean;
@@ -45,8 +55,8 @@ interface PromptListProps {
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
   externalOnRefreshNeeded?: () => void;
-  // 为接口添加 placeholderArgs 属性
   placeholderArgs?: Record<string, unknown>;
+  currentPath?: string;
 }
 
 /**
@@ -74,8 +84,8 @@ export function PromptList({
   allowedActions,
   initialScripts,
   externalOnRefreshNeeded,
-  // 解构 placeholderArgs 并设置默认值
   placeholderArgs = {},
+  currentPath = "",
 }: PromptListProps) {
   // Replace original searchText state with input history hook
   const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
@@ -126,7 +136,7 @@ export function PromptList({
 
   const filteredPrompts = useMemo(() => {
     let result;
-    const sourcePrompts = searchMode ? promptManager.getFilteredPrompts(() => true) : initialPrompts;
+    const sourcePrompts = searchMode ? getAllDescendants(initialPrompts) : initialPrompts;
 
     if (searchMode && searchText.trim().length > 0) {
       const trimmedSearchText = searchText.trim();
@@ -219,6 +229,29 @@ export function PromptList({
           searchMode={false}
           externalOnRefreshNeeded={externalOnRefreshNeeded}
           placeholderArgs={placeholderArgs}
+          currentPath={currentPath}
+        />,
+      );
+      return;
+    }
+
+    if (searchText === " ") {
+      setCurrentInput("");
+
+      push(
+        <PromptList
+          prompts={initialPrompts}
+          searchMode={!searchMode}
+          selectionText={selectionText}
+          currentApp={currentApp}
+          allApp={allApp}
+          browserContent={browserContent}
+          diff={diff}
+          allowedActions={allowedActions}
+          initialScripts={initialScripts}
+          externalOnRefreshNeeded={externalOnRefreshNeeded}
+          placeholderArgs={placeholderArgs}
+          currentPath={currentPath}
         />,
       );
       return;
@@ -228,14 +261,17 @@ export function PromptList({
     searchText,
     push,
     displayPrompts,
+    initialPrompts,
     selectionText,
     currentApp,
     allApp,
     browserContent,
+    diff,
     allowedActions,
     initialScripts,
     externalOnRefreshNeeded,
     placeholderArgs,
+    currentPath,
   ]);
 
   const handleSearchTextChange = (text: string) => {
@@ -286,7 +322,6 @@ export function PromptList({
             browserContent,
             input: searchMode ? "" : activeSearchText,
             diff,
-            // 在此处合并占位符参数。如果存在同名键，这里的值将覆盖前面的值
             ...placeholderArgs,
           }}
           searchMode={searchMode}
@@ -298,6 +333,7 @@ export function PromptList({
           onRefreshNeeded={effectiveOnRefreshNeeded}
           addToHistory={addToHistory}
           setCurrentInput={setCurrentInput}
+          currentPath={currentPath}
         />
       );
     })

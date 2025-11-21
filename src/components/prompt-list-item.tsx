@@ -39,7 +39,6 @@ import { findRepoRoot } from "../utils/git-utils";
 interface PromptListItemProps {
   prompt: PromptProps;
   index: number;
-  // 更新类型定义，允许任意的字符串键
   replacements: Omit<SpecificReplacements, "clipboard"> & Record<string, unknown>;
   searchMode?: boolean;
   promptSpecificRootDir?: string;
@@ -50,6 +49,7 @@ interface PromptListItemProps {
   onRefreshNeeded: () => void;
   addToHistory?: (input: string) => void;
   setCurrentInput?: (input: string) => void;
+  currentPath?: string;
 }
 
 /**
@@ -82,6 +82,7 @@ export function PromptListItem({
   onRefreshNeeded,
   addToHistory,
   setCurrentInput,
+  currentPath = "",
 }: PromptListItemProps) {
   const navigation = useNavigation();
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
@@ -109,26 +110,37 @@ export function PromptListItem({
   // Initialize displayTitle with the formatted actual title
   let displayTitle = formattedActualTitle;
 
-  // Apply special formatting only in searchMode and if the prompt has a path (is nested)
   if (searchMode && prompt.path) {
     const pathComponents = prompt.path.split(" / ");
-    // pathComponents includes the final title, e.g., ["一级", "二级", "Prompt B"]
-    const hierarchyDepth = pathComponents.length; // Total depth including the title
+    
+    let relevantPathComponents = pathComponents;
+    if (currentPath) {
+      const currentPathComponents = currentPath.split(" / ").filter(c => c);
+      if (currentPathComponents.length > 0) {
+        let matchCount = 0;
+        for (let i = 0; i < currentPathComponents.length && i < pathComponents.length; i++) {
+          if (pathComponents[i] === currentPathComponents[i]) {
+            matchCount++;
+          } else {
+            break;
+          }
+        }
+        relevantPathComponents = pathComponents.slice(matchCount);
+      }
+    }
+    
+    const hierarchyDepth = relevantPathComponents.length;
 
     if (hierarchyDepth > 1) {
-      // Only add prefix if there's at least one parent directory
-      const topLevelDirectory = pathComponents[0];
+      const topLevelDirectory = relevantPathComponents[0];
       let prefix = topLevelDirectory;
 
-      // Add "..." if original depth was 3 or more (e.g., Top/Mid/Title)
       if (hierarchyDepth >= 3) {
         prefix += " ...";
       }
 
-      // Combine prefix and the actual formatted title
       displayTitle = `${prefix} / ${formattedActualTitle}`;
     }
-    // If hierarchyDepth is 1, it means no parent directory, so displayTitle remains formattedActualTitle
   } else {
     displayTitle = formattedTitleWithPlaceholders;
   }
@@ -232,12 +244,14 @@ export function PromptListItem({
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { selection, currentApp, allApp, browserContent, input, diff, clipboard, ...customPlaceholderArgs } = replacements;
 
+      const newPath = currentPath ? `${currentPath} / ${prompt.title}` : prompt.title;
+
       // 1. Open folder action (usually the primary action)
       folderActions.push(
         <Action.Push
           key="open-folder"
           title="Open"
-          icon={prompt.icon ?? Icon.Folder} // Icon.FolderOpen would be more appropriate
+          icon={prompt.icon ?? Icon.Folder}
           target={
             <PromptList
               prompts={prompt.subprompts}
@@ -245,10 +259,11 @@ export function PromptListItem({
               currentApp={replacements.currentApp ?? ""}
               allApp={replacements.allApp ?? ""}
               browserContent={replacements.browserContent ?? ""}
-              allowedActions={allowedActions || prompt.actions} // These are actions for sub-items
+              allowedActions={allowedActions || prompt.actions}
               initialScripts={scripts}
-              externalOnRefreshNeeded={onRefreshNeeded} // Pass refresh callback
-              placeholderArgs={customPlaceholderArgs} // Pass custom placeholder args to nested PromptList
+              externalOnRefreshNeeded={onRefreshNeeded}
+              placeholderArgs={customPlaceholderArgs}
+              currentPath={newPath}
             />
           }
         />,
