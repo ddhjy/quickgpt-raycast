@@ -445,8 +445,9 @@ export function PromptListItem({
           ? {
             ...accessory,
             tooltip:
-              prompt.content ??
-              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+              prompt.subprompts
+                ? prompt.subprompts.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title}`).join("\n")
+                : prompt.content,
           }
           : accessory,
       ),
@@ -455,8 +456,9 @@ export function PromptListItem({
           {
             icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
             tooltip:
-              prompt.content ??
-              prompt.subprompts?.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title} `).join("\n"),
+              prompt.subprompts
+                ? prompt.subprompts.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title}`).join("\n")
+                : prompt.content,
           },
         ]
         : []),
