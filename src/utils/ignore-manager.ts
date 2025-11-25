@@ -200,10 +200,18 @@ class IgnoreManager {
 
   /**
    * Check if file is binary based on extension
-   * This is now handled by gitignore patterns in defaultIgnoreRules
+   * Files without extension are also treated as binary
    */
   isBinaryFile(filePath: string): boolean {
     const fileName = path.basename(filePath);
+    
+    const lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex <= 0) {
+      if (lastDotIndex === -1 || fileName.substring(lastDotIndex + 1) === '') {
+        return true;
+      }
+    }
+    
     const ig = ignore();
     ig.add(this.getBinaryFilePatterns());
     return ig.ignores(fileName);
