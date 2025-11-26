@@ -9,6 +9,20 @@ import {
 import { getGitDiff } from "../utils/git-utils";
 import * as fs from "fs";
 
+type FinderItems = Awaited<ReturnType<typeof getSelectedFinderItems>>;
+
+// Capture Finder selection and text before the Raycast window steals focus.
+const capturedSelectionPromise: Promise<{
+  finderItems: FinderItems;
+  selectedText: string;
+}> = Promise.all([
+  getSelectedFinderItems().catch(() => [] as FinderItems),
+  getSelectedText().catch(() => ""),
+]).then(([finderItems, selectedText]) => ({
+  finderItems,
+  selectedText,
+}));
+
 /**
  * Custom hook to fetch initial context information needed for prompts.
  * This includes selected text, frontmost application name,
@@ -143,22 +157,28 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {
-        const selectedItems = await getSelectedFinderItems();
+        const { finderItems: selectedItems, selectedText: capturedSelectedText } =
+          await capturedSelectionPromise;
+
         if (selectedItems.length > 0) {
           let content = "";
           for (const item of selectedItems) {
             content += `${finderMarker}{{file:${item.path}}}\n`;
           }
           fetchedSelectedText = content.trim();
-          fetchedDiff = await getGitDiff(selectedItems[0].path);
+          try {
+            fetchedDiff = await getGitDiff(selectedItems[0].path);
+          } catch {
+            fetchedDiff = "";
+          }
         } else {
-          fetchedSelectedText = await getSelectedText();
-          fetchedSelectedText = processSelectedText(await getSelectedText());
+          fetchedSelectedText = processSelectedText(capturedSelectedText || "");
         }
-      } catch {
+      } catch (error) {
+        console.info("Failed to use captured selection:", error);
         try {
-          fetchedSelectedText = (await getSelectedText()) || "";
-          fetchedSelectedText = processSelectedText((await getSelectedText()) || "");
+          const fallbackText = (await getSelectedText()) || "";
+          fetchedSelectedText = processSelectedText(fallbackText);
         } catch {
           fetchedSelectedText = "";
         }
