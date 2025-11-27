@@ -112,10 +112,10 @@ export function PromptListItem({
 
   if (searchMode && prompt.path) {
     const pathComponents = prompt.path.split(" / ");
-    
+
     let relevantPathComponents = pathComponents;
     if (currentPath) {
-      const currentPathComponents = currentPath.split(" / ").filter(c => c);
+      const currentPathComponents = currentPath.split(" / ").filter((c) => c);
       if (currentPathComponents.length > 0) {
         let matchCount = 0;
         for (let i = 0; i < currentPathComponents.length && i < pathComponents.length; i++) {
@@ -128,7 +128,7 @@ export function PromptListItem({
         relevantPathComponents = pathComponents.slice(matchCount);
       }
     }
-    
+
     const hierarchyDepth = relevantPathComponents.length;
 
     if (hierarchyDepth > 1) {
@@ -195,13 +195,7 @@ export function PromptListItem({
         />
       );
     } else if (prompt.identifier === "open-custom-prompts-dir") {
-      return (
-        <Action.Push
-          title="Open"
-          icon={Icon.List}
-          target={<DirectoryManager type="prompts" />}
-        />
-      );
+      return <Action.Push title="Open" icon={Icon.List} target={<DirectoryManager type="prompts" />} />;
     } else if (prompt.identifier === "open-scripts-dir") {
       const scriptDirs = configurationManager.getDirectories("scripts");
 
@@ -217,13 +211,7 @@ export function PromptListItem({
           />
         );
       } else {
-        return (
-          <Action.Push
-            title="Open"
-            icon={Icon.List}
-            target={<DirectoryManager type="scripts" />}
-          />
-        );
+        return <Action.Push title="Open" icon={Icon.List} target={<DirectoryManager type="scripts" />} />;
       }
     } else if (prompt.identifier === "open-preferences") {
       return (
@@ -242,7 +230,8 @@ export function PromptListItem({
 
       // Extract custom placeholder arguments from replacements
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { selection, currentApp, allApp, browserContent, input, diff, clipboard, ...customPlaceholderArgs } = replacements;
+      const { selection, currentApp, allApp, browserContent, input, diff, clipboard, ...customPlaceholderArgs } =
+        replacements;
 
       const newPath = currentPath ? `${currentPath} / ${prompt.title}` : prompt.title;
 
@@ -443,24 +432,22 @@ export function PromptListItem({
       ...placeholderIcons.map((accessory: List.Item.Accessory, i: number, arr: List.Item.Accessory[]) =>
         i === arr.length - 1
           ? {
-            ...accessory,
-            tooltip:
-              prompt.subprompts
+              ...accessory,
+              tooltip: prompt.subprompts
                 ? prompt.subprompts.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title}`).join("\n")
                 : prompt.content,
-          }
+            }
           : accessory,
       ),
       ...(placeholderIcons.length === 0
         ? [
-          {
-            icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
-            tooltip:
-              prompt.subprompts
+            {
+              icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph,
+              tooltip: prompt.subprompts
                 ? prompt.subprompts.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title}`).join("\n")
                 : prompt.content,
-          },
-        ]
+            },
+          ]
         : []),
     ];
   };

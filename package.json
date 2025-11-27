@@ -86,6 +86,14 @@
           "type": "appPicker",
           "required": true,
           "default": "com.todesktop.230313mzl4w4u92"
+        },
+        {
+          "name": "pathAliases",
+          "title": "Path Aliases (JSON)",
+          "description": "JSON map for shortlinks, e.g., {\"work\": \"~/Documents/Work\"}",
+          "type": "textfield",
+          "required": false,
+          "default": "{}"
         }
       ]
     }

@@ -79,9 +79,7 @@ class ConfigurationManager {
     }
 
     // Filter out empty/undefined values and trim whitespace
-    directories = directories.filter((dir): dir is string =>
-      typeof dir === "string" && dir.trim() !== ""
-    );
+    directories = directories.filter((dir): dir is string => typeof dir === "string" && dir.trim() !== "");
 
     this.cache.set(cacheKey, directories);
     return directories;
@@ -108,11 +106,9 @@ class ConfigurationManager {
    */
   private getScriptDirectories(): string[] {
     const preferences = getPreferenceValues<ScriptsPreferences>();
-    return [
-      preferences.scriptsDirectory,
-      preferences.scriptsDirectory1,
-      preferences.scriptsDirectory2,
-    ].filter(Boolean) as string[];
+    return [preferences.scriptsDirectory, preferences.scriptsDirectory1, preferences.scriptsDirectory2].filter(
+      Boolean,
+    ) as string[];
   }
 
   /**

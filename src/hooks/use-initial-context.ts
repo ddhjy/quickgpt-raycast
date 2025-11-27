@@ -15,13 +15,12 @@ type FinderItems = Awaited<ReturnType<typeof getSelectedFinderItems>>;
 const capturedSelectionPromise: Promise<{
   finderItems: FinderItems;
   selectedText: string;
-}> = Promise.all([
-  getSelectedFinderItems().catch(() => [] as FinderItems),
-  getSelectedText().catch(() => ""),
-]).then(([finderItems, selectedText]) => ({
-  finderItems,
-  selectedText,
-}));
+}> = Promise.all([getSelectedFinderItems().catch(() => [] as FinderItems), getSelectedText().catch(() => "")]).then(
+  ([finderItems, selectedText]) => ({
+    finderItems,
+    selectedText,
+  }),
+);
 
 /**
  * Custom hook to fetch initial context information needed for prompts.
@@ -104,10 +103,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     };
 
     const fetchData = async () => {
-      const [fetchedFrontmostApp, fetchedAllApps] = await Promise.all([
-        fetchFrontmostApp(),
-        fetchAllApps(),
-      ]);
+      const [fetchedFrontmostApp, fetchedAllApps] = await Promise.all([fetchFrontmostApp(), fetchAllApps()]);
 
       let fetchedBrowserContent = "";
       const browserNames = ["Arc"];
@@ -157,8 +153,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {
-        const { finderItems: selectedItems, selectedText: capturedSelectedText } =
-          await capturedSelectionPromise;
+        const { finderItems: selectedItems, selectedText: capturedSelectedText } = await capturedSelectionPromise;
 
         if (selectedItems.length > 0) {
           let content = "";

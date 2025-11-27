@@ -14,6 +14,7 @@
 import fs from "fs";
 import path from "path";
 import { readDirectoryContentsSync } from "./file-system-utils";
+import { expandPath } from "./path-alias-utils";
 
 /* Types & Constants */
 
@@ -114,9 +115,11 @@ export function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<st
  * @returns The resolved absolute path or an Error if resolution fails
  */
 function safeResolveAbsolute(given: string, root?: string): string | Error {
-  console.log(`Attempting to resolve path: "${given}", root: "${root || "not set"}"`);
+  // Expand aliases and preprocess path (remove prefix, etc.)
+  const expanded = expandPath(given);
+  console.log(`Attempting to resolve path: "${given}" (expanded: "${expanded}"), root: "${root || "not set"}"`);
 
-  const trimmed = given.trim();
+  const trimmed = expanded.trim();
   if (path.isAbsolute(trimmed)) {
     console.log(`Processing absolute path: "${trimmed}"`);
     return trimmed;

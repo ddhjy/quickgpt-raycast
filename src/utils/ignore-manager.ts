@@ -204,14 +204,14 @@ class IgnoreManager {
    */
   isBinaryFile(filePath: string): boolean {
     const fileName = path.basename(filePath);
-    
-    const lastDotIndex = fileName.lastIndexOf('.');
+
+    const lastDotIndex = fileName.lastIndexOf(".");
     if (lastDotIndex <= 0) {
-      if (lastDotIndex === -1 || fileName.substring(lastDotIndex + 1) === '') {
+      if (lastDotIndex === -1 || fileName.substring(lastDotIndex + 1) === "") {
         return true;
       }
     }
-    
+
     const ig = ignore();
     ig.add(this.getBinaryFilePatterns());
     return ig.ignores(fileName);
