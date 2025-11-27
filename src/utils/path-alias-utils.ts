@@ -103,7 +103,12 @@ function performReverseReplacement(inputPath: string, pathsData: Array<{ path: s
       const index = result.indexOf(path);
       if (index !== -1) {
         const before = result.slice(0, index);
-        const after = result.slice(index + path.length);
+        let after = result.slice(index + path.length);
+
+        // Treat dot as a separator if it follows an alias match
+        if (after.startsWith(".")) {
+          after = after.slice(1);
+        }
 
         let finalReplacement = replacement;
         if (after && !after.startsWith("/") && !replacement.endsWith("/")) {
