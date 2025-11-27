@@ -398,7 +398,7 @@ export function PromptList({
                           key={`script_${name}`}
                           title={name.replace(/^Raycast\s+/, "")}
                           value={`script_${name}`}
-                          icon={Icon.Stars}
+                          icon={Icon.RaycastLogoPos}
                         />
                       ))}
                   </List.Dropdown.Section>
