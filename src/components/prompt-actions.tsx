@@ -121,8 +121,8 @@ export function generatePromptActions(
     condition: true,
     action: (
       <Action
-        title={scriptName}
-        icon={Icon.Terminal}
+        title={scriptName.replace(/^Raycast\s+/, "")}
+        icon={scriptName.startsWith("Raycast") ? Icon.Stars : Icon.Terminal}
         onAction={wrapActionHandler(async () => {
           try {
             const finalContent = await getFinalContent();

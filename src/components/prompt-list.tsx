@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { List, showToast, Toast, clearSearchBar, useNavigation } from "@raycast/api";
+import { List, showToast, Toast, clearSearchBar, useNavigation, Icon } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
 import { PromptProps } from "../managers/prompt-manager";
@@ -115,7 +115,7 @@ export function PromptList({
 
     // Only scripts are recorded in Last Used now
     if (mostFrequentAction.startsWith("script_")) {
-      const scriptName = mostFrequentAction.replace("script_", "");
+      const scriptName = mostFrequentAction.replace("script_", "").replace(/^Raycast\s+/, "");
       return `Last: ${scriptName}`;
     }
     return "Last Used";
@@ -388,11 +388,31 @@ export function PromptList({
               <List.Dropdown.Item key="paste" title="Paste" value="paste" />
             </List.Dropdown.Section>
             {scripts.length > 0 && (
-              <List.Dropdown.Section title="Scripts">
-                {scripts.map(({ name }) => (
-                  <List.Dropdown.Item key={`script_${name}`} title={name} value={`script_${name}`} />
-                ))}
-              </List.Dropdown.Section>
+              <>
+                {scripts.some(({ name }) => /^Raycast\s+/.test(name)) && (
+                  <List.Dropdown.Section title="Raycast Scripts">
+                    {scripts
+                      .filter(({ name }) => /^Raycast\s+/.test(name))
+                      .map(({ name }) => (
+                        <List.Dropdown.Item
+                          key={`script_${name}`}
+                          title={name.replace(/^Raycast\s+/, "")}
+                          value={`script_${name}`}
+                          icon={Icon.Stars}
+                        />
+                      ))}
+                  </List.Dropdown.Section>
+                )}
+                {scripts.some(({ name }) => !/^Raycast\s+/.test(name)) && (
+                  <List.Dropdown.Section title="Scripts">
+                    {scripts
+                      .filter(({ name }) => !/^Raycast\s+/.test(name))
+                      .map(({ name }) => (
+                        <List.Dropdown.Item key={`script_${name}`} title={name} value={`script_${name}`} />
+                      ))}
+                  </List.Dropdown.Section>
+                )}
+              </>
             )}
           </List.Dropdown>
         ) : null
