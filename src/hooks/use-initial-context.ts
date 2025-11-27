@@ -7,6 +7,7 @@ import {
   getApplications,
 } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
+import { expandPath } from "../utils/path-alias-utils";
 import * as fs from "fs";
 
 type FinderItems = Awaited<ReturnType<typeof getSelectedFinderItems>>;
@@ -49,11 +50,17 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         if (potentialPath.startsWith("{{") && potentialPath.endsWith("}}")) {
           return text;
         }
-        try {
-          fs.statSync(potentialPath);
-          return `${finderMarker}{{file:${potentialPath}}}`;
-        } catch {
-          return text;
+
+        const expandedPath = expandPath(potentialPath);
+        const candidates = expandedPath === potentialPath ? [expandedPath] : [expandedPath, potentialPath];
+
+        for (const candidate of candidates) {
+          try {
+            fs.statSync(candidate);
+            return `${finderMarker}{{file:${candidate}}}`;
+          } catch {
+            continue;
+          }
         }
       }
       return text;

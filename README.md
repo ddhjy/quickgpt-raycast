@@ -98,6 +98,12 @@ This directory contains a comprehensive `prompt-template.hjson` file that demons
 
 [example/script/](example/script/)
 
+### Path Aliases (JSON)
+
+- **Path Aliases (JSON)**: Provide a JSON object that maps short codes to absolute directories so QuickGPT can understand Finderlink-style paths (e.g., `📁 TTIOS.**kmp_wiki**`).
+- Example: `{"TTIOS": "/Users/zengkai/TTIOS", "wiki": "/Users/zengkai/TTIOS/kmp_wiki"}`
+- These aliases are used when resolving `{{file:...}}` placeholders and when detecting Finder selections, so copied entries from Finderlink or `fk:` style links resolve correctly.
+
 ### Actions Configuration
 
 - **Actions**: Comma-separated list of default actions (e.g., `Copy,Paste,OpenAI`)
