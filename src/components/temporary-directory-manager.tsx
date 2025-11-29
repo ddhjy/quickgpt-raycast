@@ -40,15 +40,10 @@ interface DirectoryInfo {
   addedAt?: number;
 }
 
-/**
- * Generic component for managing directories (temporary, scripts, or prompts).
- * Displays a list of directories with appropriate actions based on the type.
- */
 export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProps) {
   const [directories, setDirectories] = useState<DirectoryInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Refresh directories list based on type
   const refreshDirectories = () => {
     if (type === "temporary") {
       const tempDirs = getActiveTemporaryDirectoriesWithExpiry();
@@ -70,7 +65,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     refreshDirectories();
     setIsLoading(false);
 
-    // For temporary directories, update every second to refresh remaining time
     if (type === "temporary") {
       const timer = setInterval(() => {
         refreshDirectories();
@@ -79,7 +73,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     }
   }, [type]);
 
-  // Handle opening a directory
   const handleOpenDirectory = async (dirPath: string) => {
     try {
       const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
@@ -101,7 +94,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     }
   };
 
-  // Handle adding new temporary directory (only for temporary type)
   const handleAddDirectory = async () => {
     if (type !== "temporary") return;
 
@@ -149,7 +141,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     }
   };
 
-  // Handle removing a temporary directory (only for temporary type)
   const handleRemoveDirectory = async (dirPath: string) => {
     if (type !== "temporary") return;
 
@@ -176,7 +167,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     }
   };
 
-  // Handle removing all temporary directories (only for temporary type)
   const handleRemoveAll = async () => {
     if (type !== "temporary") return;
 
@@ -214,7 +204,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     }
   };
 
-  // Get navigation title and empty view text based on type
   const getNavigationTitle = () => {
     switch (type) {
       case "temporary":
@@ -342,9 +331,6 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   );
 }
 
-/**
- * Backward compatibility: export TemporaryDirectoryManager as an alias
- */
 export function TemporaryDirectoryManager({ onRefreshNeeded }: { onRefreshNeeded: () => void }) {
   return <DirectoryManager type="temporary" onRefreshNeeded={onRefreshNeeded} />;
 }

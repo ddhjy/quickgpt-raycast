@@ -12,7 +12,6 @@ import * as fs from "fs";
 
 type FinderItems = Awaited<ReturnType<typeof getSelectedFinderItems>>;
 
-// Capture Finder selection and text before the Raycast window steals focus.
 const capturedSelectionPromise: Promise<{
   finderItems: FinderItems;
   selectedText: string;
@@ -23,17 +22,6 @@ const capturedSelectionPromise: Promise<{
   }),
 );
 
-/**
- * Custom hook to fetch initial context information needed for prompts.
- * This includes selected text, frontmost application name,
- * and content from the active browser tab (if applicable).
- *
- * @param initialClipboardText Optional pre-fetched clipboard text (no longer used).
- * @param initialSelectionText Optional pre-fetched selection text.
- * @param target Optional target identifier, used as a dependency to refetch context if needed.
- * @returns An object containing the fetched context data and a loading state indicator:
- *          { selectionText, currentApp, browserContent, isLoading }
- */
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
   const [currentApp, setCurrentApp] = useState("");
@@ -66,23 +54,11 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       return text;
     };
 
-    /**
-     * Fetches the name of the frontmost application.
-     *
-     * @returns A promise resolving to the application name.
-     */
     const fetchFrontmostApp = async (): Promise<string> => {
       const app = await getFrontmostApplication();
       return app.name;
     };
 
-    /**
-     * Fetches the content (Markdown format) of the active browser tab using BrowserExtension API.
-     * Handles potential errors (e.g., no browser active, extension not available) gracefully
-     * by returning an empty string.
-     *
-     * @returns A promise resolving to the browser tab content (Markdown) or an empty string.
-     */
     const fetchBrowserContent = async (): Promise<string> => {
       try {
         const content = await BrowserExtension.getContent({ format: "markdown" });
@@ -93,12 +69,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       }
     };
 
-    /**
-     * Fetches the list of all installed applications.
-     * Handles potential errors gracefully by returning an empty string.
-     *
-     * @returns A promise resolving to a comma-separated list of application names.
-     */
     const fetchAllApps = async (): Promise<string> => {
       try {
         const apps = await getApplications();
@@ -118,15 +88,12 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         fetchedBrowserContent = await fetchBrowserContent();
       }
 
-      // If an initial selection text is provided (e.g., from URL arguments),
-      // prefer it and attempt to parse as a file path just like Finder selection.
       if (initialSelectionText && initialSelectionText.trim()) {
         const rawInitial = initialSelectionText.trim();
         const processed = processSelectedText(rawInitial);
 
         let initialDiff = "";
         try {
-          // Try to extract path from placeholder/wrapped form or validate raw path
           let pathCandidate: string | undefined;
 
           const match = processed.match(/\{\{file:([^}]+)\}\}/);
@@ -137,7 +104,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
               fs.statSync(rawInitial);
               pathCandidate = rawInitial;
             } catch {
-              // Not a valid path; leave pathCandidate undefined
+              // ignore
             }
           }
 
@@ -145,7 +112,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
             initialDiff = await getGitDiff(pathCandidate);
           }
         } catch {
-          // Ignore diff errors
+          // ignore
         }
 
         setSelectionText(processed);
@@ -153,10 +120,9 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         setAllApp(fetchedAllApps);
         setBrowserContent(fetchedBrowserContent);
         setDiff(initialDiff);
-        return; // Short-circuit: we've handled initialSelectionText
+        return;
       }
 
-      // Get selection text and diff
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {

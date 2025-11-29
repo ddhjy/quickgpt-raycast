@@ -28,7 +28,6 @@ export type PromptProps = {
   temporaryDirSource?: string;
 };
 
-// List of properties that should NOT be inherited from parent to child
 const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
   "subprompts",
   "identifier",
@@ -38,12 +37,6 @@ const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
   "textInputs",
 ];
 
-/**
- * Manages loading, parsing, processing, and accessing prompt templates.
- * Reads prompts from HJSON files located in configured directories or default paths.
- * Handles nested prompts (subprompts) and content loading from external files.
- * Generates unique identifiers for prompts if not provided.
- */
 class PromptManager {
   private promptFilePaths: string[];
   private prompts: PromptProps[] = [];
@@ -53,22 +46,11 @@ class PromptManager {
   private readonly CACHE_KEY_DATA = "prompts_data_v1";
   private readonly CACHE_KEY_SIG = "prompts_signature_v1";
 
-  /**
-   * Initializes the PromptManager by determining prompt file paths based on preferences
-   * and loading all prompts from those paths.
-   */
   constructor() {
     this.promptFilePaths = this.getPromptFilePaths();
     this.loadAllPrompts();
   }
 
-  /**
-   * Determines the list of file and directory paths to load prompts from.
-   * Combines default paths, user-configured files, and user-configured directories
-   * specified in the extension preferences. Always includes the system prompts file.
-   *
-   * @returns An array of absolute file and directory paths.
-   */
   private getPromptFilePaths(): string[] {
     const customPromptDirectories = configurationManager.getDirectories("prompts");
 
@@ -92,14 +74,6 @@ class PromptManager {
     return Array.from(new Set(allPaths));
   }
 
-  /**
-   * Loads and parses prompts from a single HJSON file synchronously.
-   * Handles potential file reading or parsing errors.
-   * Processes each loaded prompt to load content from external files if specified.
-   *
-   * @param filePath The absolute path to the HJSON prompt file.
-   * @returns An array of PromptProps loaded from the file, or an empty array if an error occurs.
-   */
   private loadPromptsFromFileSync(filePath: string): PromptProps[] {
     try {
       const data = fs.readFileSync(filePath, "utf-8");
@@ -119,9 +93,7 @@ class PromptManager {
         const parsedObject = parsed as Record<string, unknown>;
         if (parsedObject.rootProperty && typeof parsedObject.rootProperty === "object") {
           const fileRootProperty = parsedObject.rootProperty as Partial<PromptProps>;
-          // Merge global default values (later values overwrite earlier ones)
           this.mergedRootProperties = { ...this.mergedRootProperties, ...fileRootProperty };
-          // console.log(`Merged rootProperty from ${filePath}`, fileRootProperty); // Optional debug log
 
           if (parsedObject.prompts && Array.isArray(parsedObject.prompts)) {
             promptsData = parsedObject.prompts.filter((item) => typeof item === "object" && item !== null) as Record<
@@ -165,7 +137,6 @@ class PromptManager {
       }
 
       return prompts.map((prompt: PromptProps) => {
-        // Handle actions field: convert string format to array if needed
         if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
           prompt.actions = (prompt as PromptProps & { actions: string }).actions
             .split(",")
@@ -173,14 +144,12 @@ class PromptManager {
             .filter((action) => action.length > 0);
         }
 
-        // loadPromptContentFromFileSync remains largely unchanged unless content needs file loading
         const processedPrompt = this.loadPromptContentFromFileSync(prompt, baseDir);
-        processedPrompt.filePath = filePath; // Assign the file path
+        processedPrompt.filePath = filePath;
 
-        // Add temporary directory flag and source directory
         if (isTemporarySource) {
           processedPrompt.isTemporary = true;
-          processedPrompt.temporaryDirSource = tempDirSource; // Add temporary directory source to prompt properties
+          processedPrompt.temporaryDirSource = tempDirSource;
         }
 
         return processedPrompt;
@@ -191,12 +160,6 @@ class PromptManager {
     }
   }
 
-  /**
-   * Loads prompts from all configured file paths.
-   * Distinguishes between files and directories, traversing directories recursively.
-   * Processes the combined list of prompts after loading.
-   * Uses caching mechanism to improve performance by avoiding redundant file reads and parsing.
-   */
   private loadAllPrompts(): void {
     this.prompts = [];
     this.mergedRootProperties = {};
@@ -251,13 +214,6 @@ class PromptManager {
     }
   }
 
-  /**
-   * Recursively traverses a directory to find and load prompts from HJSON files.
-   * Ignores files starting with '#'.
-   *
-   * @param directoryPath The absolute path to the directory to traverse.
-   * @returns An array of PromptProps found within the directory and its subdirectories.
-   */
   private traverseDirectorySync(directoryPath: string): PromptProps[] {
     try {
       return fs
@@ -283,24 +239,11 @@ class PromptManager {
     }
   }
 
-  /**
-   * Checks if a given file path corresponds to a prompt file (HJSON).
-   *
-   * @param filePath The path to check.
-   * @returns True if the file has a .hjson extension, false otherwise.
-   */
   private isPromptFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
     return fileName.endsWith(".hjson");
   }
 
-  /**
-   * Calculates a signature (fingerprint) of the current workspace state.
-   * The signature is based on file paths and modification times (mtime).
-   * Used to detect changes in prompt files and invalidate cache when necessary.
-   *
-   * @returns A unique hash representing the current state of all prompt files.
-   */
   private calculateWorkspaceSignature(): string {
     try {
       const signatures: string[] = [];
@@ -327,7 +270,7 @@ class PromptManager {
             signatures.push(`${targetPath}:${stat.mtimeMs}`);
           }
         } catch {
-          // Ignore inaccessible files
+          // ignore
         }
       };
 
@@ -340,15 +283,6 @@ class PromptManager {
     }
   }
 
-  /**
-   * Recursively processes a prompt and its subprompts to load content specified
-   * via file paths in the `content` property (if applicable, though current structure might not use this).
-   * This method seems primarily focused on processing subprompts recursively.
-   *
-   * @param prompt The prompt object to process.
-   * @param baseDir The base directory for resolving relative file paths (usually the directory of the HJSON file).
-   * @returns The processed prompt object.
-   */
   private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
     if (Array.isArray(prompt.subprompts)) {
       prompt.subprompts = prompt.subprompts.map((subprompt) => this.loadPromptContentFromFileSync(subprompt, baseDir));
@@ -356,15 +290,6 @@ class PromptManager {
     return prompt;
   }
 
-  /**
-   * Processes a list of prompts recursively.
-   * Assigns generated identifiers, calculates hierarchical paths, and inherits properties
-   * like actions, prefix, icon, and filePath from parent prompts.
-   *
-   * @param prompts The array of prompts to process.
-   * @param parentPrompt Optional parent prompt for context (inheritance, path calculation).
-   * @returns The array of processed prompts.
-   */
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map((prompt) => {
       const baseProperties: Partial<PromptProps> = { ...this.mergedRootProperties };
@@ -385,7 +310,6 @@ class PromptManager {
 
       prompt = { ...baseProperties, ...prompt };
 
-      // Handle actions field: convert string format to array if needed
       if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
         prompt.actions = (prompt as PromptProps & { actions: string }).actions
           .split(",")
@@ -403,7 +327,6 @@ class PromptManager {
 
       prompt = this.processPrompt(prompt);
 
-      // 如果 content 为空，则把 title 复制一份给 content
       if (!prompt.content) {
         prompt.content = prompt.title;
       }
@@ -419,14 +342,6 @@ class PromptManager {
     });
   }
 
-  /**
-   * Processes a single prompt to ensure it has a unique identifier.
-   * If no identifier is provided, generates one based on a hash of its title,
-   * emojis, and placeholder names.
-   *
-   * @param prompt The prompt object to process.
-   * @returns The processed prompt object with an identifier.
-   */
   private processPrompt(prompt: PromptProps): PromptProps {
     if (!prompt.identifier) {
       const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
@@ -445,13 +360,7 @@ class PromptManager {
     return prompt;
   }
 
-  /**
-   * Returns the array of all loaded and processed root-level prompts.
-   *
-   * @returns An array of PromptProps representing the root prompts.
-   */
   public getRootPrompts(): PromptProps[] {
-    // Filter out any prompts that might be nested as subprompts elsewhere
     const allSubpromptIds = new Set<string>();
     const collectSubpromptIds = (p: PromptProps) => {
       if (p.subprompts) {
@@ -466,12 +375,6 @@ class PromptManager {
     return this.prompts.filter((p) => !allSubpromptIds.has(p.identifier));
   }
 
-  /**
-   * Returns a flattened list of all prompts (including subprompts) that satisfy the filter function.
-   *
-   * @param filterFn A function that takes a PromptProps object and returns true if it should be included.
-   * @returns A flattened array of PromptProps matching the filter.
-   */
   public getFilteredPrompts(filterFn: (prompt: PromptProps) => boolean): PromptProps[] {
     let results: PromptProps[] = [];
     this.prompts.forEach((prompt) => {
@@ -480,13 +383,6 @@ class PromptManager {
     return results;
   }
 
-  /**
-   * Recursively collects prompts (and subprompts) that satisfy the filter function.
-   *
-   * @param prompt The current prompt object to check.
-   * @param filterFn The filter function.
-   * @returns An array of PromptProps matching the filter within this branch of the hierarchy.
-   */
   private collectFilteredPrompts(prompt: PromptProps, filterFn: (prompt: PromptProps) => boolean): PromptProps[] {
     let collected: PromptProps[] = [];
     if (filterFn(prompt)) {
@@ -500,12 +396,6 @@ class PromptManager {
     return collected;
   }
 
-  /**
-   * Finds the first prompt (including subprompts) that satisfies the filter function using depth-first search.
-   *
-   * @param filterFn A function that takes a PromptProps object and returns true if it matches.
-   * @returns The first matching PromptProps object, or undefined if no match is found.
-   */
   public findPrompt(filterFn: (prompt: PromptProps) => boolean): PromptProps | undefined {
     const findRecursively = (promptsToSearch: PromptProps[]): PromptProps | undefined => {
       for (const prompt of promptsToSearch) {
@@ -524,11 +414,6 @@ class PromptManager {
     return findRecursively(this.prompts);
   }
 
-  /**
-   * Reloads all prompts from the configured file paths.
-   * This clears the current prompts and re-runs the loading and processing steps.
-   * Also invalidates the cache to force a fresh load.
-   */
   public reloadPrompts(): void {
     console.log("Reloading prompts...");
     configurationManager.clearCache();

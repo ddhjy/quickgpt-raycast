@@ -52,22 +52,6 @@ interface PromptListItemProps {
   currentPath?: string;
 }
 
-/**
- * Renders a single item in the prompt list.
- * Generates the appropriate UI and ActionPanel based on the prompt type (regular, folder, options, special).
- *
- * @param props The component props.
- * @param props.prompt The prompt data for this list item.
- * @param props.index The index of the item in the list.
- * @param props.replacements Base replacements without clipboard.
- * @param props.searchMode Indicates if the parent list is in search mode.
- * @param props.promptSpecificRootDir The specific root directory containing this prompt, if applicable.
- * @param props.allowedActions Optional list of allowed action names for this prompt.
- * @param props.onPinToggle Callback function to handle pinning/unpinning.
- * @param props.activeSearchText The current text in the search bar (if not in search mode).
- * @param props.scripts List of available scripts.
- * @param props.onRefreshNeeded Callback function to refresh the prompt list.
- */
 export function PromptListItem({
   prompt,
   // index parameter not used, but kept for interface consistency
@@ -88,7 +72,6 @@ export function PromptListItem({
   const [temporaryDirs, setTemporaryDirs] = useState<TemporaryDirectoryWithExpiry[]>([]);
 
   useEffect(() => {
-    // For manage-temporary-directory item, perform a one-time fetch only; no periodic refresh
     if (prompt.identifier === "manage-temporary-directory") {
       setTemporaryDirs(getActiveTemporaryDirectoriesWithExpiry());
     }
@@ -104,10 +87,7 @@ export function PromptListItem({
     resolveFile: false,
   });
 
-  // Apply placeholder formatting to the actual prompt title
   const formattedActualTitle = formattedTitleWithPlaceholders;
-
-  // Initialize displayTitle with the formatted actual title
   let displayTitle = formattedActualTitle;
 
   if (searchMode && prompt.path) {
@@ -145,7 +125,6 @@ export function PromptListItem({
     displayTitle = formattedTitleWithPlaceholders;
   }
 
-  // Dynamic title and icon
   let displayIcon: string | Image.Asset = prompt.icon ?? "🔖";
 
   if (prompt.identifier === "manage-temporary-directory") {
@@ -167,7 +146,6 @@ export function PromptListItem({
     displayIcon = Icon.Folder;
   }
 
-  // Handle Settings related options icons
   if (prompt.identifier === "open-scripts-dir") {
     const scriptDirs = configurationManager.getDirectories("scripts");
     if (scriptDirs.length > 0) {
@@ -178,13 +156,11 @@ export function PromptListItem({
     displayIcon = Icon.Gear;
   }
 
-  // Memoize placeholder icons
   const placeholderIcons = useMemo(
     () => getPlaceholderIcons(prompt.content, replacements),
     [prompt.content, replacements],
   );
 
-  // Memoize prompt actions
   const promptActions = useMemo(() => {
     if (prompt.identifier === "manage-temporary-directory") {
       return (
@@ -225,17 +201,14 @@ export function PromptListItem({
         />
       );
     } else if (prompt.subprompts) {
-      // Actions for folder type prompts
       const folderActions: React.ReactElement[] = [];
 
-      // Extract custom placeholder arguments from replacements
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { selection, currentApp, allApp, browserContent, input, diff, clipboard, ...customPlaceholderArgs } =
         replacements;
 
       const newPath = currentPath ? `${currentPath} / ${prompt.title}` : prompt.title;
 
-      // 1. Open folder action (usually the primary action)
       folderActions.push(
         <Action.Push
           key="open-folder"
@@ -258,7 +231,6 @@ export function PromptListItem({
         />,
       );
 
-      // 2. Add Pin/Unpin action for folders
       if (onPinToggle) {
         folderActions.push(
           <Action
@@ -273,7 +245,6 @@ export function PromptListItem({
         );
       }
 
-      // 3. Add "Edit with xxx" action for folders
       if (prompt.filePath) {
         const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
         const editorApp = customEditor;
@@ -295,7 +266,6 @@ export function PromptListItem({
 
               try {
                 let openCommand: string;
-                // 默认打开仓库根目录，而不是文件所在目录
                 const fileDir = path.dirname(prompt.filePath);
                 let configDir = fileDir;
                 const repoRoot = await findRepoRoot(prompt.filePath);
@@ -330,14 +300,13 @@ export function PromptListItem({
         );
       }
 
-      // 4. If sourced from temporary directory, add action to remove source directory
       if (prompt.isTemporary && prompt.temporaryDirSource) {
-        const tempDirSourcePath = prompt.temporaryDirSource; // Closure capture
+        const tempDirSourcePath = prompt.temporaryDirSource;
         folderActions.push(
           <Action
             key={`remove-folder-temp-dir-${tempDirSourcePath}`}
             title="Remove Temp Dir"
-            icon={Icon.Eject} // Or Icon.Trash
+            icon={Icon.Eject}
             style={Action.Style.Destructive}
             onAction={async () => {
               removeTemporaryDirectory(tempDirSourcePath);
@@ -350,15 +319,13 @@ export function PromptListItem({
                 "Temporary Directory Removed",
                 `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
               );
-              // If the current view is this folder or its children, go back to the previous level
               navigation.pop();
             }}
           />,
         );
       }
-      return <>{folderActions}</>; // Return wrapped in React Fragment
+      return <>{folderActions}</>;
     } else {
-      // 1. 首先，为所有 prompt 生成标准的 Action 列表
       const standardActions = generatePromptActions(
         prompt,
         replacements,
@@ -370,16 +337,13 @@ export function PromptListItem({
         onPinToggle,
       );
 
-      // 转换为可变数组
       const finalActions = standardActions ? [...standardActions] : [];
 
-      // 2. 检查是否存在需要配置的 options
       const usedOptionKeys = findUsedOptionPlaceholders(prompt, replacements);
       const directOptionKeys = findOptionPlaceholders(prompt);
       const allOptionKeys = [...new Set([...usedOptionKeys, ...directOptionKeys])];
       const hasOptions = allOptionKeys.length > 0 || (prompt.options && Object.keys(prompt.options).length > 0);
 
-      // 3. 如果存在 options，则在 Action 列表的最前面添加 "Configure Options"
       if (hasOptions) {
         const configureOptionsAction = (
           <Action.Push
@@ -393,15 +357,13 @@ export function PromptListItem({
                 baseReplacements={replacements}
                 promptSpecificRootDir={promptSpecificRootDir}
                 scripts={scripts}
-              />
-            }
-          />
+            />
+          }
+        />
         );
-        // 将 "Configure Options" 插入到列表的最前面
         finalActions.unshift(configureOptionsAction);
       }
 
-      // 4. 返回最终的 Action 列表
       return <>{finalActions.length > 0 ? finalActions : null}</>;
     }
   }, [
@@ -415,9 +377,7 @@ export function PromptListItem({
     temporaryDirs,
   ]);
 
-  // Create accessories to display remaining time
   const getAccessories = () => {
-    // For settings-related options, don't display any accessory icons
     if (
       prompt.identifier === "manage-temporary-directory" ||
       prompt.identifier === "open-preferences" ||
@@ -490,7 +450,6 @@ export function PromptListItem({
                                   style={Action.Style.Destructive}
                                   onAction={() => {
                                     inputHistoryStore.removeFromHistory(item);
-                                    // Refresh the list by re-creating it
                                     navigation.pop();
                                     navigation.push(
                                       <List>
@@ -532,7 +491,6 @@ export function PromptListItem({
                 shortcut={{ modifiers: ["cmd", "shift"], key: "y" }}
                 onAction={async () => {
                   try {
-                    // Read clipboard history (up to 6 items)
                     const clipboardHistory: { text: string; offset: number }[] = [];
 
                     for (let offset = 0; offset < 6; offset++) {
@@ -542,7 +500,6 @@ export function PromptListItem({
                           clipboardHistory.push({ text, offset });
                         }
                       } catch {
-                        // If reading fails, no more history available
                         break;
                       }
                     }
@@ -622,5 +579,4 @@ export function PromptListItem({
   );
 }
 
-// Use React.memo to prevent unnecessary re-renders
 export const MemoizedPromptListItem = React.memo(PromptListItem);

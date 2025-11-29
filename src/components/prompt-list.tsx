@@ -10,26 +10,11 @@ import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
 import { useInputHistory } from "../hooks/use-input-history";
 import configurationManager from "../managers/configuration-manager";
 
-/**
- * Normalizes text for search by removing spaces and punctuation,
- * keeping only Unicode letters and numbers, and converting to lowercase.
- * Special characters at the beginning of the text are preserved.
- * This enables flexible matching that ignores formatting differences.
- *
- * @param text The text to normalize
- * @returns The normalized text
- */
 const normalizeTextForSearch = (text: string): string => {
   const lowerText = text.toLowerCase();
-
-  // Extract leading special characters (non-letter, non-number)
   const leadingSpecialMatch = lowerText.match(/^[^\p{L}\p{N}]+/u);
   const leadingSpecial = leadingSpecialMatch ? leadingSpecialMatch[0] : "";
-
-  // Remove all non-letter and non-number Unicode characters
   const normalizedBody = lowerText.replace(/[^\p{L}\p{N}]/gu, "");
-
-  // Combine leading special characters with the normalized body
   return leadingSpecial + normalizedBody;
 };
 
@@ -59,20 +44,6 @@ interface PromptListProps {
   currentPath?: string;
 }
 
-/**
- * Component for displaying a list of prompts.
- * Handles search, pinning, dynamic content replacement, and navigation.
- *
- * @param props The component props.
- * @param props.prompts The list of prompts to display.
- * @param props.searchMode Whether the list is in search mode (true) or input mode (false).
- * @param props.selectionText Current selected text content.
- * @param props.currentApp Name of the frontmost application.
- * @param props.browserContent Content fetched from the active browser tab.
- * @param props.allowedActions Optional list of allowed action names for the prompts.
- * @param props.initialScripts Optional initial list of scripts (avoids re-fetching).
- * @param props.externalOnRefreshNeeded Optional callback from parent to trigger a full refresh.
- */
 export function PromptList({
   prompts: initialPrompts,
   searchMode = false,
@@ -87,7 +58,6 @@ export function PromptList({
   placeholderArgs = {},
   currentPath = "",
 }: PromptListProps) {
-  // Replace original searchText state with input history hook
   const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
   const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
@@ -108,12 +78,10 @@ export function PromptList({
   const forceUpdate = () => setRefreshKey((prev) => prev + 1);
   const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
 
-  // Function to get display text for "Last Used" option
   const getLastUsedActionDisplay = () => {
     const mostFrequentAction = defaultActionPreferenceStore.getLastExecutedAction();
     if (!mostFrequentAction || mostFrequentAction === "" || mostFrequentAction === "lastUsed") return "Last Used";
 
-    // Only scripts are recorded in Last Used now
     if (mostFrequentAction.startsWith("script_")) {
       const scriptName = mostFrequentAction.replace("script_", "").replace(/^Raycast\s+/, "");
       return `Last: ${scriptName}`;
@@ -140,17 +108,12 @@ export function PromptList({
 
     if (searchMode && searchText.trim().length > 0) {
       const trimmedSearchText = searchText.trim();
-      // Normalize the search text for flexible matching
       const normalizedSearchText = normalizeTextForSearch(trimmedSearchText);
 
       result = sourcePrompts.filter((prompt) => {
-        // Normalize the title to match against the normalized search text
         const normalizedTitle = normalizeTextForSearch(prompt.title);
         const titleMatch = normalizedTitle.includes(normalizedSearchText);
-
-        // Keep the original pinyin matching logic with the original text
         const pinyinMatch = !!match(prompt.title, trimmedSearchText, { continuous: true });
-
         return titleMatch || pinyinMatch;
       });
     } else {
@@ -347,7 +310,6 @@ export function PromptList({
       searchText={searchText}
       filtering={false}
       onSelectionChange={() => {
-        // Reset history navigation when user uses arrow keys to select list items
         if (!searchMode) {
           resetHistory();
         }

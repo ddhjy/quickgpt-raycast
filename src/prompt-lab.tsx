@@ -12,55 +12,38 @@ interface ExtendedArguments extends Arguments.PromptLab {
   target?: string;
   actions?: string;
   filePath?: string;
-  // 增加索引签名，以支持任意占位符参数
   [key: string]: unknown;
 }
 
-/**
- * The main entry point component for the QuickGPT Raycast command.
- * It determines the initial context (selection, app, etc.), fetches prompts,
- * handles "quick prompts" based on selection/target, and renders the appropriate PromptList.
- *
- * @param props The launch properties provided by Raycast.
- * @param props.arguments Launch arguments, including potential initial text, target prompt identifier, and allowed actions.
- */
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
-  // 使用 rest 语法捕获所有额外的参数作为占位符
   const { initialSelectionText, selection, target, actions, filePath, ...placeholderArgs } = props.arguments;
 
-  // Convert actions string to array
   const allowedActions = actions?.split(",").filter(Boolean);
 
   const initialSelection = (typeof selection === "string" && selection) || initialSelectionText;
 
   const { selectionText, currentApp, allApp, browserContent, diff } = useInitialContext(initialSelection, target);
 
-  // Get pinned prompts
   const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
   const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
     prompt.pinned = pinnedIdentifiers.includes(prompt.identifier);
     return prompt.pinned;
   });
 
-  // Get quick prompt
   const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target, filePath);
 
-  // Prepare the list of prompts to display
   const availablePrompts = quickPrompt?.subprompts
     ? quickPrompt.subprompts
     : quickPrompt
       ? [quickPrompt]
       : [...pinnedPrompts, ...promptManager.getRootPrompts()];
 
-  // Determine the effective selected text
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
 
-  // Deduplicate the prompt list
   const uniquePrompts = Array.from(new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title)))
     .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
     .filter(Boolean) as PromptProps[];
 
-  // Render the prompt list component
   return (
     <PromptList
       searchMode={!quickPrompt}
@@ -71,7 +54,6 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       browserContent={browserContent}
       allowedActions={allowedActions}
       diff={diff}
-      // 将捕获的占位符参数传递给子组件
       placeholderArgs={placeholderArgs}
     />
   );

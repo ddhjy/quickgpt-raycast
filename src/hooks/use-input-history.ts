@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import inputHistoryStore from "../stores/input-history-store";
 
-/**
- * Custom hook for managing input history navigation
- * Provides functionality to navigate through history with keyboard
- */
 export function useInputHistory(initialValue: string = "") {
   const [currentInput, setCurrentInput] = useState(initialValue);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -24,7 +20,6 @@ export function useInputHistory(initialValue: string = "") {
       let newIndex = historyIndex;
 
       if (direction === "up") {
-        // Save current input if we're at the beginning
         if (historyIndex === -1 && currentInput.trim()) {
           setTemporaryInput(currentInput);
         }
@@ -33,7 +28,6 @@ export function useInputHistory(initialValue: string = "") {
           newIndex = historyIndex + 1;
         }
       } else {
-        // Navigate down
         if (historyIndex > -1) {
           newIndex = historyIndex - 1;
         }
@@ -42,7 +36,6 @@ export function useInputHistory(initialValue: string = "") {
       setHistoryIndex(newIndex);
 
       if (newIndex === -1) {
-        // Restore temporary input or clear
         setCurrentInput(temporaryInput);
       } else if (newIndex < historyLength) {
         setCurrentInput(history[newIndex]);

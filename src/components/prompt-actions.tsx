@@ -39,20 +39,6 @@ interface ActionItem {
   action: ActionWithPossibleProps;
 }
 
-/**
- * Generates a sorted list of Raycast Action elements based on the prompt definition,
- * global preferences, and available scripts. AI actions now trigger a deeplink.
- *
- * @param prompt The prompt object to generate actions for
- * @param baseReplacements Base replacements without clipboard
- * @param promptSpecificRootDir Root directory for file placeholder resolution
- * @param actions An optional array of action names specified in the prompt definition.
- * @param scripts An array of available script information.
- * @param navigation The Navigation object from useNavigation() hook.
- * @param onRefreshNeeded A callback function to be called when the prompt manager needs to refresh
- * @param onPinToggle A callback function to handle pinning/unpinning prompts
- * @returns An array of React elements representing the sorted Raycast Actions.
- */
 export function generatePromptActions(
   prompt: PromptProps,
   baseReplacements: Omit<SpecificReplacements, "clipboard">,
@@ -77,12 +63,10 @@ export function generatePromptActions(
     actionName?: string,
   ) => {
     return async () => {
-      // Only record script actions in Last Used (exclude basic actions like Copy, Paste)
       if (actionName && actionName !== "lastUsed" && actionName.startsWith("script_")) {
         defaultActionPreferenceStore.saveLastExecutedAction(actionName);
       }
 
-      // Save input to history if there's any input
       if (baseReplacements.input && baseReplacements.input.trim()) {
         inputHistoryStore.addToHistory(baseReplacements.input);
       }
@@ -254,7 +238,6 @@ export function generatePromptActions(
 
               try {
                 let openCommand: string;
-                // 默认打开仓库根目录，而不是文件所在目录
                 const fileDir = path.dirname(prompt.filePath);
                 let configDir = fileDir;
                 const repoRoot = await findRepoRoot(prompt.filePath);
@@ -346,14 +329,12 @@ export function generatePromptActions(
     const nameA = getNameForSort(a.name);
     const nameB = getNameForSort(b.name);
 
-    // 首先按类型排序：脚本操作优先于基础操作
     const isScriptA = a.name.startsWith("script_");
     const isScriptB = b.name.startsWith("script_");
 
     if (isScriptA && !isScriptB) return -1;
     if (!isScriptA && isScriptB) return 1;
 
-    // 同类型内部按照 finalActions 中的顺序排序
     const indexA = finalActions.findIndex((name) => name.toLowerCase() === nameA);
     const indexB = finalActions.findIndex((name) => name.toLowerCase() === nameB);
 
@@ -367,7 +348,6 @@ export function generatePromptActions(
   let defaultActionItem: ActionItem | undefined;
 
   if (defaultActionPreference === "lastUsed") {
-    // Get the last actually executed action
     const lastExecutedAction = defaultActionPreferenceStore.getLastExecutedAction();
     if (lastExecutedAction) {
       const preferenceBaseName = lastExecutedAction.replace(/^(script_|call\s+)/, "");
@@ -385,19 +365,16 @@ export function generatePromptActions(
   const resultActions: React.ReactElement[] = [];
   const actionNames = new Set<string>();
 
-  // Separate actions into groups
   const pinnedActionsGroup: ActionItem[] = [];
   const scriptActionsGroup: ActionItem[] = [];
   const baseActionsGroup: ActionItem[] = [];
   const otherActionsGroup: ActionItem[] = [];
 
-  // Add default action to pinned group (highest priority)
   if (defaultActionItem) {
     pinnedActionsGroup.push(defaultActionItem);
     actionNames.add(defaultActionItem.name);
   }
 
-  // Add actions specified in finalActions to pinned group (in order)
   finalActions.forEach((actionName) => {
     const matchingAction = eligibleActions.find((item) => {
       const itemName = item.name.toLowerCase().replace(/^script_/, "");
@@ -410,7 +387,6 @@ export function generatePromptActions(
     }
   });
 
-  // Categorize remaining actions
   eligibleActions.forEach((item) => {
     if (!actionNames.has(item.name)) {
       if (item.name.startsWith("script_")) {
@@ -426,14 +402,10 @@ export function generatePromptActions(
     }
   });
 
-  // Create sections for grouped display
-  // Pinned actions group (always show if exists, but only create section if multiple actions)
   if (pinnedActionsGroup.length > 0) {
     if (pinnedActionsGroup.length === 1) {
-      // Single pinned action, don't create section
       resultActions.push(React.cloneElement(pinnedActionsGroup[0].action, { key: pinnedActionsGroup[0].name }));
     } else {
-      // Multiple pinned actions, create section
       resultActions.push(
         <ActionPanel.Section key="pinned-actions" title="Pinned Actions">
           {
@@ -448,10 +420,8 @@ export function generatePromptActions(
 
   if (scriptActionsGroup.length > 0) {
     if (scriptActionsGroup.length === 1) {
-      // Single script action, don't create section
       resultActions.push(React.cloneElement(scriptActionsGroup[0].action, { key: scriptActionsGroup[0].name }));
     } else {
-      // Multiple script actions, create section
       resultActions.push(
         <ActionPanel.Section key="script-actions" title="Script Actions">
           {
@@ -466,12 +436,10 @@ export function generatePromptActions(
 
   if (baseActionsGroup.length > 0) {
     if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length <= 2) {
-      // No pinned actions, no scripts, and few base actions, don't create section
       baseActionsGroup.forEach((item) => {
         resultActions.push(React.cloneElement(item.action, { key: item.name }));
       });
     } else {
-      // Create section for base actions
       resultActions.push(
         <ActionPanel.Section key="base-actions" title="Basic Actions">
           {
@@ -486,12 +454,10 @@ export function generatePromptActions(
 
   if (otherActionsGroup.length > 0) {
     if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length === 0) {
-      // Only other actions, don't create section
       otherActionsGroup.forEach((item) => {
         resultActions.push(React.cloneElement(item.action, { key: item.name }));
       });
     } else {
-      // Create section for other actions
       resultActions.push(
         <ActionPanel.Section key="other-actions" title="Other Actions">
           {
@@ -504,7 +470,6 @@ export function generatePromptActions(
     }
   }
 
-  // Fallback: if no actions were added, add the default copy action
   if (resultActions.length === 0) {
     const copyAction = baseActionItems.find((a) => a.name === "copyToClipboard");
     if (copyAction) {

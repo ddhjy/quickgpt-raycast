@@ -1,7 +1,7 @@
 import { Cache } from "@raycast/api";
 
 const CACHE_KEY = "temporaryPromptDirectories";
-const EXPIRY_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days (1 month) in milliseconds
+const EXPIRY_DURATION = 30 * 24 * 60 * 60 * 1000;
 
 export interface TemporaryDirectoryInfo {
   path: string;
@@ -16,7 +16,6 @@ export interface TemporaryDirectoryWithExpiry extends TemporaryDirectoryInfo {
 
 const cache = new Cache();
 
-// Calculate remaining time for directory
 export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): TemporaryDirectoryWithExpiry {
   const now = Date.now();
   const elapsedMs = now - dirInfo.lastUsedAt;
@@ -45,13 +44,11 @@ export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): Tempora
   };
 }
 
-// Get list of all active temporary directories with expiration information
 export function getActiveTemporaryDirectoriesWithExpiry(): TemporaryDirectoryWithExpiry[] {
   const dirInfos = getActiveTemporaryDirectories();
   return dirInfos.map(calculateRemainingTime);
 }
 
-// Get list of all active temporary directories
 export function getActiveTemporaryDirectories(): TemporaryDirectoryInfo[] {
   const cachedData = cache.get(CACHE_KEY);
   if (!cachedData) return [];
@@ -62,7 +59,6 @@ export function getActiveTemporaryDirectories(): TemporaryDirectoryInfo[] {
 
     const validDirs = dirInfos.filter((info) => now - info.lastUsedAt <= EXPIRY_DURATION);
 
-    // If directories have expired, update the cache
     if (validDirs.length !== dirInfos.length) {
       console.log(`${dirInfos.length - validDirs.length} temporary directories expired. Removing.`);
       cache.set(CACHE_KEY, JSON.stringify(validDirs));
@@ -76,13 +72,11 @@ export function getActiveTemporaryDirectories(): TemporaryDirectoryInfo[] {
   }
 }
 
-// Check if the specified path is already added as a temporary directory
 export function isPathInTemporaryDirectories(dirPath: string): boolean {
   const dirs = getActiveTemporaryDirectories();
   return dirs.some((dir) => dir.path === dirPath);
 }
 
-// Add a new temporary directory
 export function addTemporaryDirectory(dirPath: string): void {
   if (isPathInTemporaryDirectories(dirPath)) {
     return;
@@ -98,7 +92,6 @@ export function addTemporaryDirectory(dirPath: string): void {
   console.log(`Temporary directory added: ${dirPath}`);
 }
 
-// Update usage time for specific temporary directory
 export function updateTemporaryDirectoryUsage(path: string): void {
   const dirInfos = getActiveTemporaryDirectories();
   const index = dirInfos.findIndex((dir) => dir.path === path);
@@ -119,7 +112,6 @@ export function updateAnyTemporaryDirectoryUsage(): void {
   }
 }
 
-// Remove specific temporary directory by path
 export function removeTemporaryDirectory(dirPath: string): void {
   const dirInfos = getActiveTemporaryDirectories();
   const filteredDirs = dirInfos.filter((dir) => dir.path !== dirPath);
@@ -130,7 +122,6 @@ export function removeTemporaryDirectory(dirPath: string): void {
   }
 }
 
-// Remove all temporary directories
 export function removeAllTemporaryDirectories(): void {
   const dirInfos = getActiveTemporaryDirectories();
 
