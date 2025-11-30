@@ -12,10 +12,6 @@ function escapeRegExp(string: string): string {
 }
 const FLINK_PREFIX_REGEX = new RegExp(`(${FLINK_PREFIXES.map(escapeRegExp).join("|")})`);
 
-/**
- * Gets the path aliases from preferences
- * @returns Record of alias keys and their replacement values
- */
 export function getPathAliases(): Record<string, string> {
   try {
     const preferences = getPreferenceValues<Preferences>();
@@ -35,31 +31,16 @@ export function getPathAliases(): Record<string, string> {
   }
 }
 
-/**
- * Expands a path using configured aliases and preprocessing
- * @param inputPath The path to expand
- * @returns The expanded path
- */
 export function expandPath(inputPath: string): string {
   let path = preprocessPath(inputPath);
   path = replacePath(path, getPathAliases(), true).replace(/\/+/g, "/");
   return path;
 }
 
-/**
- * Compresses a path using configured aliases (reverse of expandPath)
- * @param inputPath The path to compress
- * @returns The compressed path
- */
 export function compressPath(inputPath: string): string {
   return replacePath(inputPath, getPathAliases());
 }
 
-/**
- * Preprocesses the path by removing prefixes, markdown syntax, etc.
- * @param path The raw path string
- * @returns The cleaned path string
- */
 export function preprocessPath(path: string): string {
   path = path.split("\n")[0].trim();
   path = path.replace(/\[([^\]]+)\]/g, "$1.");
@@ -105,7 +86,6 @@ function performReverseReplacement(inputPath: string, pathsData: Array<{ path: s
         const before = result.slice(0, index);
         let after = result.slice(index + path.length);
 
-        // Treat dot as a separator if it follows an alias match
         if (after.startsWith(".")) {
           after = after.slice(1);
         }

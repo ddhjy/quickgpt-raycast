@@ -14,16 +14,6 @@ interface OptionsFormProps {
   scripts: ScriptInfo[];
 }
 
-/**
- * Component that renders a form for prompts requiring user-configurable options (dropdowns, text inputs).
- *
- * @param props The component props.
- * @param props.prompt The prompt data, including defined options and text inputs.
- * @param props.optionKeys List of option property names, used for dynamic option generation (new)
- * @param props.baseReplacements Base replacements without clipboard.
- * @param props.promptSpecificRootDir Root directory for file placeholder resolution.
- * @param props.scripts List of available scripts for the action panel.
- */
 export function PromptOptionsForm({
   prompt,
   optionKeys = [],
@@ -43,15 +33,12 @@ export function PromptOptionsForm({
     };
   }, [prompt.title]);
 
-  // Initialize default values for options
   useEffect(() => {
     const initialOptions: { [key: string]: string } = {};
 
-    // Handle options referenced by option:xxx
     optionKeys.forEach((key) => {
       const values = getPropertyByPath(prompt, key);
       if (Array.isArray(values) && values.length > 0) {
-        // Select the first option by default
         initialOptions[key] = String(values[0]);
       } else if (values && typeof values === "object" && Object.keys(values).length > 0) {
         const firstEntryValue = Object.values(values as Record<string, string>)[0];
@@ -59,7 +46,6 @@ export function PromptOptionsForm({
       }
     });
 
-    // Handle the traditional options object
     if (prompt.options) {
       Object.entries(prompt.options).forEach(([key, values]) => {
         if (!initialOptions[key]) {
@@ -78,24 +64,10 @@ export function PromptOptionsForm({
     }
   }, [prompt, optionKeys]);
 
-  /**
-   * Handles changes to dropdown form elements.
-   * Updates the state with the selected dropdown value.
-   *
-   * @param key The key (identifier) of the dropdown being changed.
-   * @param newValue The newly selected value.
-   */
   const handleDropdownChange = (key: string, newValue: string) => {
     setSelectedOptions({ ...selectedOptions, [key]: newValue });
   };
 
-  /**
-   * Handles changes to text field form elements.
-   * Updates the state with the entered text value.
-   *
-   * @param key The key (identifier) of the text field being changed.
-   * @param newValue The newly entered text.
-   */
   const handleTextFieldChange = (key: string, newValue: string) => {
     setSelectedTextInputs({ ...selectedTextInputs, [key]: newValue });
   };
@@ -119,7 +91,6 @@ export function PromptOptionsForm({
         </ActionPanel>
       }
     >
-      {/* Dynamically generate dropdown menus from properties specified by optionKeys */}
       {optionKeys.map((key) => {
         const values = getPropertyByPath(prompt, key);
 
@@ -158,7 +129,6 @@ export function PromptOptionsForm({
         return null;
       })}
 
-      {/* Dropdown menus generated from the traditional options object */}
       {Object.entries(prompt.options || {}).map(([key, values]) => {
         if (Array.isArray(values)) {
           return (
@@ -193,7 +163,6 @@ export function PromptOptionsForm({
         }
       })}
 
-      {/* Text input fields */}
       {Object.entries(prompt.textInputs || {}).map(([key, placeholder]) => (
         <Form.TextField
           key={key}

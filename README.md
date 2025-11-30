@@ -143,6 +143,22 @@ Add temporary prompt directories that automatically expire after 7 days:
 2. Choose "Manage Temporary Directory" from the Settings menu
 3. Select "Add Temporary Directory from Finder"
 
+#### Input History
+
+QuickGPT automatically saves your previously entered inputs for quick reuse:
+
+- Access history using `⌘ + Y` shortcut in input mode
+- History stores up to 50 most recent unique inputs
+- Select any previous input to reuse it instantly
+
+#### Clipboard History
+
+Access your recent clipboard entries:
+
+- Use `⌘ + Shift + Y` to view clipboard history
+- Browse up to 6 recent clipboard items
+- Select any item to copy it to the current clipboard
+
 #### Deeplinks
 
 Access specific prompts directly using deeplinks:
@@ -150,6 +166,14 @@ Access specific prompts directly using deeplinks:
 ```
 raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt-[identifier]"}
 ```
+
+**Placeholder Parameters**: You can pass custom placeholder values directly through DeepLink URLs. Any non-system field in the arguments will be treated as a placeholder parameter:
+
+```
+raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt-translate","input":"Hello","language":"Chinese"}
+```
+
+DeepLink parameters have the highest priority and will override context values.
 
 ## Prompt File Format
 
@@ -233,7 +257,9 @@ Prompts are defined in HJSON files with the following structure:
 | `{{now}}`            | `{{n}}`  | Current date and time                                |
 | `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                   |
 | `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content |
+| `{{diff}}`           |          | Git diff of selected file or current repository      |
 | `{{file:path}}`      |          | File or directory content                            |
+| `{{content:path}}`   |          | Raw file content without filename header             |
 | `{{option:key}}`     |          | Dropdown selection from array property               |
 | `{{property}}`       |          | Value from prompt property                           |
 | `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)               |
