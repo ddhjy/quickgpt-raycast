@@ -100,10 +100,10 @@ class PromptManager {
               string,
               unknown
             >[];
-          } else if (parsedObject.title) {
+          } else if (parsedObject.title || (parsedObject.content && typeof parsedObject.content === "string")) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { rootProperty, ...promptObject } = parsedObject;
-            if (Object.keys(promptObject).length > 0 && typeof promptObject.title === "string") {
+            if (Object.keys(promptObject).length > 0) {
               promptsData = [promptObject];
             }
           }
@@ -113,7 +113,7 @@ class PromptManager {
               string,
               unknown
             >[];
-          } else if (parsedObject.title) {
+          } else if (parsedObject.title || (parsedObject.content && typeof parsedObject.content === "string")) {
             promptsData = [parsedObject];
           }
         }
@@ -121,7 +121,14 @@ class PromptManager {
         console.warn(`Unsupported HJSON root structure in ${filePath}`);
       }
 
-      const prompts = promptsData.filter((p) => typeof p.title === "string") as PromptProps[];
+      const prompts = promptsData
+        .map((p) => {
+          if (!p.title && typeof p.content === "string" && p.content.trim().length > 0) {
+            p.title = p.content.trim().split("\n")[0].trim();
+          }
+          return p;
+        })
+        .filter((p) => typeof p.title === "string" && p.title.length > 0) as PromptProps[];
 
       const baseDir = path.dirname(filePath);
       const isTemporarySource = this.temporaryDirectoryPaths.some((tempDir) => filePath.startsWith(tempDir));
@@ -292,6 +299,10 @@ class PromptManager {
 
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
     return prompts.map((prompt) => {
+      if (!prompt.title && prompt.content) {
+        prompt.title = prompt.content.trim().split("\n")[0].trim();
+      }
+
       const baseProperties: Partial<PromptProps> = { ...this.mergedRootProperties };
 
       if (parentPrompt) {
