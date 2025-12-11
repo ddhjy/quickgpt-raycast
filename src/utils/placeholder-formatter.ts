@@ -268,19 +268,27 @@ export function placeholderFormatter(
 
     const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map, root, options);
 
-    if (resolvedValue.startsWith(FINDER_SELECTION_MARKER)) {
-      const actualValue = resolvedValue.substring(FINDER_SELECTION_MARKER.length);
+    if (resolvedValue.includes(FINDER_SELECTION_MARKER)) {
+      const processLine = (line: string): string => {
+        const actualValue = line.startsWith(FINDER_SELECTION_MARKER)
+          ? line.substring(FINDER_SELECTION_MARKER.length)
+          : line;
 
-      const filePathMatch = actualValue.match(/^{{file:([^}]+)}}$/);
-      if (filePathMatch && filePathMatch[1]) {
-        if (options.resolveFile) {
-          return resolveFilePlaceholderSync(filePathMatch[1], root);
-        } else {
+        const filePathMatch = actualValue.match(/^{{file:([^}]+)}}$/);
+        if (filePathMatch && filePathMatch[1]) {
+          if (options.resolveFile) {
+            return resolveFilePlaceholderSync(filePathMatch[1], root);
+          }
           return actualValue;
         }
-      }
 
-      return actualValue;
+        return actualValue;
+      };
+
+      return resolvedValue
+        .split("\n")
+        .map((line) => processLine(line))
+        .join("\n");
     }
 
     return resolvedValue;

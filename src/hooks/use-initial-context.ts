@@ -33,25 +33,54 @@ export function useInitialContext(initialSelectionText?: string, target?: string
     const finderMarker = "__IS_FINDER_SELECTION__";
 
     const processSelectedText = (text: string): string => {
-      if (text && text.trim()) {
-        const potentialPath = text.trim();
-        if (potentialPath.startsWith("{{") && potentialPath.endsWith("}}")) {
+      if (!text || !text.trim()) {
+        return text;
+      }
+
+      const trimmedText = text.trim();
+
+      if (trimmedText.startsWith("{{") && trimmedText.endsWith("}}")) {
+        return text;
+      }
+
+      const lines = trimmedText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (lines.length === 0) {
+        return text;
+      }
+
+      const resolvedPaths: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith("{{") && line.endsWith("}}")) {
           return text;
         }
 
-        const expandedPath = expandPath(potentialPath);
-        const candidates = expandedPath === potentialPath ? [expandedPath] : [expandedPath, potentialPath];
+        const expandedPath = expandPath(line);
+        const candidates = expandedPath === line ? [expandedPath] : [expandedPath, line];
 
+        let foundPath: string | null = null;
         for (const candidate of candidates) {
           try {
             fs.statSync(candidate);
-            return `${finderMarker}{{file:${candidate}}}`;
+            foundPath = candidate;
+            break;
           } catch {
             continue;
           }
         }
+
+        if (foundPath) {
+          resolvedPaths.push(foundPath);
+        } else {
+          return text;
+        }
       }
-      return text;
+
+      return resolvedPaths.map((p) => `${finderMarker}{{file:${p}}}`).join("\n");
     };
 
     const fetchFrontmostApp = async (): Promise<string> => {
