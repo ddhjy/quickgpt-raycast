@@ -255,38 +255,55 @@ class PromptManager {
     try {
       const signatures: string[] = [];
 
-      signatures.push(JSON.stringify(this.promptFilePaths));
+      // Make prompt paths stable across runs
+      const stablePromptPaths = Array.from(new Set(this.promptFilePaths)).sort();
+      signatures.push(JSON.stringify(stablePromptPaths));
 
-      const processPath = (targetPath: string) => {
+      // Only include data that can affect prompt loading:
+      // - `.hjson` file paths + mtime
+      // Exclude unrelated files (e.g. `.DS_Store`, temp files) to avoid false cache misses.
+      const promptFiles: string[] = [];
+
+      const collectPromptFiles = (targetPath: string) => {
         try {
           if (!fs.existsSync(targetPath)) return;
-          const stat = fs.statSync(targetPath);
+          const stat = fs.lstatSync(targetPath);
 
           if (stat.isDirectory()) {
-            signatures.push(`${targetPath}:${stat.mtimeMs}`);
             const entries = fs.readdirSync(targetPath);
-            signatures.push(entries.join(","));
-
-            entries.forEach((entry) => {
-              if (!entry.startsWith(".") && !entry.startsWith("#")) {
-                const fullPath = path.join(targetPath, entry);
-                processPath(fullPath);
-              }
-            });
+            for (const entry of entries) {
+              if (entry.startsWith(".") || entry.startsWith("#")) continue;
+              collectPromptFiles(path.join(targetPath, entry));
+            }
           } else if (this.isPromptFile(targetPath)) {
-            signatures.push(`${targetPath}:${stat.mtimeMs}`);
+            promptFiles.push(targetPath);
           }
         } catch {
           // ignore
         }
       };
 
-      this.promptFilePaths.forEach((p) => processPath(p));
+      stablePromptPaths.forEach((p) => collectPromptFiles(p));
+
+      promptFiles.sort();
+      for (const filePath of promptFiles) {
+        try {
+          if (!fs.existsSync(filePath)) {
+            signatures.push(`${filePath}:missing`);
+            continue;
+          }
+          const stat = fs.lstatSync(filePath);
+          signatures.push(`${filePath}:${stat.mtimeMs}`);
+        } catch {
+          signatures.push(`${filePath}:unstatable`);
+        }
+      }
 
       return md5(signatures.join("|"));
     } catch (error) {
       console.error("Failed to calculate signature", error);
-      return Date.now().toString();
+      // Returning empty string disables cache (safer than forcing a miss every time).
+      return "";
     }
   }
 
