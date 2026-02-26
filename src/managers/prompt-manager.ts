@@ -45,8 +45,17 @@ class PromptManager {
   private cache: Cache = new Cache();
   private readonly CACHE_KEY_DATA = "prompts_data_v1";
   private readonly CACHE_KEY_SIG = "prompts_signature_v1";
+  private readonly CACHE_KEY_FILE_HASHES = "prompts_file_hashes_v1";
+  private fileHashCache: Map<string, { mtimeMs: number; hash: string }>;
 
   constructor() {
+    try {
+      const cached = this.cache.get(this.CACHE_KEY_FILE_HASHES);
+      this.fileHashCache = cached ? new Map(JSON.parse(cached)) : new Map();
+    } catch {
+      this.fileHashCache = new Map();
+    }
+
     this.promptFilePaths = this.getPromptFilePaths();
     this.loadAllPrompts();
   }
@@ -181,14 +190,11 @@ class PromptManager {
         const parsedData = JSON.parse(cachedData);
         this.prompts = parsedData.prompts;
         this.mergedRootProperties = parsedData.mergedRootProperties;
-        console.log("Prompts loaded from cache (Fast Mode) ⚡️");
         return;
       } catch (e) {
         console.warn("Cache parse failed, falling back to file load", e);
       }
     }
-
-    console.log("Cache miss or outdated, reloading from disk...");
 
     this.prompts = this.promptFilePaths.flatMap((promptPath) => {
       try {
@@ -199,6 +205,7 @@ class PromptManager {
         } else if (this.isPromptFile(promptPath)) {
           return this.loadPromptsFromFileSync(promptPath);
         }
+        return [];
       } catch (error) {
         if (fs.existsSync(promptPath)) {
           console.error(`Error accessing prompt path: ${promptPath}`, error);
@@ -293,10 +300,25 @@ class PromptManager {
             continue;
           }
           const stat = fs.lstatSync(filePath);
-          signatures.push(`${filePath}:${stat.mtimeMs}`);
+          const cached = this.fileHashCache.get(filePath);
+          let hash: string;
+          if (cached && cached.mtimeMs === stat.mtimeMs) {
+            hash = cached.hash;
+          } else {
+            const content = fs.readFileSync(filePath, "utf-8");
+            hash = md5(content);
+            this.fileHashCache.set(filePath, { mtimeMs: stat.mtimeMs, hash });
+          }
+          signatures.push(`${filePath}:${hash}`);
         } catch {
-          signatures.push(`${filePath}:unstatable`);
+          signatures.push(`${filePath}:unreadable`);
         }
+      }
+
+      try {
+        this.cache.set(this.CACHE_KEY_FILE_HASHES, JSON.stringify(Array.from(this.fileHashCache.entries())));
+      } catch {
+        // ignore
       }
 
       return md5(signatures.join("|"));
