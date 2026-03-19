@@ -25,9 +25,11 @@ import {
   updateAnyTemporaryDirectoryUsage,
   removeTemporaryDirectory,
 } from "../stores/temporary-directory-store";
+import promptUsageStore from "../stores/prompt-usage-store";
 import promptManager from "../managers/prompt-manager";
 import path from "path";
 import configurationManager from "../managers/configuration-manager";
+import { runPromptActionWithTracking } from "../utils/prompt-usage-utils";
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
   React.ReactNode;
@@ -59,7 +61,7 @@ export function generatePromptActions(
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
   const wrapActionHandler = (
-    originalHandler: (() => Promise<void>) | undefined | (() => void),
+    originalHandler: (() => Promise<void | boolean>) | undefined | (() => void | boolean),
     actionName?: string,
   ) => {
     return async () => {
@@ -79,12 +81,12 @@ export function generatePromptActions(
         }
       }
 
-      if (originalHandler) {
-        if (originalHandler.constructor.name === "AsyncFunction") {
-          await (originalHandler as () => Promise<void>)();
-        } else {
-          (originalHandler as () => void)();
-        }
+      if (originalHandler && actionName) {
+        await runPromptActionWithTracking(prompt, actionName, originalHandler, (usedPrompt, usedAction, usedAt) =>
+          promptUsageStore.recordUsage(usedPrompt, usedAction, usedAt),
+        );
+      } else if (originalHandler) {
+        await Promise.resolve(originalHandler());
       }
     };
   };
@@ -120,6 +122,7 @@ export function generatePromptActions(
           } catch (error) {
             console.error(`Failed to execute script ${scriptName}:`, error);
             await showToast(Toast.Style.Failure, "Script Error", `Failed to run ${scriptName}: ${String(error)}`);
+            return false;
           }
         }, `script_${scriptName}`)}
       />

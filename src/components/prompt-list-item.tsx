@@ -357,9 +357,9 @@ export function PromptListItem({
                 baseReplacements={replacements}
                 promptSpecificRootDir={promptSpecificRootDir}
                 scripts={scripts}
-            />
-          }
-        />
+              />
+            }
+          />
         );
         finalActions.unshift(configureOptionsAction);
       }
