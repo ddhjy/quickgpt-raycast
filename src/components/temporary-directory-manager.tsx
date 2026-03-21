@@ -87,8 +87,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     } catch (error) {
       console.error(`Failed to open directory ${dirPath}:`, error);
       await showToast({
-        title: "Error",
-        message: "Failed to open directory",
+        title: "Couldn't open directory",
+        message: "Check if the editor app is configured correctly",
         style: Toast.Style.Failure,
       });
     }
@@ -101,8 +101,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       const selectedItems = await getSelectedFinderItems();
       if (selectedItems.length === 0) {
         await showToast({
-          title: "Error",
-          message: "Please select a directory in Finder",
+          title: "No directory selected",
+          message: "Select a folder in Finder first, then try again",
           style: Toast.Style.Failure,
         });
         return;
@@ -112,8 +112,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       const stats = fs.statSync(selectedPath);
       if (!stats.isDirectory()) {
         await showToast({
-          title: "Error",
-          message: "Please select a directory instead of a file",
+          title: "That's a file",
+          message: "Select a folder instead",
           style: Toast.Style.Failure,
         });
         return;
@@ -127,15 +127,15 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       refreshDirectories();
 
       await showToast({
-        title: "Success",
-        message: `Added temporary directory: ${path.basename(selectedPath)}`,
+        title: "Directory added",
+        message: path.basename(selectedPath),
         style: Toast.Style.Success,
       });
     } catch (error) {
       console.error("Failed to add temporary directory:", error);
       await showToast({
-        title: "Error",
-        message: `Failed to add temporary directory: ${String(error)}`,
+        title: "Couldn't add directory",
+        message: String(error),
         style: Toast.Style.Failure,
       });
     }
@@ -153,15 +153,15 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       refreshDirectories();
 
       await showToast({
-        title: "Success",
-        message: `Removed temporary directory: ${path.basename(dirPath)}`,
+        title: "Directory removed",
+        message: path.basename(dirPath),
         style: Toast.Style.Success,
       });
     } catch (error) {
       console.error("Failed to remove temporary directory:", error);
       await showToast({
-        title: "Error",
-        message: `Failed to remove temporary directory: ${String(error)}`,
+        title: "Couldn't remove directory",
+        message: String(error),
         style: Toast.Style.Failure,
       });
     }
@@ -172,8 +172,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
 
     try {
       const confirmed = await confirmAlert({
-        title: "Remove All Temporary Directories",
-        message: "Are you sure you want to remove all temporary directories?",
+        title: "Remove all temporary directories?",
+        message: "This can't be undone. You can re-add them from Finder.",
         primaryAction: {
           title: "Remove All",
           style: Alert.ActionStyle.Destructive,
@@ -189,16 +189,15 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         refreshDirectories();
 
         await showToast({
-          title: "Success",
-          message: "Removed all temporary directories",
+          title: "All directories removed",
           style: Toast.Style.Success,
         });
       }
     } catch (error) {
       console.error("Failed to remove all temporary directories:", error);
       await showToast({
-        title: "Error",
-        message: `Failed to remove all temporary directories: ${String(error)}`,
+        title: "Couldn't remove directories",
+        message: String(error),
         style: Toast.Style.Failure,
       });
     }
@@ -218,22 +217,22 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   const getEmptyTitle = () => {
     switch (type) {
       case "temporary":
-        return "No Temporary Directories";
+        return "No temporary directories";
       case "scripts":
-        return "No Scripts Directories";
+        return "No scripts directories";
       case "prompts":
-        return "No Prompts Directories";
+        return "No prompts directories";
     }
   };
 
   const getEmptyDescription = () => {
     switch (type) {
       case "temporary":
-        return "Add a temporary directory from Finder to get started";
+        return "Select a folder in Finder, then press ↵ to add it";
       case "scripts":
-        return "Configure scripts directories in extension preferences";
+        return "Set up a scripts folder in extension preferences";
       case "prompts":
-        return "Configure prompts directories in extension preferences";
+        return "Set up a prompts folder in extension preferences";
     }
   };
 
@@ -241,7 +240,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     <List
       isLoading={isLoading}
       navigationTitle={getNavigationTitle()}
-      searchBarPlaceholder={`Search ${type} directories...`}
+      searchBarPlaceholder={`Filter ${type} directories…`}
     >
       {directories.length === 0 ? (
         <List.EmptyView

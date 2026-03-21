@@ -132,7 +132,7 @@ export function PromptListItem({
       displayTitle = `Temporary Prompts Directory (${temporaryDirs.length})`;
       displayIcon = Icon.Folder;
     } else {
-      displayTitle = "Add temporary directory";
+      displayTitle = "Add Temporary Directory";
       displayIcon = Icon.Plus;
     }
   }
@@ -507,7 +507,7 @@ export function PromptListItem({
                     if (clipboardHistory.length === 0) {
                       await showToast({
                         style: Toast.Style.Failure,
-                        title: "No clipboard history available",
+                        title: "Clipboard is empty",
                       });
                       return;
                     }
@@ -546,7 +546,7 @@ export function PromptListItem({
                     console.error("Failed to read clipboard history:", error);
                     await showToast({
                       style: Toast.Style.Failure,
-                      title: "Failed to read clipboard history",
+                      title: "Couldn't read clipboard",
                       message: String(error),
                     });
                   }

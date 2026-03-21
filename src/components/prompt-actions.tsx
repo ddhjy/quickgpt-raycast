@@ -121,7 +121,7 @@ export function generatePromptActions(
             }
           } catch (error) {
             console.error(`Failed to execute script ${scriptName}:`, error);
-            await showToast(Toast.Style.Failure, "Script Error", `Failed to run ${scriptName}: ${String(error)}`);
+            await showToast(Toast.Style.Failure, `${scriptName} failed`, String(error));
             return false;
           }
         }, `script_${scriptName}`)}
@@ -142,7 +142,7 @@ export function generatePromptActions(
           onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
-            await showToast(Toast.Style.Success, "Copied");
+            await showToast(Toast.Style.Success, "Copied to clipboard");
             await closeMainWindow({ clearRootSearch: true });
           }, "copyToClipboard")}
         />
@@ -181,7 +181,7 @@ export function generatePromptActions(
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
-            await showToast(Toast.Style.Success, "Pasted");
+            await showToast(Toast.Style.Success, "Pasted to app");
           }, "paste")}
         />
       ),
@@ -197,7 +197,7 @@ export function generatePromptActions(
           shortcut={{ modifiers: ["cmd", "shift"], key: "s" }}
           onAction={wrapActionHandler(async () => {
             if (!prompt.filePath) {
-              await showToast(Toast.Style.Failure, "Cannot share this prompt", "It is not a file-based prompt.");
+              await showToast(Toast.Style.Failure, "Can't share this prompt", "Only file-based prompts can be shared");
               return;
             }
             const gitLink = await generateGitLink(prompt.filePath);
@@ -205,13 +205,13 @@ export function generatePromptActions(
             if (gitLink) {
               const markdownLink = `[Prompt: ${prompt.title}](${gitLink})`;
               await Clipboard.copy(markdownLink);
-              await showToast(Toast.Style.Success, "Copied Share Link", "Markdown link copied to clipboard.");
+              await showToast(Toast.Style.Success, "Share link copied");
               await closeMainWindow({ clearRootSearch: true });
             } else {
               await showToast(
                 Toast.Style.Failure,
-                "Could Not Generate Git Link",
-                "File is not in a Git repository with a remote 'origin'.",
+                "Can't generate share link",
+                "This file isn't in a Git repo with a remote origin",
               );
             }
           }, "sharePrompt")}
@@ -259,14 +259,14 @@ export function generatePromptActions(
                 await closeMainWindow();
 
                 await showToast({
-                  title: `Opening File and Copy Title`,
+                  title: "Opened — title copied",
                   style: Toast.Style.Success,
                 });
               } catch (error) {
                 console.error("Failed to open editor:", error);
                 await showToast({
-                  title: "Error Opening Editor",
-                  message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                  title: `Couldn't open ${editorDisplayName}`,
+                  message: String(error),
                   style: Toast.Style.Failure,
                 });
               }
@@ -315,8 +315,8 @@ export function generatePromptActions(
             }
             await showToast(
               Toast.Style.Success,
-              "Temporary Directory Removed",
-              `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
+              "Directory removed",
+              `${path.basename(tempDirSourcePath)} prompts are no longer available`,
             );
             navigation.pop();
           }}

@@ -305,7 +305,7 @@ export function PromptList({
   return (
     <List
       isLoading={false}
-      searchBarPlaceholder={searchMode ? "Search" : "Input"}
+      searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
       filtering={false}
@@ -328,7 +328,7 @@ export function PromptList({
                 defaultActionPreferenceStore.saveDefaultActionPreference("");
                 showToast({
                   style: Toast.Style.Success,
-                  title: "Cleared preferred action",
+                  title: "Preferred action cleared",
                 });
                 return;
               }
@@ -337,7 +337,7 @@ export function PromptList({
               defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
               showToast({
                 style: Toast.Style.Success,
-                title: "Set preferred action",
+                title: "Preferred action set",
                 message: newValue === "lastUsed" ? getLastUsedActionDisplay() : newValue,
               });
               forceUpdate();
