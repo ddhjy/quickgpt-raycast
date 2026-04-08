@@ -1,26 +1,9 @@
 import { useState, useEffect } from "react";
-import {
-  getSelectedText,
-  getFrontmostApplication,
-  BrowserExtension,
-  getSelectedFinderItems,
-  getApplications,
-} from "@raycast/api";
+import { getFrontmostApplication, BrowserExtension, getApplications } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
 import { expandPath } from "../utils/path-alias-utils";
+import { capturedSelectionPromise } from "../utils/captured-selection";
 import * as fs from "fs";
-
-type FinderItems = Awaited<ReturnType<typeof getSelectedFinderItems>>;
-
-const capturedSelectionPromise: Promise<{
-  finderItems: FinderItems;
-  selectedText: string;
-}> = Promise.all([getSelectedFinderItems().catch(() => [] as FinderItems), getSelectedText().catch(() => "")]).then(
-  ([finderItems, selectedText]) => ({
-    finderItems,
-    selectedText,
-  }),
-);
 
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
@@ -173,12 +156,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         }
       } catch (error) {
         console.info("Failed to use captured selection:", error);
-        try {
-          const fallbackText = (await getSelectedText()) || "";
-          fetchedSelectedText = processSelectedText(fallbackText);
-        } catch {
-          fetchedSelectedText = "";
-        }
+        fetchedSelectedText = "";
       }
 
       setSelectionText(fetchedSelectedText);

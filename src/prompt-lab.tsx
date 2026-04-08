@@ -1,3 +1,4 @@
+import "./utils/captured-selection";
 import { LaunchProps } from "@raycast/api";
 import pinsManager from "./managers/pins-manager";
 import promptManager from "./managers/prompt-manager";
