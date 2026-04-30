@@ -1,5 +1,5 @@
 import { Icon, List } from "@raycast/api";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import {
   SpecificReplacements,
   placeholderFormatter,

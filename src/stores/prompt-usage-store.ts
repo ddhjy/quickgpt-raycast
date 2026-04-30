@@ -1,5 +1,5 @@
 import { LocalStorage } from "@raycast/api";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { isPromptEligibleForUsageStats, PromptUsageRow, PromptUsageSummary } from "../utils/prompt-usage-utils";
 
 export interface PromptUsageRecord {

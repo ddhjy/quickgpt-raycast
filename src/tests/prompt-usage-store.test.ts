@@ -1,5 +1,5 @@
 import { LocalStorage } from "@raycast/api";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { PromptUsageStore } from "../stores/prompt-usage-store";
 
 type MockStorage = {

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { List, showToast, Toast, clearSearchBar, useNavigation, Icon } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import pinsManager from "../managers/pins-manager";
 import { MemoizedPromptListItem } from "./prompt-list-item";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
@@ -42,6 +42,7 @@ interface PromptListProps {
   externalOnRefreshNeeded?: () => void;
   placeholderArgs?: Record<string, unknown>;
   currentPath?: string;
+  isLoading?: boolean;
 }
 
 export function PromptList({
@@ -57,16 +58,23 @@ export function PromptList({
   externalOnRefreshNeeded,
   placeholderArgs = {},
   currentPath = "",
+  isLoading = false,
 }: PromptListProps) {
   const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
   const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
+  const scriptDirectories = useMemo(() => configurationManager.getDirectories("scripts"), []);
+  const scriptDirectoryKey = useMemo(() => JSON.stringify(scriptDirectories), [scriptDirectories]);
+  const [resolvedScripts, setResolvedScripts] = useState<ScriptInfo[]>(
+    () => initialScripts ?? getAvailableScripts(scriptDirectories, { preferCache: true }),
+  );
   const [selectedAction, setSelectedAction] = useState<string>(
     () => defaultActionPreferenceStore.getDefaultActionPreference() || "",
   );
   const { push } = useNavigation();
 
   const isMountedRef = useRef(false);
+  const hasRefreshedScriptsRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -77,6 +85,23 @@ export function PromptList({
 
   const forceUpdate = () => setRefreshKey((prev) => prev + 1);
   const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
+
+  useEffect(() => {
+    if (initialScripts) {
+      setResolvedScripts(initialScripts);
+      return;
+    }
+
+    if (hasRefreshedScriptsRef.current) {
+      return;
+    }
+
+    hasRefreshedScriptsRef.current = true;
+    const nextScripts = getAvailableScripts(scriptDirectories, { forceRefresh: true });
+    if (isMountedRef.current) {
+      setResolvedScripts(nextScripts);
+    }
+  }, [initialScripts, scriptDirectories, scriptDirectoryKey]);
 
   const getLastUsedActionDisplay = () => {
     const mostFrequentAction = defaultActionPreferenceStore.getLastExecutedAction();
@@ -243,10 +268,7 @@ export function PromptList({
 
   const activeSearchText = searchMode ? "" : searchText;
 
-  const scripts = useMemo(
-    () => initialScripts ?? getAvailableScripts(configurationManager.getDirectories("scripts")),
-    [initialScripts],
-  );
+  const scripts = initialScripts ?? resolvedScripts;
 
   const promptItems = displayPrompts
     .map((prompt, index) => {
@@ -304,7 +326,7 @@ export function PromptList({
 
   return (
     <List
-      isLoading={false}
+      isLoading={isLoading}
       searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}

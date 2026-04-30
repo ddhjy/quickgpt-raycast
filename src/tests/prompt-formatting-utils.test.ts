@@ -1,5 +1,5 @@
 import { findUsedOptionPlaceholders } from "../utils/option-placeholder-utils";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 
 describe("findUsedOptionPlaceholders", () => {

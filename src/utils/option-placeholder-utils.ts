@@ -1,4 +1,4 @@
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements, getPropertyByPath, toPlaceholderKey, buildEffectiveMap } from "./placeholder-formatter";
 
 export function findUsedOptionPlaceholders(prompt: PromptProps, replacements: SpecificReplacements): string[] {

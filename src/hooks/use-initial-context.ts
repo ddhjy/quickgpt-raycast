@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { getFrontmostApplication, BrowserExtension, getApplications } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
 import { expandPath } from "../utils/path-alias-utils";
-import { capturedSelectionPromise } from "../utils/captured-selection";
+import { capturedFinderItemsPromise, capturedSelectedTextPromise, type FinderItems } from "../utils/captured-selection";
 import * as fs from "fs";
+import { startupElapsedMs, startupLog, startupNowMs } from "../utils/startup-profiler";
 
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
@@ -91,16 +92,65 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       }
     };
 
-    const fetchData = async () => {
-      const [fetchedFrontmostApp, fetchedAllApps] = await Promise.all([fetchFrontmostApp(), fetchAllApps()]);
+    let cancelled = false;
 
-      let fetchedBrowserContent = "";
+    const updateSelectedTextWhenReady = () => {
+      void capturedSelectedTextPromise.then((lateSelectedText) => {
+        if (cancelled || !lateSelectedText.trim()) return;
+
+        const lateStarted = startupNowMs();
+        const processedLateSelection = processSelectedText(lateSelectedText);
+        if (cancelled) return;
+
+        setSelectionText(processedLateSelection);
+        startupLog("Initial context selected text late update", {
+          durationMs: startupElapsedMs(lateStarted),
+          selectionLength: processedLateSelection.length,
+        });
+      });
+    };
+
+    const fetchData = async () => {
+      const started = startupNowMs();
+      const frontmostStarted = startupNowMs();
+      const fetchedFrontmostApp = await fetchFrontmostApp();
+      if (cancelled) return;
+
+      setCurrentApp(fetchedFrontmostApp);
+      startupLog("Initial context frontmost app fetched", {
+        durationMs: startupElapsedMs(frontmostStarted),
+        frontmostApp: fetchedFrontmostApp,
+      });
+
       const browserNames = ["Arc"];
       if (browserNames.some((browser) => fetchedFrontmostApp.includes(browser))) {
-        fetchedBrowserContent = await fetchBrowserContent();
+        void (async () => {
+          const browserStarted = startupNowMs();
+          const fetchedBrowserContent = await fetchBrowserContent();
+          if (cancelled) return;
+
+          setBrowserContent(fetchedBrowserContent);
+          startupLog("Initial context browser fetched", {
+            durationMs: startupElapsedMs(browserStarted),
+            contentLength: fetchedBrowserContent.length,
+          });
+        })();
       }
 
+      void (async () => {
+        const appsStarted = startupNowMs();
+        const fetchedAllApps = await fetchAllApps();
+        if (cancelled) return;
+
+        setAllApp(fetchedAllApps);
+        startupLog("Initial context all apps fetched", {
+          durationMs: startupElapsedMs(appsStarted),
+          appCount: fetchedAllApps ? fetchedAllApps.split(", ").length : 0,
+        });
+      })();
+
       if (initialSelectionText && initialSelectionText.trim()) {
+        const selectionStarted = startupNowMs();
         const rawInitial = initialSelectionText.trim();
         const processed = processSelectedText(rawInitial);
 
@@ -127,18 +177,28 @@ export function useInitialContext(initialSelectionText?: string, target?: string
           // ignore
         }
 
+        if (cancelled) return;
         setSelectionText(processed);
-        setCurrentApp(fetchedFrontmostApp);
-        setAllApp(fetchedAllApps);
-        setBrowserContent(fetchedBrowserContent);
         setDiff(initialDiff);
+        startupLog("Initial context ready", {
+          durationMs: startupElapsedMs(started),
+          selectionMs: startupElapsedMs(selectionStarted),
+          selectionLength: processed.length,
+          diffLength: initialDiff.length,
+          source: "launch-argument",
+        });
         return;
       }
 
+      const selectionStarted = startupNowMs();
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {
-        const { finderItems: selectedItems, selectedText: capturedSelectedText } = await capturedSelectionPromise;
+        let selectedItems: FinderItems = [];
+
+        if (fetchedFrontmostApp.includes("Finder")) {
+          selectedItems = await capturedFinderItemsPromise;
+        }
 
         if (selectedItems.length > 0) {
           let content = "";
@@ -152,26 +212,29 @@ export function useInitialContext(initialSelectionText?: string, target?: string
             fetchedDiff = "";
           }
         } else {
-          fetchedSelectedText = processSelectedText(capturedSelectedText || "");
+          updateSelectedTextWhenReady();
         }
       } catch (error) {
         console.info("Failed to use captured selection:", error);
         fetchedSelectedText = "";
       }
 
+      if (cancelled) return;
       setSelectionText(fetchedSelectedText);
-      setCurrentApp(fetchedFrontmostApp);
-      setAllApp(fetchedAllApps);
-      setBrowserContent(fetchedBrowserContent);
       setDiff(fetchedDiff);
+      startupLog("Initial context ready", {
+        durationMs: startupElapsedMs(started),
+        selectionMs: startupElapsedMs(selectionStarted),
+        selectionLength: fetchedSelectedText.length,
+        diffLength: fetchedDiff.length,
+        source: "captured-selection",
+      });
     };
 
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 10);
+    void fetchData();
 
     return () => {
-      clearTimeout(timer);
+      cancelled = true;
     };
   }, [initialSelectionText, target]);
 

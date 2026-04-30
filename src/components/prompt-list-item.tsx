@@ -15,7 +15,7 @@ import {
   Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 import configurationManager from "../managers/configuration-manager";
 import path from "path";

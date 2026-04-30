@@ -5,6 +5,7 @@ import * as hjson from "hjson";
 import { Cache } from "@raycast/api";
 import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
 import configurationManager from "./configuration-manager";
+import { startupElapsedMs, startupLog, startupNowMs, startupWarn } from "../utils/startup-profiler";
 
 export type PromptProps = {
   identifier: string;
@@ -45,19 +46,84 @@ class PromptManager {
   private cache: Cache = new Cache();
   private readonly CACHE_KEY_DATA = "prompts_data_v1";
   private readonly CACHE_KEY_SIG = "prompts_signature_v1";
-  private readonly CACHE_KEY_FILE_HASHES = "prompts_file_hashes_v1";
-  private fileHashCache: Map<string, { mtimeMs: number; hash: string }>;
+  private readonly listeners = new Set<() => void>();
+  private hasHydratedFromCache = false;
+  private isRefreshing = false;
+  private lastSignature = "";
 
   constructor() {
-    try {
-      const cached = this.cache.get(this.CACHE_KEY_FILE_HASHES);
-      this.fileHashCache = cached ? new Map(JSON.parse(cached)) : new Map();
-    } catch {
-      this.fileHashCache = new Map();
+    const started = startupNowMs();
+    this.promptFilePaths = this.getPromptFilePaths();
+    this.hydrateCachedPrompts();
+    startupLog("PromptManager constructor ready", {
+      durationMs: startupElapsedMs(started),
+      promptPathCount: this.promptFilePaths.length,
+      cachedPromptCount: this.prompts.length,
+      cacheHydrated: this.hasHydratedFromCache,
+    });
+  }
+
+  private hydrateCachedPrompts(): boolean {
+    const started = startupNowMs();
+    const cachedData = this.cache.get(this.CACHE_KEY_DATA);
+
+    if (!cachedData) {
+      startupLog("PromptManager cache hydrate skipped", { reason: "missing cache" });
+      return false;
     }
 
-    this.promptFilePaths = this.getPromptFilePaths();
-    this.loadAllPrompts();
+    try {
+      const parsedData = JSON.parse(cachedData);
+      this.prompts = Array.isArray(parsedData.prompts) ? parsedData.prompts : [];
+      this.mergedRootProperties = parsedData.mergedRootProperties ?? {};
+      this.lastSignature = this.cache.get(this.CACHE_KEY_SIG) ?? "";
+      this.hasHydratedFromCache = true;
+      startupLog("PromptManager cache hydrated", {
+        durationMs: startupElapsedMs(started),
+        promptCount: this.prompts.length,
+        hasSignature: this.lastSignature.length > 0,
+      });
+      return true;
+    } catch (error) {
+      startupWarn("PromptManager cache hydrate failed", {
+        durationMs: startupElapsedMs(started),
+        error: String(error),
+      });
+      this.cache.remove(this.CACHE_KEY_DATA);
+      this.cache.remove(this.CACHE_KEY_SIG);
+      return false;
+    }
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach((listener) => listener());
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  public getLoadState(): {
+    promptCount: number;
+    isRefreshing: boolean;
+    hasHydratedFromCache: boolean;
+  } {
+    return {
+      promptCount: this.prompts.length,
+      isRefreshing: this.isRefreshing,
+      hasHydratedFromCache: this.hasHydratedFromCache,
+    };
+  }
+
+  public hasPrompts(): boolean {
+    return this.prompts.length > 0;
+  }
+
+  public getPromptCount(): number {
+    return this.prompts.length;
   }
 
   private getPromptFilePaths(): string[] {
@@ -176,77 +242,131 @@ class PromptManager {
     }
   }
 
-  private loadAllPrompts(): void {
-    this.prompts = [];
-    this.mergedRootProperties = {};
-
-    const currentSignature = this.calculateWorkspaceSignature();
-
-    const cachedSignature = this.cache.get(this.CACHE_KEY_SIG);
-    const cachedData = this.cache.get(this.CACHE_KEY_DATA);
-
-    if (currentSignature && cachedSignature === currentSignature && cachedData) {
-      try {
-        const parsedData = JSON.parse(cachedData);
-        this.prompts = parsedData.prompts;
-        this.mergedRootProperties = parsedData.mergedRootProperties;
-        return;
-      } catch (e) {
-        console.warn("Cache parse failed, falling back to file load", e);
-      }
+  private loadAllPrompts(reason: string, force = false): void {
+    if (this.isRefreshing) {
+      startupLog("PromptManager refresh skipped", { reason, skippedBecause: "already refreshing" });
+      return;
     }
 
-    this.prompts = this.promptFilePaths.flatMap((promptPath) => {
-      try {
-        if (!fs.existsSync(promptPath)) return [];
-        const stat = fs.lstatSync(promptPath);
-        if (stat.isDirectory()) {
-          return this.traverseDirectorySync(promptPath);
-        } else if (this.isPromptFile(promptPath)) {
-          return this.loadPromptsFromFileSync(promptPath);
-        }
-        return [];
-      } catch (error) {
-        if (fs.existsSync(promptPath)) {
-          console.error(`Error accessing prompt path: ${promptPath}`, error);
-        }
-      }
-      return [];
-    });
-
-    this.prompts = this.processPrompts(this.prompts);
+    const started = startupNowMs();
+    const previousPrompts = this.prompts;
+    const previousMergedRootProperties = this.mergedRootProperties;
+    const previousSignature = this.lastSignature;
+    this.isRefreshing = true;
 
     try {
-      const cachePayload = {
-        prompts: this.prompts,
-        mergedRootProperties: this.mergedRootProperties,
-      };
-      this.cache.set(this.CACHE_KEY_DATA, JSON.stringify(cachePayload));
-      this.cache.set(this.CACHE_KEY_SIG, currentSignature);
-    } catch (e) {
-      console.error("Failed to save prompts to cache", e);
+      this.promptFilePaths = this.getPromptFilePaths();
+      const currentSignature = this.calculateWorkspaceSignature(reason);
+      const cachedSignature = this.cache.get(this.CACHE_KEY_SIG);
+      const cachedData = this.cache.get(this.CACHE_KEY_DATA);
+
+      if (!force && currentSignature && cachedSignature === currentSignature && cachedData) {
+        try {
+          const cacheStarted = startupNowMs();
+          const parsedData = JSON.parse(cachedData);
+          this.prompts = Array.isArray(parsedData.prompts) ? parsedData.prompts : [];
+          this.mergedRootProperties = parsedData.mergedRootProperties ?? {};
+          this.lastSignature = currentSignature;
+          this.hasHydratedFromCache = true;
+          startupLog("PromptManager refresh cache hit", {
+            reason,
+            durationMs: startupElapsedMs(started),
+            cacheParseMs: startupElapsedMs(cacheStarted),
+            promptCount: this.prompts.length,
+          });
+          return;
+        } catch (error) {
+          startupWarn("PromptManager refresh cache parse failed", { reason, error: String(error) });
+        }
+      }
+
+      this.mergedRootProperties = {};
+
+      let promptFileCount = 0;
+      const loadedPrompts = this.promptFilePaths.flatMap((promptPath) => {
+        try {
+          if (!fs.existsSync(promptPath)) return [];
+          const stat = fs.lstatSync(promptPath);
+          if (stat.isDirectory()) {
+            const directoryPrompts = this.traverseDirectorySync(promptPath);
+            promptFileCount += directoryPrompts.filter((prompt) => prompt.filePath).length;
+            return directoryPrompts;
+          } else if (this.isPromptFile(promptPath)) {
+            promptFileCount += 1;
+            return this.loadPromptsFromFileSync(promptPath);
+          }
+          return [];
+        } catch (error) {
+          if (fs.existsSync(promptPath)) {
+            console.error(`Error accessing prompt path: ${promptPath}`, error);
+          }
+        }
+        return [];
+      });
+
+      const processStarted = startupNowMs();
+      this.prompts = this.processPrompts(loadedPrompts);
+      const processMs = startupElapsedMs(processStarted);
+      this.lastSignature = currentSignature;
+      this.hasHydratedFromCache = true;
+
+      try {
+        const cachePayload = {
+          prompts: this.prompts,
+          mergedRootProperties: this.mergedRootProperties,
+        };
+        this.cache.set(this.CACHE_KEY_DATA, JSON.stringify(cachePayload));
+        if (currentSignature) {
+          this.cache.set(this.CACHE_KEY_SIG, currentSignature);
+        }
+      } catch (error) {
+        console.error("Failed to save prompts to cache", error);
+      }
+
+      startupLog("PromptManager refresh loaded files", {
+        reason,
+        durationMs: startupElapsedMs(started),
+        processMs,
+        promptPathCount: this.promptFilePaths.length,
+        promptFileCount,
+        promptCount: this.prompts.length,
+        forced: force,
+        signatureChanged: currentSignature !== previousSignature,
+      });
+    } catch (error) {
+      this.prompts = previousPrompts;
+      this.mergedRootProperties = previousMergedRootProperties;
+      startupWarn("PromptManager refresh failed", {
+        reason,
+        durationMs: startupElapsedMs(started),
+        error: String(error),
+      });
+    } finally {
+      this.isRefreshing = false;
+      this.notifyListeners();
     }
   }
 
   private traverseDirectorySync(directoryPath: string): PromptProps[] {
     try {
-      return fs
-        .readdirSync(directoryPath)
-        .filter((file) => !file.startsWith("#") && !file.startsWith("."))
-        .flatMap((file) => {
-          const filePath = path.join(directoryPath, file);
-          try {
-            const stat = fs.lstatSync(filePath);
-            if (stat.isDirectory()) {
-              return this.traverseDirectorySync(filePath);
-            } else if (this.isPromptFile(filePath)) {
-              return this.loadPromptsFromFileSync(filePath);
-            }
-          } catch (innerError) {
-            console.error(`Error processing ${filePath} within ${directoryPath}:`, innerError);
-          }
+      return fs.readdirSync(directoryPath, { withFileTypes: true }).flatMap((entry) => {
+        if (entry.name.startsWith("#") || entry.name.startsWith(".")) {
           return [];
-        });
+        }
+
+        const filePath = path.join(directoryPath, entry.name);
+
+        try {
+          if (entry.isDirectory()) {
+            return this.traverseDirectorySync(filePath);
+          } else if (entry.isFile() && this.isPromptFile(filePath)) {
+            return this.loadPromptsFromFileSync(filePath);
+          }
+        } catch (innerError) {
+          console.error(`Error processing ${filePath} within ${directoryPath}:`, innerError);
+        }
+        return [];
+      });
     } catch (error) {
       console.error(`Failed to traverse directory ${directoryPath}:`, error);
       return [];
@@ -258,73 +378,100 @@ class PromptManager {
     return fileName.endsWith(".hjson");
   }
 
-  private calculateWorkspaceSignature(): string {
+  private getSignaturePath(filePath: string): string {
+    const assetsPath = path.join(__dirname, "assets");
+    const relativeAssetPath = path.relative(assetsPath, filePath);
+
+    if (relativeAssetPath && !relativeAssetPath.startsWith("..") && !path.isAbsolute(relativeAssetPath)) {
+      return `$extension-assets/${relativeAssetPath}`;
+    }
+
+    return filePath;
+  }
+
+  private isBundledAssetPath(filePath: string): boolean {
+    return this.getSignaturePath(filePath).startsWith("$extension-assets/");
+  }
+
+  private calculateWorkspaceSignature(reason: string): string {
+    const started = startupNowMs();
+
     try {
       const signatures: string[] = [];
+      let directoryCount = 0;
+      let promptFileCount = 0;
+      let missingPathCount = 0;
+      let unreadablePathCount = 0;
 
-      // Make prompt paths stable across runs
+      // Make prompt paths stable across runs.
       const stablePromptPaths = Array.from(new Set(this.promptFilePaths)).sort();
-      signatures.push(JSON.stringify(stablePromptPaths));
+      signatures.push(JSON.stringify(stablePromptPaths.map((promptPath) => this.getSignaturePath(promptPath))));
 
-      // Only include data that can affect prompt loading:
-      // - `.hjson` file paths + mtime
-      // Exclude unrelated files (e.g. `.DS_Store`, temp files) to avoid false cache misses.
-      const promptFiles: string[] = [];
+      const addPromptFileSignature = (filePath: string) => {
+        try {
+          const stat = fs.lstatSync(filePath);
+          promptFileCount += 1;
+          const signaturePath = this.getSignaturePath(filePath);
+          if (this.isBundledAssetPath(filePath)) {
+            signatures.push(`${signaturePath}:${md5(fs.readFileSync(filePath, "utf-8"))}`);
+          } else {
+            signatures.push(`${signaturePath}:${stat.mtimeMs}:${stat.size}`);
+          }
+        } catch {
+          unreadablePathCount += 1;
+          signatures.push(`${this.getSignaturePath(filePath)}:unreadable`);
+        }
+      };
 
       const collectPromptFiles = (targetPath: string) => {
         try {
-          if (!fs.existsSync(targetPath)) return;
+          if (!fs.existsSync(targetPath)) {
+            missingPathCount += 1;
+            return;
+          }
+
           const stat = fs.lstatSync(targetPath);
 
           if (stat.isDirectory()) {
-            const entries = fs.readdirSync(targetPath);
+            directoryCount += 1;
+            const entries = fs.readdirSync(targetPath, { withFileTypes: true });
             for (const entry of entries) {
-              if (entry.startsWith(".") || entry.startsWith("#")) continue;
-              collectPromptFiles(path.join(targetPath, entry));
+              if (entry.name.startsWith(".") || entry.name.startsWith("#")) continue;
+              const entryPath = path.join(targetPath, entry.name);
+              if (entry.isDirectory()) {
+                collectPromptFiles(entryPath);
+              } else if (entry.isFile() && this.isPromptFile(entryPath)) {
+                addPromptFileSignature(entryPath);
+              }
             }
           } else if (this.isPromptFile(targetPath)) {
-            promptFiles.push(targetPath);
+            addPromptFileSignature(targetPath);
           }
         } catch {
-          // ignore
+          unreadablePathCount += 1;
         }
       };
 
       stablePromptPaths.forEach((p) => collectPromptFiles(p));
 
-      promptFiles.sort();
-      for (const filePath of promptFiles) {
-        try {
-          if (!fs.existsSync(filePath)) {
-            signatures.push(`${filePath}:missing`);
-            continue;
-          }
-          const stat = fs.lstatSync(filePath);
-          const cached = this.fileHashCache.get(filePath);
-          let hash: string;
-          if (cached && cached.mtimeMs === stat.mtimeMs) {
-            hash = cached.hash;
-          } else {
-            const content = fs.readFileSync(filePath, "utf-8");
-            hash = md5(content);
-            this.fileHashCache.set(filePath, { mtimeMs: stat.mtimeMs, hash });
-          }
-          signatures.push(`${filePath}:${hash}`);
-        } catch {
-          signatures.push(`${filePath}:unreadable`);
-        }
-      }
-
-      try {
-        this.cache.set(this.CACHE_KEY_FILE_HASHES, JSON.stringify(Array.from(this.fileHashCache.entries())));
-      } catch {
-        // ignore
-      }
+      startupLog("PromptManager signature calculated", {
+        reason,
+        durationMs: startupElapsedMs(started),
+        promptPathCount: stablePromptPaths.length,
+        directoryCount,
+        promptFileCount,
+        missingPathCount,
+        unreadablePathCount,
+      });
 
       return md5(signatures.join("|"));
     } catch (error) {
-      console.error("Failed to calculate signature", error);
-      // Returning empty string disables cache (safer than forcing a miss every time).
+      startupWarn("PromptManager signature failed", {
+        reason,
+        durationMs: startupElapsedMs(started),
+        error: String(error),
+      });
+      // Returning empty string disables cache validation for this run.
       return "";
     }
   }
@@ -465,11 +612,15 @@ class PromptManager {
   }
 
   public reloadPrompts(): void {
-    console.log("Reloading prompts...");
+    startupLog("PromptManager manual reload requested");
     configurationManager.clearCache();
     this.cache.remove(this.CACHE_KEY_SIG);
     this.promptFilePaths = this.getPromptFilePaths();
-    this.loadAllPrompts();
+    this.loadAllPrompts("manual-reload", true);
+  }
+
+  public refreshPrompts(reason = "background-refresh"): void {
+    this.loadAllPrompts(reason, false);
   }
 }
 

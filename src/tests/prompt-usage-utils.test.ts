@@ -1,4 +1,4 @@
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import {
   buildPromptUsageSections,
   isPromptEligibleForUsageStats,

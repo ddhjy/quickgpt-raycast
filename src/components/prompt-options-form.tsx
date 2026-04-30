@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Form, ActionPanel, useNavigation } from "@raycast/api";
 import { generatePromptActions } from "./prompt-actions";
 import { getPropertyByPath } from "../utils/placeholder-formatter";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { ScriptInfo } from "../utils/script-utils";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 

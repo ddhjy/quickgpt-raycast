@@ -15,7 +15,7 @@ import fs from "fs";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
 import { ScriptInfo } from "../utils/script-utils";
 import inputHistoryStore from "../stores/input-history-store";
-import { PromptProps } from "../managers/prompt-manager";
+import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
