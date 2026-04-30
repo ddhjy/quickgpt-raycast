@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { List, showToast, Toast, clearSearchBar, useNavigation, Icon } from "@raycast/api";
 import { match } from "pinyin-pro";
 import path from "path";
@@ -68,13 +68,20 @@ export function PromptList({
   const [resolvedScripts, setResolvedScripts] = useState<ScriptInfo[]>(
     () => initialScripts ?? getAvailableScripts(scriptDirectories, { preferCache: true }),
   );
+  const [hasResolvedScripts, setHasResolvedScripts] = useState(
+    () => initialScripts !== undefined || scriptDirectories.length === 0,
+  );
   const [selectedAction, setSelectedAction] = useState<string>(
     () => defaultActionPreferenceStore.getDefaultActionPreference() || "",
+  );
+  const [isActionPreferenceHydrated, setIsActionPreferenceHydrated] = useState(() =>
+    defaultActionPreferenceStore.isHydrated(),
   );
   const { push } = useNavigation();
 
   const isMountedRef = useRef(false);
   const hasRefreshedScriptsRef = useRef(false);
+  const forceUpdate = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -83,12 +90,38 @@ export function PromptList({
     };
   }, []);
 
-  const forceUpdate = () => setRefreshKey((prev) => prev + 1);
   const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    defaultActionPreferenceStore
+      .hydrate()
+      .then(() => {
+        if (cancelled || !isMountedRef.current) {
+          return;
+        }
+
+        setSelectedAction(defaultActionPreferenceStore.getDefaultActionPreference() || "");
+        setIsActionPreferenceHydrated(true);
+        forceUpdate();
+      })
+      .catch((error) => {
+        console.error("Failed to hydrate default action preference:", error);
+        if (!cancelled && isMountedRef.current) {
+          setIsActionPreferenceHydrated(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [forceUpdate]);
 
   useEffect(() => {
     if (initialScripts) {
       setResolvedScripts(initialScripts);
+      setHasResolvedScripts(true);
       return;
     }
 
@@ -100,6 +133,7 @@ export function PromptList({
     const nextScripts = getAvailableScripts(scriptDirectories, { forceRefresh: true });
     if (isMountedRef.current) {
       setResolvedScripts(nextScripts);
+      setHasResolvedScripts(true);
     }
   }, [initialScripts, scriptDirectories, scriptDirectoryKey]);
 
@@ -269,6 +303,11 @@ export function PromptList({
   const activeSearchText = searchMode ? "" : searchText;
 
   const scripts = initialScripts ?? resolvedScripts;
+  const selectedScriptName = selectedAction.startsWith("script_") ? selectedAction.replace(/^script_/, "") : "";
+  const isSelectedScriptAvailable = selectedScriptName
+    ? scripts.some(({ name }) => name === selectedScriptName)
+    : false;
+  const shouldShowSelectedScriptPlaceholder = selectedScriptName !== "" && !isSelectedScriptAvailable;
 
   const promptItems = displayPrompts
     .map((prompt, index) => {
@@ -326,7 +365,7 @@ export function PromptList({
 
   return (
     <List
-      isLoading={isLoading}
+      isLoading={isLoading || !isActionPreferenceHydrated}
       searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
@@ -337,26 +376,32 @@ export function PromptList({
         }
       }}
       searchBarAccessory={
-        searchMode ? (
+        searchMode && isActionPreferenceHydrated ? (
           <List.Dropdown
+            id="preferred-action"
             tooltip="Select preferred action"
             storeValue={false}
-            value={selectedAction}
-            onChange={(newValue: string) => {
+            defaultValue={selectedAction}
+            onChange={async (newValue: string) => {
               if (newValue === selectedAction) return;
+
+              if (newValue === "" && selectedScriptName && !hasResolvedScripts) {
+                return;
+              }
 
               if (newValue === "") {
                 setSelectedAction("");
-                defaultActionPreferenceStore.saveDefaultActionPreference("");
+                await defaultActionPreferenceStore.saveDefaultActionPreference("");
                 showToast({
                   style: Toast.Style.Success,
                   title: "Preferred action cleared",
                 });
+                forceUpdate();
                 return;
               }
 
               setSelectedAction(newValue);
-              defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
+              await defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
               showToast({
                 style: Toast.Style.Success,
                 title: "Preferred action set",
@@ -371,6 +416,16 @@ export function PromptList({
               <List.Dropdown.Item key="copyToClipboard" title="Copy" value="copyToClipboard" />
               <List.Dropdown.Item key="paste" title="Paste" value="paste" />
             </List.Dropdown.Section>
+            {shouldShowSelectedScriptPlaceholder && (
+              <List.Dropdown.Section title={hasResolvedScripts ? "Unavailable Script" : "Restoring Selection"}>
+                <List.Dropdown.Item
+                  key={selectedAction}
+                  title={selectedScriptName.replace(/^Raycast\s+/, "")}
+                  value={selectedAction}
+                  icon={selectedScriptName.startsWith("Raycast") ? Icon.RaycastLogoPos : Icon.Terminal}
+                />
+              </List.Dropdown.Section>
+            )}
             {scripts.length > 0 && (
               <>
                 {scripts.some(({ name }) => /^Raycast\s+/.test(name)) && (

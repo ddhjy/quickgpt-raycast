@@ -66,7 +66,7 @@ export function generatePromptActions(
   ) => {
     return async () => {
       if (actionName && actionName !== "lastUsed" && actionName.startsWith("script_")) {
-        defaultActionPreferenceStore.saveLastExecutedAction(actionName);
+        await defaultActionPreferenceStore.saveLastExecutedAction(actionName);
       }
 
       if (baseReplacements.input && baseReplacements.input.trim()) {
