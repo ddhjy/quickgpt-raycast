@@ -286,6 +286,19 @@ Placeholder usage example:
 
 [example/prompt/prompt-template.hjson](example/prompt/prompt-template.hjson)
 
+### Ignoring Files in Directory Placeholders
+
+When `{{file:path}}` or `{{content:path}}` reads a directory, QuickGPT respects `.quickgptignore` files in that directory tree. The syntax follows `.gitignore` rules.
+
+Example `.quickgptignore`:
+
+```gitignore
+node_modules/
+dist/
+.env
+*.log
+```
+
 ## Development
 
 ### Project Structure
