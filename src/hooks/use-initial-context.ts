@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getFrontmostApplication, BrowserExtension, getApplications } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
 import { expandPath } from "../utils/path-alias-utils";
+import { FINDER_SELECTION_MARKER } from "../utils/placeholder-formatter";
 import { capturedFinderItemsPromise, capturedSelectedTextPromise, type FinderItems } from "../utils/captured-selection";
 import * as fs from "fs";
 import { startupElapsedMs, startupLog, startupNowMs } from "../utils/startup-profiler";
@@ -14,8 +15,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
   const [diff, setDiff] = useState("");
 
   useEffect(() => {
-    const finderMarker = "__IS_FINDER_SELECTION__";
-
     const processSelectedText = (text: string): string => {
       if (!text || !text.trim()) {
         return text;
@@ -64,7 +63,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         }
       }
 
-      return resolvedPaths.map((p) => `${finderMarker}{{file:${p}}}`).join("\n");
+      return resolvedPaths.map((p) => `${FINDER_SELECTION_MARKER}{{file:${p}}}`).join("\n");
     };
 
     const fetchFrontmostApp = async (): Promise<string> => {
@@ -203,7 +202,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         if (selectedItems.length > 0) {
           let content = "";
           for (const item of selectedItems) {
-            content += `${finderMarker}{{file:${item.path}}}\n`;
+            content += `${FINDER_SELECTION_MARKER}{{file:${item.path}}}\n`;
           }
           fetchedSelectedText = content.trim();
           try {

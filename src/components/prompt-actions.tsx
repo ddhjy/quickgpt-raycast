@@ -16,7 +16,7 @@ import defaultActionPreferenceStore from "../stores/default-action-preference-st
 import { ScriptInfo } from "../utils/script-utils";
 import inputHistoryStore from "../stores/input-history-store";
 import type { PromptProps } from "../managers/prompt-manager";
-import { SpecificReplacements } from "../utils/placeholder-formatter";
+import { SpecificReplacements, extractFinderSelectionPaths } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
 import { findRepoRoot } from "../utils/git-utils";
@@ -92,6 +92,21 @@ export function generatePromptActions(
     };
   };
 
+  const resolveCopyFileNamePrefix = (): string => {
+    const selectionPaths = extractFinderSelectionPaths(baseReplacements.selection);
+    if (selectionPaths.length > 0) {
+      const firstPath = selectionPaths[0];
+      try {
+        const stats = fs.statSync(firstPath);
+        if (stats.isDirectory()) return path.basename(firstPath);
+        if (stats.isFile()) return path.basename(firstPath, path.extname(firstPath));
+      } catch {
+        // ignore
+      }
+    }
+    return prompt.title || "prompt";
+  };
+
   const getFinalContent = async (): Promise<string> => {
     const currentClipboard = (await Clipboard.readText()) ?? "";
     const finalReplacements: SpecificReplacements = {
@@ -161,7 +176,7 @@ export function generatePromptActions(
           onAction={wrapActionHandler(async () => {
             try {
               const finalContent = await getFinalContent();
-              const filePath = writeContentToFile(finalContent, prompt.title || "prompt");
+              const filePath = writeContentToFile(finalContent, resolveCopyFileNamePrefix());
               await Clipboard.copy({ file: filePath });
               await showToast(Toast.Style.Success, "Copied as file", path.basename(filePath));
               await closeMainWindow({ clearRootSearch: true });

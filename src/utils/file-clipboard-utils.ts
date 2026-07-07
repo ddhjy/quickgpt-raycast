@@ -13,7 +13,8 @@ const MAX_KEPT_FILES = 20;
 
 function sanitizeFileName(title: string): string {
   const cleaned = title.replace(/[\\/:*?"<>|\n\r]/g, "_").trim().slice(0, 50);
-  return cleaned || "prompt";
+  const meaningful = cleaned.replace(/^_+|_+$/g, "");
+  return meaningful ? cleaned : "prompt";
 }
 
 function cleanupOldFiles(): void {

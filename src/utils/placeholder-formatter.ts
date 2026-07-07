@@ -44,7 +44,24 @@ const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim(
 export const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
   (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
 
-const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
+export const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
+
+const FINDER_FILE_PLACEHOLDER_REG = new RegExp(
+  FINDER_SELECTION_MARKER + "\\{\\{file:([^}]+)\\}\\}",
+  "g",
+);
+
+export function extractFinderSelectionPaths(text?: string): string[] {
+  if (!text || !text.includes(FINDER_SELECTION_MARKER)) return [];
+
+  const paths: string[] = [];
+  FINDER_FILE_PLACEHOLDER_REG.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = FINDER_FILE_PLACEHOLDER_REG.exec(text)) !== null) {
+    paths.push(match[1].trim());
+  }
+  return paths;
+}
 
 function isRecursivePlaceholder(directive: string | undefined, body: string): boolean {
   if (directive) return false;
