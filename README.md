@@ -106,7 +106,7 @@ This directory contains a comprehensive `prompt-template.hjson` file that demons
 
 ### Actions Configuration
 
-- **Actions**: Comma-separated list of default actions (e.g., `Copy,Paste,OpenAI`)
+- **Actions**: Comma-separated list of default actions (e.g., `Copy,CopyAsFile,Paste,OpenAI`)
 
 ### Editor Settings
 
@@ -131,7 +131,7 @@ This directory contains a comprehensive `prompt-template.hjson` file that demons
 4. **Execute Actions**
    - Press `⌘ + K` to open the Action Panel
    - Use `⌘ + Enter` for the default action
-   - Available actions include Copy, Paste, Script execution, and AI service calls
+   - Available actions include Copy, Copy as File (`⌘ + Shift + F`), Paste, Script execution, and AI service calls
 
 ### Advanced Features
 

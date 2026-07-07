@@ -30,6 +30,7 @@ import promptManager from "../managers/prompt-manager";
 import path from "path";
 import configurationManager from "../managers/configuration-manager";
 import { runPromptActionWithTracking } from "../utils/prompt-usage-utils";
+import { writeContentToFile } from "../utils/file-clipboard-utils";
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
   React.ReactNode;
@@ -145,6 +146,31 @@ export function generatePromptActions(
             await showToast(Toast.Style.Success, "Copied to clipboard");
             await closeMainWindow({ clearRootSearch: true });
           }, "copyToClipboard")}
+        />
+      ),
+    },
+    {
+      name: "copyAsFile",
+      displayName: "Copy as File",
+      condition: true,
+      action: (
+        <Action
+          title="Copy as File"
+          icon={Icon.NewDocument}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "f" }}
+          onAction={wrapActionHandler(async () => {
+            try {
+              const finalContent = await getFinalContent();
+              const filePath = writeContentToFile(finalContent, prompt.title || "prompt");
+              await Clipboard.copy({ file: filePath });
+              await showToast(Toast.Style.Success, "Copied as file", path.basename(filePath));
+              await closeMainWindow({ clearRootSearch: true });
+            } catch (error) {
+              console.error("Failed to copy as file:", error);
+              await showToast(Toast.Style.Failure, "Copy as file failed", String(error));
+              return false;
+            }
+          }, "copyAsFile")}
         />
       ),
     },
@@ -395,7 +421,9 @@ export function generatePromptActions(
       if (item.name.startsWith("script_")) {
         scriptActionsGroup.push(item);
       } else if (
-        ["copyToClipboard", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(item.name)
+        ["copyToClipboard", "copyAsFile", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(
+          item.name,
+        )
       ) {
         baseActionsGroup.push(item);
       } else {
