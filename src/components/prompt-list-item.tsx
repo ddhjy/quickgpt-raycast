@@ -29,7 +29,9 @@ import { PromptOptionsForm } from "./prompt-options-form";
 import { DirectoryManager } from "./temporary-directory-manager";
 import {
   removeTemporaryDirectory,
+  getActiveTemporaryDirectories,
   getActiveTemporaryDirectoriesWithExpiry,
+  restoreTemporaryDirectories,
   TemporaryDirectoryWithExpiry,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
@@ -38,13 +40,11 @@ import { findRepoRoot } from "../utils/git-utils";
 
 interface PromptListItemProps {
   prompt: PromptProps;
-  index: number;
   replacements: Omit<SpecificReplacements, "clipboard"> & Record<string, unknown>;
   searchMode?: boolean;
   promptSpecificRootDir?: string;
   allowedActions?: string[];
   onPinToggle: (prompt: PromptProps) => void;
-  activeSearchText?: string;
   scripts: ScriptInfo[];
   onRefreshNeeded: () => void;
   addToHistory?: (input: string) => void;
@@ -54,9 +54,6 @@ interface PromptListItemProps {
 
 export function PromptListItem({
   prompt,
-  // index parameter not used, but kept for interface consistency
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  index,
   replacements,
   searchMode = false,
   promptSpecificRootDir,
@@ -309,17 +306,32 @@ export function PromptListItem({
             icon={Icon.Eject}
             style={Action.Style.Destructive}
             onAction={async () => {
+              const previousDirectories = getActiveTemporaryDirectories();
+              const removedDirectory = previousDirectories.find((directory) => directory.path === tempDirSourcePath);
+              let refreshCompleted = false;
               removeTemporaryDirectory(tempDirSourcePath);
-              promptManager.reloadPrompts();
-              if (onRefreshNeeded) {
-                onRefreshNeeded();
+              try {
+                await promptManager.reloadPrompts();
+                refreshCompleted = true;
+                if (onRefreshNeeded) {
+                  onRefreshNeeded();
+                }
+                await showToast(
+                  Toast.Style.Success,
+                  "Temporary Directory Removed",
+                  `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
+                );
+                navigation.pop();
+              } catch (error) {
+                if (removedDirectory && !refreshCompleted) {
+                  restoreTemporaryDirectories([removedDirectory]);
+                }
+                await showToast({
+                  style: Toast.Style.Failure,
+                  title: "Couldn't refresh prompts",
+                  message: String(error),
+                });
               }
-              await showToast(
-                Toast.Style.Success,
-                "Temporary Directory Removed",
-                `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
-              );
-              navigation.pop();
             }}
           />,
         );
@@ -374,6 +386,8 @@ export function PromptListItem({
     scripts,
     navigation,
     onRefreshNeeded,
+    onPinToggle,
+    currentPath,
     temporaryDirs,
   ]);
 

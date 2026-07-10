@@ -2,6 +2,7 @@ const localStorageState = new Map<string, string | number | boolean>();
 const cacheState = new Map<string, string>();
 
 export const getPreferenceValues = jest.fn(() => ({}));
+export const environment = { commandName: "prompt-lab" };
 
 export const LocalStorage = {
   getItem: jest.fn(async (key: string) => localStorageState.get(key)),
@@ -18,19 +19,38 @@ export const LocalStorage = {
 };
 
 export class Cache {
+  private readonly namespace: string;
+
+  constructor(options?: { namespace?: string }) {
+    this.namespace = options?.namespace ?? "__default__";
+  }
+
+  private storageKey(key: string): string {
+    return `${this.namespace}:${key}`;
+  }
+
+  has(key: string): boolean {
+    return cacheState.has(this.storageKey(key));
+  }
+
   get(key: string): string | undefined {
-    return cacheState.get(key);
+    return cacheState.get(this.storageKey(key));
   }
 
   set(key: string, value: string): void {
-    cacheState.set(key, value);
+    cacheState.set(this.storageKey(key), value);
   }
 
   remove(key: string): void {
-    cacheState.delete(key);
+    cacheState.delete(this.storageKey(key));
   }
 
   clear(): void {
-    cacheState.clear();
+    const prefix = `${this.namespace}:`;
+    for (const key of cacheState.keys()) {
+      if (key.startsWith(prefix)) {
+        cacheState.delete(key);
+      }
+    }
   }
 }

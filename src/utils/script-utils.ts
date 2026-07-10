@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { Cache } from "@raycast/api";
 import md5 from "md5";
 import { startupElapsedMs, startupLog, startupNowMs } from "./startup-profiler";
+import { createNamespacedCache } from "./extension-cache";
 
 export interface ScriptInfo {
   path: string;
@@ -14,10 +14,16 @@ interface GetAvailableScriptsOptions {
   forceRefresh?: boolean;
 }
 
-const scriptCache = new Cache();
+interface ScriptDirectoryScanResult {
+  scripts: ScriptInfo[];
+  complete: boolean;
+}
+
 const CACHE_KEY_DIRECTORIES = "scripts_directories_v1";
 const CACHE_KEY_DATA = "scripts_data_v1";
+const scriptCache = createNamespacedCache("scripts-v1", [CACHE_KEY_DIRECTORIES, CACHE_KEY_DATA]);
 let memoryCache: { directoryKey: string; scripts: ScriptInfo[] } | undefined;
+const pendingScriptRefreshes = new Map<string, Promise<ScriptInfo[]>>();
 
 function normalizeScriptDirectories(scriptsDirectories: (string | undefined)[]): string[] {
   return scriptsDirectories.filter((dir): dir is string => typeof dir === "string" && dir.trim() !== "");
@@ -76,6 +82,16 @@ function writeCachedScripts(directoryKey: string, scripts: ScriptInfo[]): void {
 }
 
 export function scanScriptsDirectory(dir: string, relativePath = "", result: ScriptInfo[] = []): ScriptInfo[] {
+  return scanScriptsDirectoryWithStatus(dir, relativePath, result).scripts;
+}
+
+function scanScriptsDirectoryWithStatus(
+  dir: string,
+  relativePath = "",
+  result: ScriptInfo[] = [],
+): ScriptDirectoryScanResult {
+  let complete = true;
+
   try {
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -85,7 +101,8 @@ export function scanScriptsDirectory(dir: string, relativePath = "", result: Scr
       const itemPath = path.join(dir, item.name);
 
       if (item.isDirectory()) {
-        scanScriptsDirectory(itemPath, path.join(relativePath, item.name), result);
+        const nestedScan = scanScriptsDirectoryWithStatus(itemPath, path.join(relativePath, item.name), result);
+        complete = complete && nestedScan.complete;
       } else if (item.isFile() && (item.name.endsWith(".applescript") || item.name.endsWith(".scpt"))) {
         const displayName = path.basename(item.name, path.extname(item.name));
 
@@ -96,10 +113,61 @@ export function scanScriptsDirectory(dir: string, relativePath = "", result: Scr
       }
     }
 
-    return result;
+    return { scripts: result, complete };
   } catch (error) {
-    console.error("Failed to scan scripts directory:", error);
-    return result;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { scripts: result, complete };
+    }
+    console.error(`Failed to scan scripts directory ${dir}:`, error);
+    return { scripts: result, complete: false };
+  }
+}
+
+export async function scanScriptsDirectoryAsync(
+  dir: string,
+  relativePath = "",
+  result: ScriptInfo[] = [],
+): Promise<ScriptInfo[]> {
+  return (await scanScriptsDirectoryAsyncWithStatus(dir, relativePath, result)).scripts;
+}
+
+async function scanScriptsDirectoryAsyncWithStatus(
+  dir: string,
+  relativePath = "",
+  result: ScriptInfo[] = [],
+): Promise<ScriptDirectoryScanResult> {
+  let complete = true;
+
+  try {
+    const items = await fs.promises.readdir(dir, { withFileTypes: true });
+
+    for (const item of items) {
+      if (item.name.startsWith("#")) continue;
+
+      const itemPath = path.join(dir, item.name);
+
+      if (item.isDirectory()) {
+        const nestedScan = await scanScriptsDirectoryAsyncWithStatus(
+          itemPath,
+          path.join(relativePath, item.name),
+          result,
+        );
+        complete = complete && nestedScan.complete;
+      } else if (item.isFile() && (item.name.endsWith(".applescript") || item.name.endsWith(".scpt"))) {
+        result.push({
+          path: itemPath,
+          name: path.basename(item.name, path.extname(item.name)),
+        });
+      }
+    }
+
+    return { scripts: result, complete };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { scripts: result, complete };
+    }
+    console.error(`Failed to scan scripts directory ${dir}:`, error);
+    return { scripts: result, complete: false };
   }
 }
 
@@ -110,10 +178,11 @@ export function getAvailableScripts(
   const started = startupNowMs();
   const directories = normalizeScriptDirectories(scriptsDirectories);
   const directoryKey = getDirectoryKey(directories);
+  let cachedScripts: ScriptInfo[] | undefined;
 
   if (!options.forceRefresh) {
-    const cachedScripts = readCachedScripts(directoryKey);
-    if (cachedScripts) {
+    cachedScripts = readCachedScripts(directoryKey);
+    if (cachedScripts !== undefined) {
       startupLog("Scripts returned from cache", {
         durationMs: startupElapsedMs(started),
         directoryCount: directories.length,
@@ -133,19 +202,31 @@ export function getAvailableScripts(
 
   const scripts: ScriptInfo[] = [];
   const scriptNames = new Set<string>();
+  let scanComplete = true;
 
   for (const scriptsDirectory of directories) {
-    try {
-      const userScripts = scanScriptsDirectory(scriptsDirectory);
-      userScripts.forEach((script) => {
-        if (!scriptNames.has(script.name)) {
-          scripts.push(script);
-          scriptNames.add(script.name);
-        }
-      });
-    } catch (error) {
-      console.error(`Failed to read scripts directory ${scriptsDirectory}:`, error);
-    }
+    const directoryScan = scanScriptsDirectoryWithStatus(scriptsDirectory);
+    scanComplete = scanComplete && directoryScan.complete;
+    directoryScan.scripts.forEach((script) => {
+      if (!scriptNames.has(script.name)) {
+        scripts.push(script);
+        scriptNames.add(script.name);
+      }
+    });
+  }
+
+  if (!scanComplete) {
+    cachedScripts ??= readCachedScripts(directoryKey);
+    const fallbackScripts = cachedScripts ?? scripts;
+    startupLog("Scripts scan incomplete", {
+      durationMs: startupElapsedMs(started),
+      directoryCount: directories.length,
+      readableScriptCount: scripts.length,
+      returnedScriptCount: fallbackScripts.length,
+      usedCachedScripts: cachedScripts !== undefined,
+      forced: options.forceRefresh === true,
+    });
+    return fallbackScripts;
   }
 
   writeCachedScripts(directoryKey, scripts);
@@ -158,4 +239,92 @@ export function getAvailableScripts(
   });
 
   return scripts;
+}
+
+export async function getAvailableScriptsAsync(
+  scriptsDirectories: (string | undefined)[],
+  options: GetAvailableScriptsOptions = {},
+): Promise<ScriptInfo[]> {
+  const started = startupNowMs();
+  const directories = normalizeScriptDirectories(scriptsDirectories);
+  const directoryKey = getDirectoryKey(directories);
+  let cachedScripts: ScriptInfo[] | undefined;
+
+  if (!options.forceRefresh) {
+    cachedScripts = readCachedScripts(directoryKey);
+    if (cachedScripts !== undefined) {
+      startupLog("Scripts returned from cache", {
+        durationMs: startupElapsedMs(started),
+        directoryCount: directories.length,
+        scriptCount: cachedScripts.length,
+      });
+      return cachedScripts;
+    }
+
+    if (options.preferCache) {
+      startupLog("Scripts cache unavailable", {
+        durationMs: startupElapsedMs(started),
+        directoryCount: directories.length,
+      });
+      return [];
+    }
+  }
+
+  const scanAndCache = async () => {
+    const scripts: ScriptInfo[] = [];
+    const scriptNames = new Set<string>();
+    let scanComplete = true;
+
+    for (const scriptsDirectory of directories) {
+      const directoryScan = await scanScriptsDirectoryAsyncWithStatus(scriptsDirectory);
+      scanComplete = scanComplete && directoryScan.complete;
+      for (const script of directoryScan.scripts) {
+        if (!scriptNames.has(script.name)) {
+          scripts.push(script);
+          scriptNames.add(script.name);
+        }
+      }
+    }
+
+    if (!scanComplete) {
+      cachedScripts ??= readCachedScripts(directoryKey);
+      const fallbackScripts = cachedScripts ?? scripts;
+      startupLog("Scripts scan incomplete asynchronously", {
+        durationMs: startupElapsedMs(started),
+        directoryCount: directories.length,
+        readableScriptCount: scripts.length,
+        returnedScriptCount: fallbackScripts.length,
+        usedCachedScripts: cachedScripts !== undefined,
+        forced: options.forceRefresh === true,
+      });
+      return fallbackScripts;
+    }
+
+    writeCachedScripts(directoryKey, scripts);
+    startupLog("Scripts scanned asynchronously", {
+      durationMs: startupElapsedMs(started),
+      directoryCount: directories.length,
+      scriptCount: scripts.length,
+      forced: options.forceRefresh === true,
+    });
+
+    return scripts;
+  };
+
+  if (options.forceRefresh) {
+    const pendingRefresh = pendingScriptRefreshes.get(directoryKey);
+    if (pendingRefresh) {
+      return pendingRefresh;
+    }
+
+    const refresh = scanAndCache().finally(() => {
+      if (pendingScriptRefreshes.get(directoryKey) === refresh) {
+        pendingScriptRefreshes.delete(directoryKey);
+      }
+    });
+    pendingScriptRefreshes.set(directoryKey, refresh);
+    return refresh;
+  }
+
+  return scanAndCache();
 }

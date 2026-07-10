@@ -12,7 +12,7 @@ export default function PromptStats() {
     setIsLoading(true);
 
     try {
-      promptManager.refreshPrompts("prompt-stats");
+      await promptManager.refreshPrompts("prompt-stats");
       const allPrompts = promptManager.getFilteredPrompts(() => true);
       const nextRows = await promptUsageStore.getPromptUsageRows(allPrompts);
       setRows(nextRows);

@@ -1,13 +1,12 @@
 import "./utils/captured-selection";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LaunchProps } from "@raycast/api";
+import { LaunchProps, showToast, Toast } from "@raycast/api";
 import pinsManager from "./managers/pins-manager";
 import promptManager from "./managers/prompt-manager";
 import { getQuickPrompt } from "./utils/prompt-formatting-utils";
 import { PromptList } from "./components/prompt-list";
 import { useInitialContext } from "./hooks/use-initial-context";
 import { startupLog } from "./utils/startup-profiler";
-import type { PromptProps } from "./managers/prompt-manager";
 
 interface ExtendedArguments extends Arguments.PromptLab {
   initialSelectionText?: string;
@@ -23,9 +22,18 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   const [isRefreshingPrompts, setIsRefreshingPrompts] = useState(() => !promptManager.hasPrompts());
   const hasStartedPromptRefreshRef = useRef(false);
   const hasLoggedFirstRenderRef = useRef(false);
-  const { initialSelectionText, selection, target, actions, filePath, ...placeholderArgs } = props.arguments;
+  const { initialSelectionText, selection, target, actions, filePath } = props.arguments;
 
-  const allowedActions = actions?.split(",").filter(Boolean);
+  const allowedActions = useMemo(() => actions?.split(",").filter(Boolean), [actions]);
+  const placeholderArgs = useMemo(() => {
+    const customArguments = { ...props.arguments };
+    delete customArguments.initialSelectionText;
+    delete customArguments.selection;
+    delete customArguments.target;
+    delete customArguments.actions;
+    delete customArguments.filePath;
+    return customArguments;
+  }, [props.arguments]);
 
   const initialSelection = (typeof selection === "string" && selection) || initialSelectionText;
 
@@ -47,15 +55,23 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       cacheHydrated: promptManager.getLoadState().hasHydratedFromCache,
     });
 
-    const unsubscribe = promptManager.subscribe(() => {
-      setPromptVersion((version) => version + 1);
+    const unsubscribe = promptManager.subscribe((promptsChanged) => {
+      if (promptsChanged) {
+        setPromptVersion((version) => version + 1);
+      }
       setIsRefreshingPrompts(false);
     });
 
     if (!hasStartedPromptRefreshRef.current) {
       hasStartedPromptRefreshRef.current = true;
       setIsRefreshingPrompts(!promptManager.hasPrompts());
-      promptManager.refreshPrompts("prompt-lab-startup");
+      void promptManager.refreshPrompts("prompt-lab-startup").catch((error) =>
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Couldn't refresh prompts",
+          message: String(error),
+        }),
+      );
     }
 
     return () => {
@@ -63,25 +79,35 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     };
   }, []);
 
-  const pinnedIdentifiers = pinsManager.pinnedIdentifiers();
-  const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
-    prompt.pinned = pinnedIdentifiers.includes(prompt.identifier);
-    return prompt.pinned;
-  });
-
-  const [quickPrompt, cleanedSelectionText] = getQuickPrompt(selectionText, target, filePath);
-
-  const availablePrompts = quickPrompt?.subprompts
-    ? quickPrompt.subprompts
-    : quickPrompt
-      ? [quickPrompt]
-      : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+  const [quickPrompt, cleanedSelectionText] = useMemo(
+    () => getQuickPrompt(selectionText, target, filePath),
+    [filePath, selectionText, target],
+  );
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
+  const pinnedIdentifiersKey = JSON.stringify(pinsManager.pinnedIdentifiers());
+  const uniquePrompts = useMemo(() => {
+    const pinnedIdentifierSet = new Set<string>(JSON.parse(pinnedIdentifiersKey));
+    const pinnedPrompts = promptManager.getFilteredPrompts((prompt) => {
+      prompt.pinned = pinnedIdentifierSet.has(prompt.identifier);
+      return prompt.pinned;
+    });
+    const availablePrompts = quickPrompt?.subprompts
+      ? quickPrompt.subprompts
+      : quickPrompt
+        ? [quickPrompt]
+        : [...pinnedPrompts, ...promptManager.getRootPrompts()];
+    const seen = new Set<string>();
 
-  const uniquePrompts = Array.from(new Set(availablePrompts.map((prompt) => prompt.identifier || prompt.title)))
-    .map((unique) => availablePrompts.find((prompt) => prompt.identifier === unique || prompt.title === unique))
-    .filter(Boolean) as PromptProps[];
+    return availablePrompts.filter((prompt) => {
+      const key = prompt.identifier || prompt.title;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }, [pinnedIdentifiersKey, promptVersion, quickPrompt]);
 
   return (
     <PromptList

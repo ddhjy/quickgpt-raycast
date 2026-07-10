@@ -24,6 +24,8 @@ import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
   removeTemporaryDirectory,
+  getActiveTemporaryDirectories,
+  restoreTemporaryDirectories,
 } from "../stores/temporary-directory-store";
 import promptUsageStore from "../stores/prompt-usage-store";
 import promptManager from "../managers/prompt-manager";
@@ -349,17 +351,32 @@ export function generatePromptActions(
           icon={Icon.Eject}
           style={Action.Style.Destructive}
           onAction={async () => {
+            const previousDirectories = getActiveTemporaryDirectories();
+            const removedDirectory = previousDirectories.find((directory) => directory.path === tempDirSourcePath);
+            let refreshCompleted = false;
             removeTemporaryDirectory(tempDirSourcePath);
-            promptManager.reloadPrompts();
-            if (onRefreshNeeded) {
-              onRefreshNeeded();
+            try {
+              await promptManager.reloadPrompts();
+              refreshCompleted = true;
+              if (onRefreshNeeded) {
+                onRefreshNeeded();
+              }
+              await showToast(
+                Toast.Style.Success,
+                "Directory removed",
+                `${path.basename(tempDirSourcePath)} prompts are no longer available`,
+              );
+              navigation.pop();
+            } catch (error) {
+              if (removedDirectory && !refreshCompleted) {
+                restoreTemporaryDirectories([removedDirectory]);
+              }
+              await showToast({
+                style: Toast.Style.Failure,
+                title: "Couldn't refresh prompts",
+                message: String(error),
+              });
             }
-            await showToast(
-              Toast.Style.Success,
-              "Directory removed",
-              `${path.basename(tempDirSourcePath)} prompts are no longer available`,
-            );
-            navigation.pop();
           }}
         />
       ),

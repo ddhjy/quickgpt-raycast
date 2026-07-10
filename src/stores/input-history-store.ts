@@ -1,4 +1,5 @@
-import { Cache } from "@raycast/api";
+import type { Cache } from "@raycast/api";
+import { createNamespacedCache } from "../utils/extension-cache";
 
 class InputHistoryStore {
   private cache: Cache;
@@ -48,7 +49,7 @@ class InputHistoryStore {
   }
 }
 
-const cache = new Cache();
+const cache = createNamespacedCache("input-history-v1", ["inputHistory"]);
 const inputHistoryStore = new InputHistoryStore(cache);
 
 export default inputHistoryStore;

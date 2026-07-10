@@ -1,4 +1,5 @@
-import { Cache, LocalStorage } from "@raycast/api";
+import { LocalStorage } from "@raycast/api";
+import { createNamespacedCache } from "../utils/extension-cache";
 
 interface CacheAdapter {
   get(key: string): string | undefined;
@@ -197,7 +198,11 @@ function parseExecutionHistory(historyJson: string | undefined): string[] | unde
   }
 }
 
-const cache = new Cache();
+const cache = createNamespacedCache("action-preferences-v1", [
+  "lastSelectedAction",
+  "lastExecutedAction",
+  "actionExecutionHistory",
+]);
 const defaultActionPreferenceStore = new DefaultActionPreferenceStore(cache);
 
 export default defaultActionPreferenceStore;

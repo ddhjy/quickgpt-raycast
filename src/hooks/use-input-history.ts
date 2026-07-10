@@ -55,15 +55,16 @@ export function useInputHistory(initialValue: string = "") {
     setTemporaryInput("");
   }, []);
 
+  const addToHistory = useCallback((input: string) => {
+    inputHistoryStore.addToHistory(input);
+    setHistory(inputHistoryStore.getHistory());
+  }, []);
+
   return {
     currentInput,
     setCurrentInput: updateInput,
     navigateHistory,
     resetHistory,
-    addToHistory: (input: string) => {
-      inputHistoryStore.addToHistory(input);
-      const updatedHistory = inputHistoryStore.getHistory();
-      setHistory(updatedHistory);
-    },
+    addToHistory,
   };
 }

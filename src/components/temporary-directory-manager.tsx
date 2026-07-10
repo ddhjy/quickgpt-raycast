@@ -18,10 +18,14 @@ import { runAppleScript } from "@raycast/utils";
 import path from "path";
 import fs from "fs";
 import {
+  getActiveTemporaryDirectories,
   getActiveTemporaryDirectoriesWithExpiry,
   addTemporaryDirectory,
   removeTemporaryDirectory,
   removeAllTemporaryDirectories,
+  removeTemporaryDirectoryIfUnchanged,
+  restoreTemporaryDirectories,
+  type TemporaryDirectoryInfo,
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import configurationManager from "../managers/configuration-manager";
@@ -97,6 +101,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   const handleAddDirectory = async () => {
     if (type !== "temporary") return;
 
+    let addedDirectory: TemporaryDirectoryInfo | undefined;
+    let refreshCompleted = false;
     try {
       const selectedItems = await getSelectedFinderItems();
       if (selectedItems.length === 0) {
@@ -119,8 +125,9 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         return;
       }
 
-      addTemporaryDirectory(selectedPath);
-      promptManager.reloadPrompts();
+      addedDirectory = addTemporaryDirectory(selectedPath);
+      await promptManager.reloadPrompts();
+      refreshCompleted = true;
       if (onRefreshNeeded) {
         onRefreshNeeded();
       }
@@ -132,6 +139,10 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         style: Toast.Style.Success,
       });
     } catch (error) {
+      if (addedDirectory && !refreshCompleted) {
+        removeTemporaryDirectoryIfUnchanged(addedDirectory);
+        refreshDirectories();
+      }
       console.error("Failed to add temporary directory:", error);
       await showToast({
         title: "Couldn't add directory",
@@ -144,9 +155,13 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   const handleRemoveDirectory = async (dirPath: string) => {
     if (type !== "temporary") return;
 
+    const previousDirectories = getActiveTemporaryDirectories();
+    const removedDirectory = previousDirectories.find((directory) => directory.path === dirPath);
+    let refreshCompleted = false;
     try {
       removeTemporaryDirectory(dirPath);
-      promptManager.reloadPrompts();
+      await promptManager.reloadPrompts();
+      refreshCompleted = true;
       if (onRefreshNeeded) {
         onRefreshNeeded();
       }
@@ -158,6 +173,10 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         style: Toast.Style.Success,
       });
     } catch (error) {
+      if (removedDirectory && !refreshCompleted) {
+        restoreTemporaryDirectories([removedDirectory]);
+        refreshDirectories();
+      }
       console.error("Failed to remove temporary directory:", error);
       await showToast({
         title: "Couldn't remove directory",
@@ -170,6 +189,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   const handleRemoveAll = async () => {
     if (type !== "temporary") return;
 
+    let removedDirectories: TemporaryDirectoryInfo[] = [];
+    let refreshCompleted = false;
     try {
       const confirmed = await confirmAlert({
         title: "Remove all temporary directories?",
@@ -181,8 +202,10 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       });
 
       if (confirmed) {
+        removedDirectories = getActiveTemporaryDirectories();
         removeAllTemporaryDirectories();
-        promptManager.reloadPrompts();
+        await promptManager.reloadPrompts();
+        refreshCompleted = true;
         if (onRefreshNeeded) {
           onRefreshNeeded();
         }
@@ -194,6 +217,10 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         });
       }
     } catch (error) {
+      if (!refreshCompleted) {
+        restoreTemporaryDirectories(removedDirectories);
+        refreshDirectories();
+      }
       console.error("Failed to remove all temporary directories:", error);
       await showToast({
         title: "Couldn't remove directories",

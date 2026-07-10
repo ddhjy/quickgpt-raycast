@@ -1,4 +1,4 @@
-import { Cache } from "@raycast/api";
+import { createNamespacedCache } from "../utils/extension-cache";
 
 const CACHE_KEY = "temporaryPromptDirectories";
 const EXPIRY_DURATION = 30 * 24 * 60 * 60 * 1000;
@@ -14,7 +14,7 @@ export interface TemporaryDirectoryWithExpiry extends TemporaryDirectoryInfo {
   remainingText: string;
 }
 
-const cache = new Cache();
+const cache = createNamespacedCache("temporary-directories-v1", [CACHE_KEY]);
 
 export function calculateRemainingTime(dirInfo: TemporaryDirectoryInfo): TemporaryDirectoryWithExpiry {
   const now = Date.now();
@@ -77,9 +77,9 @@ export function isPathInTemporaryDirectories(dirPath: string): boolean {
   return dirs.some((dir) => dir.path === dirPath);
 }
 
-export function addTemporaryDirectory(dirPath: string): void {
+export function addTemporaryDirectory(dirPath: string): TemporaryDirectoryInfo | undefined {
   if (isPathInTemporaryDirectories(dirPath)) {
-    return;
+    return undefined;
   }
 
   const now = Date.now();
@@ -90,6 +90,7 @@ export function addTemporaryDirectory(dirPath: string): void {
 
   cache.set(CACHE_KEY, JSON.stringify(dirInfos));
   console.log(`Temporary directory added: ${dirPath}`);
+  return newInfo;
 }
 
 export function updateTemporaryDirectoryUsage(path: string): void {
@@ -128,5 +129,33 @@ export function removeAllTemporaryDirectories(): void {
   if (dirInfos.length > 0) {
     cache.remove(CACHE_KEY);
     console.log("All temporary directories removed");
+  }
+}
+
+export function removeTemporaryDirectoryIfUnchanged(expected: TemporaryDirectoryInfo): void {
+  const currentDirectories = getActiveTemporaryDirectories();
+  const current = currentDirectories.find((directory) => directory.path === expected.path);
+  if (!current || current.addedAt !== expected.addedAt || current.lastUsedAt !== expected.lastUsedAt) {
+    return;
+  }
+
+  const remainingDirectories = currentDirectories.filter((directory) => directory.path !== expected.path);
+  if (remainingDirectories.length === 0) {
+    cache.remove(CACHE_KEY);
+  } else {
+    cache.set(CACHE_KEY, JSON.stringify(remainingDirectories));
+  }
+}
+
+export function restoreTemporaryDirectories(directories: TemporaryDirectoryInfo[]): void {
+  if (directories.length === 0) {
+    return;
+  }
+
+  const currentDirectories = getActiveTemporaryDirectories();
+  const currentPaths = new Set(currentDirectories.map((directory) => directory.path));
+  const directoriesToRestore = directories.filter((directory) => !currentPaths.has(directory.path));
+  if (directoriesToRestore.length > 0) {
+    cache.set(CACHE_KEY, JSON.stringify([...currentDirectories, ...directoriesToRestore]));
   }
 }

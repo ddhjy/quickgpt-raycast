@@ -1,33 +1,33 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { List, showToast, Toast, clearSearchBar, useNavigation, Icon } from "@raycast/api";
-import { match } from "pinyin-pro";
 import path from "path";
 import type { PromptProps } from "../managers/prompt-manager";
 import pinsManager from "../managers/pins-manager";
 import { MemoizedPromptListItem } from "./prompt-list-item";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
-import { getAvailableScripts, ScriptInfo } from "../utils/script-utils";
+import { getAvailableScripts, getAvailableScriptsAsync, ScriptInfo } from "../utils/script-utils";
 import { useInputHistory } from "../hooks/use-input-history";
 import configurationManager from "../managers/configuration-manager";
+import {
+  createPromptSearchIndex,
+  getAllDescendants,
+  searchPromptIndex,
+  type PromptSearchIndex,
+} from "../utils/prompt-search";
 
-const normalizeTextForSearch = (text: string): string => {
-  const lowerText = text.toLowerCase();
-  const leadingSpecialMatch = lowerText.match(/^[^\p{L}\p{N}]+/u);
-  const leadingSpecial = leadingSpecialMatch ? leadingSpecialMatch[0] : "";
-  const normalizedBody = lowerText.replace(/[^\p{L}\p{N}]/gu, "");
-  return leadingSpecial + normalizedBody;
-};
+const EMPTY_PLACEHOLDER_ARGS: Record<string, unknown> = Object.freeze({});
+const SEARCH_RESULT_LIMIT = 9;
+const INITIAL_PROMPT_RENDER_LIMIT = 12;
+const PROMPT_RENDER_BATCH_SIZE = 40;
+const PROMPT_RENDER_BATCH_DELAY_MS = 16;
+const SEARCH_INDEX_POST_COMMIT_DELAY_MS = 0;
 
-const getAllDescendants = (prompts: PromptProps[]): PromptProps[] => {
-  let results: PromptProps[] = [];
-  prompts.forEach((prompt) => {
-    results.push(prompt);
-    if (prompt.subprompts) {
-      results = results.concat(getAllDescendants(prompt.subprompts));
-    }
-  });
-  return results;
-};
+function areScriptsEqual(left: ScriptInfo[], right: ScriptInfo[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((script, index) => script.path === right[index].path && script.name === right[index].name)
+  );
+}
 
 interface PromptListProps {
   prompts: PromptProps[];
@@ -56,7 +56,7 @@ export function PromptList({
   allowedActions,
   initialScripts,
   externalOnRefreshNeeded,
-  placeholderArgs = {},
+  placeholderArgs = EMPTY_PLACEHOLDER_ARGS,
   currentPath = "",
   isLoading = false,
 }: PromptListProps) {
@@ -65,9 +65,7 @@ export function PromptList({
   const [refreshKey, setRefreshKey] = useState(0);
   const scriptDirectories = useMemo(() => configurationManager.getDirectories("scripts"), []);
   const scriptDirectoryKey = useMemo(() => JSON.stringify(scriptDirectories), [scriptDirectories]);
-  const [resolvedScripts, setResolvedScripts] = useState<ScriptInfo[]>(
-    () => initialScripts ?? getAvailableScripts(scriptDirectories, { preferCache: true }),
-  );
+  const [resolvedScripts, setResolvedScripts] = useState<ScriptInfo[]>(() => initialScripts ?? []);
   const [hasResolvedScripts, setHasResolvedScripts] = useState(
     () => initialScripts !== undefined || scriptDirectories.length === 0,
   );
@@ -77,10 +75,20 @@ export function PromptList({
   const [isActionPreferenceHydrated, setIsActionPreferenceHydrated] = useState(() =>
     defaultActionPreferenceStore.isHydrated(),
   );
+  const preparedSearchRef = useRef<
+    | {
+        sourcePrompts: PromptProps[];
+        index: PromptSearchIndex;
+      }
+    | undefined
+  >(undefined);
+  const [progressivePromptRender, setProgressivePromptRender] = useState<{
+    sourcePrompts: PromptProps[];
+    limit: number;
+  }>();
   const { push } = useNavigation();
 
   const isMountedRef = useRef(false);
-  const hasRefreshedScriptsRef = useRef(false);
   const forceUpdate = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 
   useEffect(() => {
@@ -119,22 +127,53 @@ export function PromptList({
   }, [forceUpdate]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (initialScripts) {
-      setResolvedScripts(initialScripts);
+      setResolvedScripts((current) => (areScriptsEqual(current, initialScripts) ? current : initialScripts));
       setHasResolvedScripts(true);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    if (hasRefreshedScriptsRef.current) {
-      return;
+    if (scriptDirectories.length === 0) {
+      setHasResolvedScripts(true);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    hasRefreshedScriptsRef.current = true;
-    const nextScripts = getAvailableScripts(scriptDirectories, { forceRefresh: true });
-    if (isMountedRef.current) {
-      setResolvedScripts(nextScripts);
-      setHasResolvedScripts(true);
-    }
+    // Cache.get is synchronous, so move it behind the first committed frame.
+    const cacheTimer = setTimeout(() => {
+      if (cancelled || !isMountedRef.current) {
+        return;
+      }
+      const cachedScripts = getAvailableScripts(scriptDirectories, { preferCache: true });
+      if (cachedScripts.length > 0) {
+        setResolvedScripts((current) => (areScriptsEqual(current, cachedScripts) ? current : cachedScripts));
+        setHasResolvedScripts(true);
+      }
+    }, 0);
+
+    void getAvailableScriptsAsync(scriptDirectories, { forceRefresh: true })
+      .then((nextScripts) => {
+        if (!cancelled && isMountedRef.current) {
+          setResolvedScripts((current) => (areScriptsEqual(current, nextScripts) ? current : nextScripts));
+          setHasResolvedScripts(true);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to refresh available scripts:", error);
+        if (!cancelled && isMountedRef.current) {
+          setHasResolvedScripts(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(cacheTimer);
+    };
   }, [initialScripts, scriptDirectories, scriptDirectoryKey]);
 
   const getLastUsedActionDisplay = () => {
@@ -148,87 +187,119 @@ export function PromptList({
     return "Last Used";
   };
 
-  const handlePinToggle = (prompt: PromptProps) => {
-    const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
-    if (isCurrentlyPinned) {
-      pinsManager.unpin(prompt.identifier);
-    } else {
-      pinsManager.pin(prompt.identifier);
-    }
+  const handlePinToggle = useCallback(
+    (prompt: PromptProps) => {
+      const isCurrentlyPinned = pinsManager.pinnedIdentifiers().includes(prompt.identifier);
+      if (isCurrentlyPinned) {
+        pinsManager.unpin(prompt.identifier);
+      } else {
+        pinsManager.pin(prompt.identifier);
+      }
 
-    forceUpdate();
-  };
+      forceUpdate();
+    },
+    [forceUpdate],
+  );
 
   const configuredRootDirs = configurationManager.getDirectories("prompts");
+  const sourcePrompts = useMemo(
+    () => (searchMode ? getAllDescendants(initialPrompts) : initialPrompts),
+    [initialPrompts, searchMode],
+  );
+  const preparedSearch = preparedSearchRef.current;
+  const promptSearchIndex = preparedSearch?.sourcePrompts === sourcePrompts ? preparedSearch.index : undefined;
+  const hasActiveSearch = searchMode && searchText.trim().length > 0;
+  const visiblePromptLimit =
+    progressivePromptRender?.sourcePrompts === initialPrompts
+      ? progressivePromptRender.limit
+      : INITIAL_PROMPT_RENDER_LIMIT;
+  const hasExpandedPromptSource = visiblePromptLimit >= initialPrompts.length;
+
+  useEffect(() => {
+    if (!searchMode || promptSearchIndex) {
+      return;
+    }
+
+    let cancelled = false;
+    // Pinyin preparation is intentionally outside the initial render path.
+    const timer = setTimeout(() => {
+      if (!cancelled && preparedSearchRef.current?.sourcePrompts !== sourcePrompts) {
+        preparedSearchRef.current = { sourcePrompts, index: createPromptSearchIndex(sourcePrompts) };
+      }
+    }, SEARCH_INDEX_POST_COMMIT_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [promptSearchIndex, searchMode, sourcePrompts]);
+
+  useEffect(() => {
+    if (!searchMode || hasExpandedPromptSource || hasActiveSearch) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setProgressivePromptRender((current) => {
+        const currentLimit = current?.sourcePrompts === initialPrompts ? current.limit : INITIAL_PROMPT_RENDER_LIMIT;
+        return {
+          sourcePrompts: initialPrompts,
+          limit: Math.min(initialPrompts.length, currentLimit + PROMPT_RENDER_BATCH_SIZE),
+        };
+      });
+    }, PROMPT_RENDER_BATCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [hasActiveSearch, hasExpandedPromptSource, initialPrompts, searchMode, visiblePromptLimit]);
+
+  const sourcePromptKeys = useMemo(() => {
+    return new Map(
+      sourcePrompts.map((prompt, sourceIndex) => [
+        prompt,
+        `${prompt.identifier || prompt.title}:${prompt.filePath ?? ""}:${prompt.path ?? ""}:${sourceIndex}`,
+      ]),
+    );
+  }, [sourcePrompts]);
 
   const filteredPrompts = useMemo(() => {
-    let result;
-    const sourcePrompts = searchMode ? getAllDescendants(initialPrompts) : initialPrompts;
-
-    if (searchMode && searchText.trim().length > 0) {
-      const trimmedSearchText = searchText.trim();
-      const normalizedSearchText = normalizeTextForSearch(trimmedSearchText);
-
-      result = sourcePrompts.filter((prompt) => {
-        const normalizedTitle = normalizeTextForSearch(prompt.title);
-        const titleMatch = normalizedTitle.includes(normalizedSearchText);
-        const pinyinMatch = !!match(prompt.title, trimmedSearchText, { continuous: true });
-        return titleMatch || pinyinMatch;
-      });
-    } else {
-      result = initialPrompts;
+    if (hasActiveSearch) {
+      let index = promptSearchIndex;
+      if (!index) {
+        index = createPromptSearchIndex(sourcePrompts);
+        preparedSearchRef.current = { sourcePrompts, index };
+      }
+      return searchPromptIndex(index, searchText);
     }
-    return result;
-  }, [initialPrompts, searchMode, searchText]);
+    return initialPrompts;
+  }, [hasActiveSearch, initialPrompts, promptSearchIndex, searchText, sourcePrompts]);
 
   const displayPrompts = useMemo(() => {
     const pinnedOrder = pinsManager.pinnedIdentifiers();
+    const pinnedIdentifiers = new Set(pinnedOrder);
+    const pinnedPromptsMap = new Map<string, PromptProps>();
+    const unpinnedPrompts: PromptProps[] = [];
 
-    let sorted: PromptProps[];
+    filteredPrompts.forEach((prompt) => {
+      prompt.pinned = pinnedIdentifiers.has(prompt.identifier);
+      if (prompt.pinned) {
+        pinnedPromptsMap.set(prompt.identifier, prompt);
+      } else {
+        unpinnedPrompts.push(prompt);
+      }
+    });
 
-    if (searchMode && searchText.trim().length > 0) {
-      const pinnedPromptsMap = new Map<string, PromptProps>();
-      const unpinnedPrompts: PromptProps[] = [];
+    const sortedPinnedPrompts = pinnedOrder
+      .map((id) => pinnedPromptsMap.get(id))
+      .filter((prompt): prompt is PromptProps => prompt !== undefined);
+    const sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
 
-      filteredPrompts.forEach((prompt) => {
-        if (pinnedOrder.includes(prompt.identifier)) {
-          prompt.pinned = true;
-          pinnedPromptsMap.set(prompt.identifier, prompt);
-        } else {
-          prompt.pinned = false;
-          unpinnedPrompts.push(prompt);
-        }
-      });
-
-      const sortedPinnedPrompts = pinnedOrder
-        .map((id) => pinnedPromptsMap.get(id))
-        .filter((p): p is PromptProps => p !== undefined);
-
-      sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
-    } else {
-      const pinnedPromptsMap = new Map<string, PromptProps>();
-      const unpinnedPrompts: PromptProps[] = [];
-
-      filteredPrompts.forEach((prompt) => {
-        if (pinnedOrder.includes(prompt.identifier)) {
-          prompt.pinned = true;
-          pinnedPromptsMap.set(prompt.identifier, prompt);
-        } else {
-          prompt.pinned = false;
-          unpinnedPrompts.push(prompt);
-        }
-      });
-
-      const sortedPinnedPrompts = pinnedOrder
-        .map((id) => pinnedPromptsMap.get(id))
-        .filter((p): p is PromptProps => p !== undefined);
-
-      sorted = [...sortedPinnedPrompts, ...unpinnedPrompts];
-    }
-
-    const sliced = sorted.slice(0, searchMode && searchText.trim().length > 0 ? 9 : undefined);
+    const displayLimit = hasActiveSearch
+      ? SEARCH_RESULT_LIMIT
+      : searchMode && !hasExpandedPromptSource
+        ? visiblePromptLimit
+        : undefined;
+    const sliced = sorted.slice(0, displayLimit);
     return sliced;
-  }, [filteredPrompts, searchMode, searchText, refreshKey]);
+  }, [filteredPrompts, hasActiveSearch, hasExpandedPromptSource, searchMode, refreshKey, visiblePromptLimit]);
 
   useEffect(() => {
     if (searchMode && searchText.endsWith(" ") && searchText.trim().length > 0) {
@@ -301,6 +372,18 @@ export function PromptList({
   };
 
   const activeSearchText = searchMode ? "" : searchText;
+  const itemReplacements = useMemo(
+    () => ({
+      selection: selectionText,
+      currentApp,
+      allApp,
+      browserContent,
+      input: activeSearchText,
+      diff,
+      ...placeholderArgs,
+    }),
+    [activeSearchText, allApp, browserContent, currentApp, diff, placeholderArgs, selectionText],
+  );
 
   const scripts = initialScripts ?? resolvedScripts;
   const selectedScriptName = selectedAction.startsWith("script_") ? selectedAction.replace(/^script_/, "") : "";
@@ -308,9 +391,10 @@ export function PromptList({
     ? scripts.some(({ name }) => name === selectedScriptName)
     : false;
   const shouldShowSelectedScriptPlaceholder = selectedScriptName !== "" && !isSelectedScriptAvailable;
+  const isWaitingForSelectedScript = selectedScriptName !== "" && !hasResolvedScripts;
 
   const promptItems = displayPrompts
-    .map((prompt, index) => {
+    .map((prompt) => {
       let promptSpecificRootDir: string | undefined = undefined;
 
       if (prompt.isTemporary && prompt.temporaryDirSource) {
@@ -336,23 +420,13 @@ export function PromptList({
 
       return (
         <MemoizedPromptListItem
-          key={`${prompt.identifier || prompt.title}-${index}-${refreshKey}`}
+          key={`${sourcePromptKeys.get(prompt) ?? prompt.identifier ?? prompt.title}:${refreshKey}`}
           prompt={prompt}
-          index={index}
-          replacements={{
-            selection: selectionText,
-            currentApp,
-            allApp,
-            browserContent,
-            input: searchMode ? "" : activeSearchText,
-            diff,
-            ...placeholderArgs,
-          }}
+          replacements={itemReplacements}
           searchMode={searchMode}
           promptSpecificRootDir={promptSpecificRootDir}
           allowedActions={allowedActions}
           onPinToggle={handlePinToggle}
-          activeSearchText={activeSearchText}
           scripts={scripts}
           onRefreshNeeded={effectiveOnRefreshNeeded}
           addToHistory={addToHistory}
@@ -365,7 +439,7 @@ export function PromptList({
 
   return (
     <List
-      isLoading={isLoading || !isActionPreferenceHydrated}
+      isLoading={isLoading || !isActionPreferenceHydrated || isWaitingForSelectedScript}
       searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}

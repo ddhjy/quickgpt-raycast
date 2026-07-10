@@ -1,4 +1,5 @@
-import { Cache } from "@raycast/api";
+import type { Cache } from "@raycast/api";
+import { createNamespacedCache } from "../utils/extension-cache";
 
 class PinsManager {
   private cache: Cache;
@@ -34,7 +35,7 @@ class PinsManager {
   }
 }
 
-const cache = new Cache();
+const cache = createNamespacedCache("pins-v1", ["pinnedIdentifiers"]);
 const pinsManager = new PinsManager(cache);
 
 export default pinsManager;
