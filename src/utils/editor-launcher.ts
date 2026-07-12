@@ -94,12 +94,25 @@ export function resolveEditorLineInvocation(
   return undefined;
 }
 
+export interface OpenPromptFileResult {
+  /** True when the file was opened at the requested line via a CLI. */
+  openedAtLine: boolean;
+}
+
 /**
  * Opens a prompt file in the given editor. When `line` is provided and the
  * editor exposes a supported CLI, the file is opened at that line; otherwise
  * this falls back to opening the workspace directory and file via `open`.
+ *
+ * The returned flag reflects what actually happened, so callers can adapt
+ * (e.g. only copy the prompt title for manual searching when no line jump
+ * was possible).
  */
-export async function openPromptFileWithEditor(editor: EditorAppInfo, filePath: string, line?: number): Promise<void> {
+export async function openPromptFileWithEditor(
+  editor: EditorAppInfo,
+  filePath: string,
+  line?: number,
+): Promise<OpenPromptFileResult> {
   const repoRoot = await findRepoRoot(filePath);
   const workspaceDir = repoRoot ?? path.dirname(filePath);
 
@@ -108,7 +121,7 @@ export async function openPromptFileWithEditor(editor: EditorAppInfo, filePath: 
     if (invocation) {
       try {
         await execFileAsync(invocation.command, invocation.args);
-        return;
+        return { openedAtLine: true };
       } catch (error) {
         console.error("Editor line navigation failed, falling back to open:", error);
       }
@@ -120,4 +133,5 @@ export async function openPromptFileWithEditor(editor: EditorAppInfo, filePath: 
       ? ["-b", editor.bundleId, workspaceDir, filePath]
       : ["-a", editor.path ?? editor.name ?? "", workspaceDir, filePath];
   await execFileAsync("open", openArgs);
+  return { openedAtLine: false };
 }

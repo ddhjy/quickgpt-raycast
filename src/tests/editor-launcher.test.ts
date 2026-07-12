@@ -1,7 +1,18 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { resolveEditorLineInvocation } from "../utils/editor-launcher";
+import { execFile } from "child_process";
+import { openPromptFileWithEditor, resolveEditorLineInvocation } from "../utils/editor-launcher";
+
+jest.mock("child_process", () => ({
+  ...jest.requireActual("child_process"),
+  execFile: jest.fn((...args: unknown[]) => {
+    const callback = args[args.length - 1] as (error: Error | null, stdout: string, stderr: string) => void;
+    callback(null, "", "");
+  }),
+}));
+
+const execFileMock = execFile as unknown as jest.Mock;
 
 function makeExecutable(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -78,5 +89,88 @@ describe("resolveEditorLineInvocation", () => {
     fs.mkdirSync(path.join(appPath, "Contents", "MacOS"), { recursive: true });
 
     expect(resolveEditorLineInvocation(appPath, workspaceDir, filePath, 5)).toBeUndefined();
+  });
+});
+
+describe("openPromptFileWithEditor", () => {
+  let rootDirectory: string;
+  let workspaceDir: string;
+  let filePath: string;
+
+  beforeEach(() => {
+    execFileMock.mockClear();
+    rootDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "quickgpt-editor-open-"));
+    workspaceDir = path.join(rootDirectory, "repo");
+    fs.mkdirSync(path.join(workspaceDir, ".git"), { recursive: true });
+    fs.mkdirSync(path.join(workspaceDir, "prompts"));
+    filePath = path.join(workspaceDir, "prompts", "demo.hjson");
+    fs.writeFileSync(filePath, "{}");
+  });
+
+  afterEach(() => {
+    fs.rmSync(rootDirectory, { recursive: true, force: true });
+  });
+
+  function makeVSCodeFamilyApp(): { appPath: string; cliPath: string } {
+    const appPath = path.join(rootDirectory, "Fake Code.app");
+    const cliPath = path.join(appPath, "Contents", "Resources", "app", "bin", "code");
+    makeExecutable(cliPath);
+    return { appPath, cliPath };
+  }
+
+  it("opens at the line through the editor CLI and reports openedAtLine", async () => {
+    const { appPath, cliPath } = makeVSCodeFamilyApp();
+
+    const result = await openPromptFileWithEditor({ name: "Fake Code", path: appPath }, filePath, 42);
+
+    expect(result).toEqual({ openedAtLine: true });
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    expect(execFileMock.mock.calls[0][0]).toBe(cliPath);
+    expect(execFileMock.mock.calls[0][1]).toEqual([workspaceDir, "--goto", `${filePath}:42`]);
+  });
+
+  it("falls back to open without a line for editors without a known CLI", async () => {
+    const appPath = path.join(rootDirectory, "TextEdit.app");
+    fs.mkdirSync(path.join(appPath, "Contents", "MacOS"), { recursive: true });
+
+    const result = await openPromptFileWithEditor(
+      { name: "TextEdit", path: appPath, bundleId: "com.apple.TextEdit" },
+      filePath,
+      42,
+    );
+
+    expect(result).toEqual({ openedAtLine: false });
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    expect(execFileMock.mock.calls[0][0]).toBe("open");
+    expect(execFileMock.mock.calls[0][1]).toEqual(["-b", "com.apple.TextEdit", workspaceDir, filePath]);
+  });
+
+  it("falls back to open when no line number is known", async () => {
+    const { appPath } = makeVSCodeFamilyApp();
+
+    const result = await openPromptFileWithEditor({ name: "Fake Code", path: appPath }, filePath, undefined);
+
+    expect(result).toEqual({ openedAtLine: false });
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    expect(execFileMock.mock.calls[0][0]).toBe("open");
+  });
+
+  it("falls back to open when the CLI invocation fails", async () => {
+    const { appPath } = makeVSCodeFamilyApp();
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    execFileMock.mockImplementationOnce((...args: unknown[]) => {
+      const callback = args[args.length - 1] as (error: Error | null, stdout: string, stderr: string) => void;
+      callback(new Error("cli crashed"), "", "");
+    });
+
+    try {
+      const result = await openPromptFileWithEditor({ name: "Fake Code", path: appPath }, filePath, 42);
+
+      expect(result).toEqual({ openedAtLine: false });
+      expect(execFileMock).toHaveBeenCalledTimes(2);
+      expect(execFileMock.mock.calls[1][0]).toBe("open");
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });

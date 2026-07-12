@@ -258,14 +258,17 @@ export function PromptListItem({
             onAction={async () => {
               if (!prompt.filePath) return;
 
-              await Clipboard.copy(prompt.title);
-
               try {
-                await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
+                const { openedAtLine } = await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
+                if (!openedAtLine) {
+                  // No line jump possible: copy the title so the prompt can be
+                  // searched manually in the editor.
+                  await Clipboard.copy(prompt.title);
+                }
                 await closeMainWindow();
 
                 await showToast({
-                  title: `Opening File and Copy Title`,
+                  title: openedAtLine ? "Opened at prompt definition" : "Opened — title copied",
                   style: Toast.Style.Success,
                 });
               } catch (error) {
