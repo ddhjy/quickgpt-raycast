@@ -35,7 +35,7 @@ export class PromptUsageStore {
       return;
     }
 
-    const records = await this.readRecordMap();
+    const records = await this.readRecordMap(usedAt);
     const currentRecord = records[prompt.identifier];
     const bucketKey = formatDateKey(usedAt);
 

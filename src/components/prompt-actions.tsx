@@ -19,7 +19,7 @@ import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements, extractFinderSelectionPaths } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
-import { findRepoRoot } from "../utils/git-utils";
+import { openPromptFileWithEditor } from "../utils/editor-launcher";
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
@@ -283,22 +283,7 @@ export function generatePromptActions(
               await Clipboard.copy(prompt.title);
 
               try {
-                let openCommand: string;
-                const fileDir = path.dirname(prompt.filePath);
-                let configDir = fileDir;
-                const repoRoot = await findRepoRoot(prompt.filePath);
-
-                if (repoRoot) {
-                  configDir = repoRoot;
-                }
-
-                if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                  openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
-                } else {
-                  openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
-                }
-
-                await runAppleScript(`do shell script "${openCommand}"`);
+                await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
                 await closeMainWindow();
 
                 await showToast({

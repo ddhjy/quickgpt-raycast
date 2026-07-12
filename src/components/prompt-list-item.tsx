@@ -14,7 +14,6 @@ import {
   useNavigation,
   Application,
 } from "@raycast/api";
-import { runAppleScript } from "@raycast/utils";
 import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 import configurationManager from "../managers/configuration-manager";
@@ -36,7 +35,7 @@ import {
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
-import { findRepoRoot } from "../utils/git-utils";
+import { openPromptFileWithEditor } from "../utils/editor-launcher";
 
 interface PromptListItemProps {
   prompt: PromptProps;
@@ -262,22 +261,7 @@ export function PromptListItem({
               await Clipboard.copy(prompt.title);
 
               try {
-                let openCommand: string;
-                const fileDir = path.dirname(prompt.filePath);
-                let configDir = fileDir;
-                const repoRoot = await findRepoRoot(prompt.filePath);
-
-                if (repoRoot) {
-                  configDir = repoRoot;
-                }
-
-                if (editorApp.bundleId && editorApp.bundleId.trim() !== "") {
-                  openCommand = `open -b '${editorApp.bundleId}' '${configDir}' '${prompt.filePath}'`;
-                } else {
-                  openCommand = `open -a '${editorApp.path}' '${configDir}' '${prompt.filePath}'`;
-                }
-
-                await runAppleScript(`do shell script "${openCommand}"`);
+                await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
                 await closeMainWindow();
 
                 await showToast({

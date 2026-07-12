@@ -7,6 +7,7 @@ import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
 import configurationManager from "./configuration-manager";
 import { startupElapsedMs, startupLog, startupNowMs, startupWarn } from "../utils/startup-profiler";
 import { createNamespacedCache } from "../utils/extension-cache";
+import { assignPromptLineNumbers } from "../utils/prompt-line-locator";
 
 export type PromptProps = {
   identifier: string;
@@ -26,6 +27,8 @@ export type PromptProps = {
   textInputs?: { [key: string]: string };
   path?: string;
   filePath?: string;
+  /** 1-based line in `filePath` where this prompt is defined. */
+  lineNumber?: number;
   isTemporary?: boolean;
   temporaryDirSource?: string;
 };
@@ -37,6 +40,7 @@ const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
   "pinned",
   "options",
   "textInputs",
+  "lineNumber",
 ];
 
 interface PromptWorkspaceSnapshot {
@@ -53,12 +57,11 @@ class PromptManager {
   private prompts: PromptProps[] = [];
   private mergedRootProperties: Partial<PromptProps> = {};
   private temporaryDirectoryPaths: string[] = [];
-  private cache: Cache = createNamespacedCache(`prompts-v1-${environment.commandName}`, [
-    "prompts_data_v1",
-    "prompts_signature_v1",
-  ]);
-  private readonly CACHE_KEY_DATA = "prompts_data_v1";
-  private readonly CACHE_KEY_SIG = "prompts_signature_v1";
+  // v2: cached prompts include `lineNumber`; bumping the namespace forces a
+  // one-time re-parse so stale v1 payloads without line info are discarded.
+  private cache: Cache = createNamespacedCache(`prompts-v2-${environment.commandName}`);
+  private readonly CACHE_KEY_DATA = "prompts_data_v2";
+  private readonly CACHE_KEY_SIG = "prompts_signature_v2";
   private readonly listeners = new Set<(promptsChanged: boolean) => void>();
   private hasHydratedFromCache = false;
   private isRefreshing = false;
@@ -208,6 +211,8 @@ class PromptManager {
       } else {
         console.warn(`Unsupported HJSON root structure in ${filePath}`);
       }
+
+      assignPromptLineNumbers(promptsData, data);
 
       const prompts = promptsData
         .map((p) => {
