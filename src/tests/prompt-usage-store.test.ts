@@ -137,6 +137,23 @@ describe("PromptUsageStore", () => {
     expect(rows.find((row) => row.identifier === "alpha")?.totalCount).toBe(3);
     expect(rows.find((row) => row.identifier === "beta")?.totalCount).toBe(0);
   });
+
+  it("collapses prompts sharing an identifier into a single row, keeping the first one", async () => {
+    mockStorage.getItem.mockResolvedValue(undefined);
+
+    const rows = await store.getPromptUsageRows(
+      [
+        makePrompt({ identifier: "alpha", title: "Alpha", path: "Folder A / Alpha" }),
+        makePrompt({ identifier: "alpha", title: "Alpha Copy", path: "Folder B / Alpha Copy" }),
+        makePrompt({ identifier: "beta", title: "Beta" }),
+      ],
+      new Date(2026, 2, 19, 12, 0, 0),
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.identifier)).toEqual(["alpha", "beta"]);
+    expect(rows[0].path).toBe("Folder A / Alpha");
+  });
 });
 
 function makePrompt(overrides: Partial<PromptProps> = {}): PromptProps {

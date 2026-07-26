@@ -77,24 +77,31 @@ export class PromptUsageStore {
   async getPromptUsageRows(allPrompts: PromptProps[], referenceDate: Date = new Date()): Promise<PromptUsageRow[]> {
     const summaryMap = await this.getUsageSummaryMap(referenceDate);
 
-    return allPrompts
-      .filter((prompt) => isPromptEligibleForUsageStats(prompt))
-      .map((prompt) => {
-        const summary = summaryMap[prompt.identifier] || {
-          totalCount: 0,
-          recent7d: 0,
-          recent30d: 0,
-          lastUsedAt: undefined,
-        };
+    // Usage is recorded per identifier, so prompts sharing one must collapse into a single row.
+    // The first occurrence wins to match the prompt that PromptManager.findPrompt resolves.
+    const uniquePrompts = new Map<string, PromptProps>();
+    for (const prompt of allPrompts) {
+      if (isPromptEligibleForUsageStats(prompt) && !uniquePrompts.has(prompt.identifier)) {
+        uniquePrompts.set(prompt.identifier, prompt);
+      }
+    }
 
-        return {
-          identifier: prompt.identifier,
-          title: prompt.title,
-          path: prompt.path,
-          filePath: prompt.filePath,
-          ...summary,
-        };
-      });
+    return Array.from(uniquePrompts.values()).map((prompt) => {
+      const summary = summaryMap[prompt.identifier] || {
+        totalCount: 0,
+        recent7d: 0,
+        recent30d: 0,
+        lastUsedAt: undefined,
+      };
+
+      return {
+        identifier: prompt.identifier,
+        title: prompt.title,
+        path: prompt.path,
+        filePath: prompt.filePath,
+        ...summary,
+      };
+    });
   }
 
   async clearAllUsageStats(): Promise<void> {
