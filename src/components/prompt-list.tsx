@@ -72,9 +72,7 @@ export function PromptList({
   const [selectedAction, setSelectedAction] = useState<string>(
     () => defaultActionPreferenceStore.getDefaultActionPreference() || "",
   );
-  const [isActionPreferenceHydrated, setIsActionPreferenceHydrated] = useState(() =>
-    defaultActionPreferenceStore.isHydrated(),
-  );
+  const selectedActionRef = useRef(selectedAction);
   const preparedSearchRef = useRef<
     | {
         sourcePrompts: PromptProps[];
@@ -101,8 +99,14 @@ export function PromptList({
   const effectiveOnRefreshNeeded = externalOnRefreshNeeded || forceUpdate;
 
   useEffect(() => {
+    selectedActionRef.current = selectedAction;
+  }, [selectedAction]);
+
+  useEffect(() => {
     let cancelled = false;
 
+    // The dropdown renders the cached preference right away, so hydration only has to
+    // correct the selection when LocalStorage disagrees with the synchronous cache.
     defaultActionPreferenceStore
       .hydrate()
       .then(() => {
@@ -110,15 +114,16 @@ export function PromptList({
           return;
         }
 
-        setSelectedAction(defaultActionPreferenceStore.getDefaultActionPreference() || "");
-        setIsActionPreferenceHydrated(true);
+        const hydratedAction = defaultActionPreferenceStore.getDefaultActionPreference() || "";
+        if (hydratedAction === selectedActionRef.current) {
+          return;
+        }
+
+        setSelectedAction(hydratedAction);
         forceUpdate();
       })
       .catch((error) => {
         console.error("Failed to hydrate default action preference:", error);
-        if (!cancelled && isMountedRef.current) {
-          setIsActionPreferenceHydrated(true);
-        }
       });
 
     return () => {
@@ -439,7 +444,7 @@ export function PromptList({
 
   return (
     <List
-      isLoading={isLoading || !isActionPreferenceHydrated || isWaitingForSelectedScript}
+      isLoading={isLoading || isWaitingForSelectedScript}
       searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
@@ -450,12 +455,12 @@ export function PromptList({
         }
       }}
       searchBarAccessory={
-        searchMode && isActionPreferenceHydrated ? (
+        searchMode ? (
           <List.Dropdown
             id="preferred-action"
             tooltip="Select preferred action"
             storeValue={false}
-            defaultValue={selectedAction}
+            value={selectedAction}
             onChange={async (newValue: string) => {
               if (newValue === selectedAction) return;
 
