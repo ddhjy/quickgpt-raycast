@@ -29,5 +29,11 @@
       identifier: "manage-temporary-directory"
       // No content, actions handled specially in PromptListItem
     }
+    {
+      title: "Prompt Stats"
+      icon: ""
+      identifier: "prompt-usage-stats"
+      // No content, actions handled specially in PromptListItem
+    }
   ]
 } 

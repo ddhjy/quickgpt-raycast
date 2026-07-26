@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Action, ActionPanel, Alert, confirmAlert, Icon, List, Toast, open, showToast } from "@raycast/api";
-import promptManager from "./managers/prompt-manager";
-import promptUsageStore from "./stores/prompt-usage-store";
-import { buildPromptUsageSections, PromptUsageRow } from "./utils/prompt-usage-utils";
+import promptManager from "../managers/prompt-manager";
+import promptUsageStore from "../stores/prompt-usage-store";
+import { buildPromptUsageSections, PromptUsageRow } from "../utils/prompt-usage-utils";
 
-export default function PromptStats() {
+export function PromptStats() {
   const [rows, setRows] = useState<PromptUsageRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -12,7 +12,6 @@ export default function PromptStats() {
     setIsLoading(true);
 
     try {
-      await promptManager.refreshPrompts("prompt-stats");
       const allPrompts = promptManager.getFilteredPrompts(() => true);
       const nextRows = await promptUsageStore.getPromptUsageRows(allPrompts);
       setRows(nextRows);

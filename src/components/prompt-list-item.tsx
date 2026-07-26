@@ -25,6 +25,7 @@ import { ScriptInfo } from "../utils/script-utils";
 import { placeholderFormatter } from "../utils/placeholder-formatter";
 import { PromptList } from "./prompt-list";
 import { PromptOptionsForm } from "./prompt-options-form";
+import { PromptStats } from "./prompt-stats";
 import { DirectoryManager } from "./temporary-directory-manager";
 import {
   removeTemporaryDirectory,
@@ -150,6 +151,8 @@ export function PromptListItem({
     displayIcon = Icon.Code;
   } else if (prompt.identifier === "open-preferences") {
     displayIcon = Icon.Gear;
+  } else if (prompt.identifier === "prompt-usage-stats") {
+    displayIcon = Icon.BarChart;
   }
 
   const placeholderIcons = useMemo(
@@ -196,6 +199,8 @@ export function PromptListItem({
           }}
         />
       );
+    } else if (prompt.identifier === "prompt-usage-stats") {
+      return <Action.Push title="Open" icon={Icon.BarChart} target={<PromptStats />} />;
     } else if (prompt.subprompts) {
       const folderActions: React.ReactElement[] = [];
 

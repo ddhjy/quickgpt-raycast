@@ -28,6 +28,7 @@ const EXCLUDED_PROMPT_IDENTIFIERS = new Set([
   "open-preferences",
   "open-custom-prompts-dir",
   "open-scripts-dir",
+  "prompt-usage-stats",
 ]);
 
 export function isUsageAction(actionName?: string): boolean {
