@@ -123,11 +123,13 @@ export function PromptListItem({
   }
 
   let displayIcon: string | Image.Asset = prompt.icon ?? "🔖";
+  let directoryCount: number | undefined;
 
   if (prompt.identifier === "manage-temporary-directory") {
     if (temporaryDirs.length > 0) {
-      displayTitle = `Temporary Prompts Directory (${temporaryDirs.length})`;
+      displayTitle = "Temporary Prompts Directory";
       displayIcon = Icon.Folder;
+      directoryCount = temporaryDirs.length;
     } else {
       displayTitle = "Add Temporary Directory";
       displayIcon = Icon.Plus;
@@ -138,7 +140,7 @@ export function PromptListItem({
     const promptDirs = configurationManager.getDirectories("prompts");
 
     if (promptDirs.length > 0) {
-      displayTitle = `Prompts Directory (${promptDirs.length})`;
+      directoryCount = promptDirs.length;
     }
     displayIcon = Icon.Folder;
   }
@@ -146,7 +148,7 @@ export function PromptListItem({
   if (prompt.identifier === "open-scripts-dir") {
     const scriptDirs = configurationManager.getDirectories("scripts");
     if (scriptDirs.length > 0) {
-      displayTitle = `Scripts Directory (${scriptDirs.length})`;
+      directoryCount = scriptDirs.length;
     }
     displayIcon = Icon.Code;
   } else if (prompt.identifier === "open-preferences") {
@@ -390,7 +392,7 @@ export function PromptListItem({
       prompt.identifier === "open-custom-prompts-dir" ||
       prompt.identifier === "open-scripts-dir"
     ) {
-      return [];
+      return directoryCount !== undefined ? [{ text: String(directoryCount) }] : [];
     }
 
     return [
