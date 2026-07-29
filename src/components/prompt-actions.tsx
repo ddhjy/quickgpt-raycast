@@ -33,6 +33,7 @@ import path from "path";
 import configurationManager from "../managers/configuration-manager";
 import { runPromptActionWithTracking } from "../utils/prompt-usage-utils";
 import { writeContentToFile } from "../utils/file-clipboard-utils";
+import { runAppleScriptDetached } from "../utils/applescript-runner";
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
   React.ReactNode;
@@ -133,9 +134,14 @@ export function generatePromptActions(
             await Clipboard.copy(finalContent);
             const scriptContent = fs.readFileSync(scriptPath, "utf8");
             const args = scriptName.endsWith("ChatGPT") ? [finalContent] : [];
-            await runAppleScript(scriptContent, args);
-            if (!scriptName.includes("Raycast")) {
+            if (scriptName === "Notion Chat") {
+              await runAppleScriptDetached(scriptContent, args);
               await closeMainWindow({ clearRootSearch: true });
+            } else {
+              await runAppleScript(scriptContent, args);
+              if (!scriptName.includes("Raycast")) {
+                await closeMainWindow({ clearRootSearch: true });
+              }
             }
           } catch (error) {
             console.error(`Failed to execute script ${scriptName}:`, error);
