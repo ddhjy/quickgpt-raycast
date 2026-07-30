@@ -501,7 +501,7 @@ export function PromptList({
                   key={selectedAction}
                   title={selectedScriptName.replace(/^Raycast\s+/, "")}
                   value={selectedAction}
-                  icon={selectedScriptName.startsWith("Raycast") ? Icon.RaycastLogoPos : Icon.Terminal}
+                  {...(selectedScriptName.startsWith("Raycast") ? { icon: Icon.RaycastLogoPos } : {})}
                 />
               </List.Dropdown.Section>
             )}
