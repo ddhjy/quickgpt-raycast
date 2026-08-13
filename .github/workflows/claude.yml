@@ -34,22 +34,28 @@ jobs:
   # 交互式 Claude 响应（评论触发）
   claude-interactive:
     if: |
-      secrets.ANTHROPIC_API_KEY != '' && (
-        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-        github.event_name == 'workflow_dispatch'
-      )
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
       issues: write
       id-token: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      - name: Skip without Anthropic credentials
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY is not configured; skipping @claude."
+
       - name: Checkout repository
+        if: env.ANTHROPIC_API_KEY != ''
         uses: actions/checkout@v5
 
       - name: Claude Code Action
+        if: env.ANTHROPIC_API_KEY != ''
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -59,17 +65,25 @@ jobs:
 
   # 自动代码评审（PR 触发）
   claude-review:
-    if: github.event_name == 'pull_request' && secrets.ANTHROPIC_API_KEY != ''
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       id-token: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      - name: Skip review without Anthropic credentials
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY is not configured; skipping Claude review."
+
       - name: Checkout repository
+        if: env.ANTHROPIC_API_KEY != ''
         uses: actions/checkout@v5
 
       - name: Claude Code Review
+        if: env.ANTHROPIC_API_KEY != ''
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
