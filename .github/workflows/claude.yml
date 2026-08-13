@@ -34,9 +34,11 @@ jobs:
   # 交互式 Claude 响应（评论触发）
   claude-interactive:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      github.event_name == 'workflow_dispatch'
+      secrets.ANTHROPIC_API_KEY != '' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -45,7 +47,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Claude Code Action
         uses: anthropics/claude-code-action@v1
@@ -57,7 +59,7 @@ jobs:
 
   # 自动代码评审（PR 触发）
   claude-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && secrets.ANTHROPIC_API_KEY != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -65,7 +67,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Claude Code Review
         uses: anthropics/claude-code-action@v1

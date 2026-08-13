@@ -16,7 +16,7 @@ QuickGPT does **not** call an LLM API. It prepares the prompt; you send it to Ch
 2. Run **Store**, search for **QuickGPT**, and install it.
 3. Run **Prompt Lab**.
 
-A built-in bilingual library is available immediately: Ask, Translate, Writing, Summarize, Code, and What is this. Copy or Paste works with no extra setup. You do not need Node.js, `git clone`, or `npm run dev`.
+A built-in English library is available immediately: Ask, Translate, Writing, Summarize, Code, and What is this. Prompts ask the model to reply in the same language as the input. Copy or Paste works with no extra setup. You do not need Node.js, `git clone`, or `npm run dev`.
 
 After Raycast review merges the Store listing, QuickGPT will also appear at [raycast.com/store](https://www.raycast.com/store).
 
