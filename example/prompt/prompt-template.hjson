@@ -22,8 +22,9 @@
   context: "Target audience: General readers"
   signature: "Enhanced by AI Writing Assistant"
   
-  // Custom actions
-  actions: ["Copy", "Paste", "Grammar Check"]
+  // Preferred actions use internal ids (copyToClipboard, paste, copyAsFile)
+  // or AppleScript filenames without extension.
+  actions: ["copyToClipboard", "paste"]
   
   // Nested subprompts
   subprompts: [

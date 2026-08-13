@@ -43,11 +43,19 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      - name: Skip without Anthropic credentials
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY is not configured; skipping @claude."
+
       - name: Checkout repository
-        uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        uses: actions/checkout@v5
 
       - name: Claude Code Action
+        if: env.ANTHROPIC_API_KEY != ''
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -63,11 +71,19 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      - name: Skip review without Anthropic credentials
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY is not configured; skipping Claude review."
+
       - name: Checkout repository
-        uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        uses: actions/checkout@v5
 
       - name: Claude Code Review
+        if: env.ANTHROPIC_API_KEY != ''
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

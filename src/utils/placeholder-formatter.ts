@@ -46,10 +46,7 @@ export const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
 
 export const FINDER_SELECTION_MARKER = "__IS_FINDER_SELECTION__";
 
-const FINDER_FILE_PLACEHOLDER_REG = new RegExp(
-  FINDER_SELECTION_MARKER + "\\{\\{file:([^}]+)\\}\\}",
-  "g",
-);
+const FINDER_FILE_PLACEHOLDER_REG = new RegExp(FINDER_SELECTION_MARKER + "\\{\\{file:([^}]+)\\}\\}", "g");
 
 export function extractFinderSelectionPaths(text?: string): string[] {
   if (!text || !text.includes(FINDER_SELECTION_MARKER)) return [];
