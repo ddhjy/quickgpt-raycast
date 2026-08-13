@@ -2,7 +2,14 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { execFile } from "child_process";
-import { openPromptFileWithEditor, resolveEditorLineInvocation } from "../utils/editor-launcher";
+import {
+  getEditorDisplayName,
+  isEditorConfigured,
+  normalizeEditorApp,
+  openPathWithEditor,
+  openPromptFileWithEditor,
+  resolveEditorLineInvocation,
+} from "../utils/editor-launcher";
 
 jest.mock("child_process", () => ({
   ...jest.requireActual("child_process"),
@@ -155,6 +162,22 @@ describe("openPromptFileWithEditor", () => {
     expect(execFileMock.mock.calls[0][0]).toBe("open");
   });
 
+  it("opens only the file with the system default app when no editor is configured", async () => {
+    const result = await openPromptFileWithEditor(undefined, filePath, 42);
+
+    expect(result).toEqual({ openedAtLine: false });
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    expect(execFileMock.mock.calls[0][0]).toBe("open");
+    expect(execFileMock.mock.calls[0][1]).toEqual([filePath]);
+  });
+
+  it("opens only the file when the editor preference is an empty app picker value", async () => {
+    const result = await openPromptFileWithEditor({ name: "", path: "", bundleId: "" }, filePath, 12);
+
+    expect(result).toEqual({ openedAtLine: false });
+    expect(execFileMock.mock.calls[0][1]).toEqual([filePath]);
+  });
+
   it("falls back to open when the CLI invocation fails", async () => {
     const { appPath } = makeVSCodeFamilyApp();
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
@@ -172,5 +195,41 @@ describe("openPromptFileWithEditor", () => {
     } finally {
       consoleErrorSpy.mockRestore();
     }
+  });
+});
+
+describe("editor preference helpers", () => {
+  it("treats empty app picker values as unconfigured", () => {
+    expect(isEditorConfigured(undefined)).toBe(false);
+    expect(isEditorConfigured({ name: "", path: "", bundleId: "" })).toBe(false);
+    expect(normalizeEditorApp({ name: "", path: "" })).toBeUndefined();
+    expect(getEditorDisplayName(undefined)).toBe("Default App");
+  });
+
+  it("uses the app name without a .app suffix when configured", () => {
+    const editor = { name: "Cursor.app", path: "/Applications/Cursor.app", bundleId: "com.todesktop.230313mzl4w4u92" };
+    expect(isEditorConfigured(editor)).toBe(true);
+    expect(normalizeEditorApp(editor)).toEqual(editor);
+    expect(getEditorDisplayName(editor)).toBe("Cursor");
+  });
+});
+
+describe("openPathWithEditor", () => {
+  beforeEach(() => {
+    execFileMock.mockClear();
+  });
+
+  it("opens a directory with the system default app when no editor is set", async () => {
+    await openPathWithEditor(undefined, "/tmp/prompts");
+
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    expect(execFileMock.mock.calls[0][0]).toBe("open");
+    expect(execFileMock.mock.calls[0][1]).toEqual(["/tmp/prompts"]);
+  });
+
+  it("opens a directory with the configured editor bundle id", async () => {
+    await openPathWithEditor({ name: "TextEdit", bundleId: "com.apple.TextEdit" }, "/tmp/prompts");
+
+    expect(execFileMock.mock.calls[0][1]).toEqual(["-b", "com.apple.TextEdit", "/tmp/prompts"]);
   });
 });

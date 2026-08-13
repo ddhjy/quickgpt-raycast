@@ -26,6 +26,7 @@ const EXCLUDED_PROMPT_IDENTIFIERS = new Set([
   "settings",
   "manage-temporary-directory",
   "open-preferences",
+  "create-prompt-library",
   "open-custom-prompts-dir",
   "open-scripts-dir",
   "prompt-usage-stats",

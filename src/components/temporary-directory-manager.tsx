@@ -10,11 +10,9 @@ import {
   Alert,
   confirmAlert,
   Color,
-  Application,
   closeMainWindow,
   openExtensionPreferences,
 } from "@raycast/api";
-import { runAppleScript } from "@raycast/utils";
 import path from "path";
 import fs from "fs";
 import {
@@ -29,6 +27,7 @@ import {
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import configurationManager from "../managers/configuration-manager";
+import { normalizeEditorApp, openPathWithEditor } from "../utils/editor-launcher";
 
 export type DirectoryManagerType = "temporary" | "scripts" | "prompts";
 
@@ -79,20 +78,14 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
 
   const handleOpenDirectory = async (dirPath: string) => {
     try {
-      const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
-      let openCommand: string;
-      if (customEditor.bundleId && customEditor.bundleId.trim() !== "") {
-        openCommand = `open -b '${customEditor.bundleId}' '${dirPath}'`;
-      } else {
-        openCommand = `open -a '${customEditor.path}' '${dirPath}'`;
-      }
-      await runAppleScript(`do shell script "${openCommand}"`);
+      const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
+      await openPathWithEditor(editorApp, dirPath);
       await closeMainWindow();
     } catch (error) {
       console.error(`Failed to open directory ${dirPath}:`, error);
       await showToast({
         title: "Couldn't open directory",
-        message: "Check if the editor app is configured correctly",
+        message: String(error),
         style: Toast.Style.Failure,
       });
     }

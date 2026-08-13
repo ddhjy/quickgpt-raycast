@@ -19,12 +19,14 @@ describe("prompt usage tracking rules", () => {
   it("does not track management actions or excluded prompt types", () => {
     const prompt = makePrompt();
     const settingsPrompt = makePrompt({ identifier: "open-preferences", content: "" });
+    const createLibraryPrompt = makePrompt({ identifier: "create-prompt-library", content: "" });
     const folderPrompt = makePrompt({ subprompts: [makePrompt({ identifier: "child" })] });
 
     expect(shouldTrackPromptUsage(prompt, "pin")).toBe(false);
     expect(shouldTrackPromptUsage(prompt, "sharePrompt")).toBe(false);
     expect(shouldTrackPromptUsage(prompt, "editWithEditor")).toBe(false);
     expect(isPromptEligibleForUsageStats(settingsPrompt)).toBe(false);
+    expect(isPromptEligibleForUsageStats(createLibraryPrompt)).toBe(false);
     expect(isPromptEligibleForUsageStats(folderPrompt)).toBe(false);
   });
 

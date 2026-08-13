@@ -23,6 +23,50 @@ export interface EditorAppInfo {
   bundleId?: string;
 }
 
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/**
+ * Returns true when the preference contains a usable app name, path, or bundle id.
+ */
+export function isEditorConfigured(editor?: EditorAppInfo | null): editor is EditorAppInfo {
+  if (!editor) {
+    return false;
+  }
+  return hasNonEmptyString(editor.name) || hasNonEmptyString(editor.path) || hasNonEmptyString(editor.bundleId);
+}
+
+/**
+ * Normalizes a Raycast appPicker preference value into editor info, or undefined
+ * when the user has not selected an editor.
+ */
+export function normalizeEditorApp(raw: unknown): EditorAppInfo | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const editor = raw as EditorAppInfo;
+  return isEditorConfigured(editor) ? editor : undefined;
+}
+
+/**
+ * Human-readable editor name for action titles. Falls back to "Default App"
+ * when no editor is configured.
+ */
+export function getEditorDisplayName(editor?: EditorAppInfo | null): string {
+  if (!isEditorConfigured(editor) || !hasNonEmptyString(editor.name)) {
+    return "Default App";
+  }
+  return editor.name.endsWith(".app") ? editor.name.slice(0, -4) : editor.name;
+}
+
+function buildOpenAppArgs(editor: EditorAppInfo, ...targets: string[]): string[] {
+  if (hasNonEmptyString(editor.bundleId)) {
+    return ["-b", editor.bundleId, ...targets];
+  }
+  return ["-a", editor.path || editor.name || "", ...targets];
+}
+
 export interface EditorInvocation {
   command: string;
   args: string[];
@@ -104,19 +148,21 @@ export interface OpenPromptFileResult {
  * editor exposes a supported CLI, the file is opened at that line; otherwise
  * this falls back to opening the workspace directory and file via `open`.
  *
+ * When no editor is configured, the file is opened with the system default app.
+ *
  * The returned flag reflects what actually happened, so callers can adapt
  * (e.g. only copy the prompt title for manual searching when no line jump
  * was possible).
  */
 export async function openPromptFileWithEditor(
-  editor: EditorAppInfo,
+  editor: EditorAppInfo | undefined,
   filePath: string,
   line?: number,
 ): Promise<OpenPromptFileResult> {
   const repoRoot = await findRepoRoot(filePath);
   const workspaceDir = repoRoot ?? path.dirname(filePath);
 
-  if (line && line > 0 && editor.path) {
+  if (line && line > 0 && editor?.path) {
     const invocation = resolveEditorLineInvocation(editor.path, workspaceDir, filePath, line);
     if (invocation) {
       try {
@@ -128,10 +174,22 @@ export async function openPromptFileWithEditor(
     }
   }
 
-  const openArgs =
-    editor.bundleId && editor.bundleId.trim() !== ""
-      ? ["-b", editor.bundleId, workspaceDir, filePath]
-      : ["-a", editor.path ?? editor.name ?? "", workspaceDir, filePath];
-  await execFileAsync("open", openArgs);
+  if (isEditorConfigured(editor)) {
+    await execFileAsync("open", buildOpenAppArgs(editor, workspaceDir, filePath));
+  } else {
+    await execFileAsync("open", [filePath]);
+  }
   return { openedAtLine: false };
+}
+
+/**
+ * Opens a directory with the configured editor, or with the system default app
+ * when no editor is set.
+ */
+export async function openPathWithEditor(editor: EditorAppInfo | undefined, targetPath: string): Promise<void> {
+  if (isEditorConfigured(editor)) {
+    await execFileAsync("open", buildOpenAppArgs(editor, targetPath));
+    return;
+  }
+  await execFileAsync("open", [targetPath]);
 }

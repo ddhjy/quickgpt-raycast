@@ -12,7 +12,6 @@ import {
   Clipboard,
   Image,
   useNavigation,
-  Application,
 } from "@raycast/api";
 import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
@@ -36,7 +35,8 @@ import {
 } from "../stores/temporary-directory-store";
 import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
-import { openPromptFileWithEditor } from "../utils/editor-launcher";
+import { getEditorDisplayName, normalizeEditorApp, openPromptFileWithEditor } from "../utils/editor-launcher";
+import { createPromptLibrary } from "../utils/prompt-library-onboarding";
 
 interface PromptListItemProps {
   prompt: PromptProps;
@@ -153,6 +153,8 @@ export function PromptListItem({
     displayIcon = Icon.Code;
   } else if (prompt.identifier === "open-preferences") {
     displayIcon = Icon.Gear;
+  } else if (prompt.identifier === "create-prompt-library") {
+    displayIcon = Icon.NewDocument;
   } else if (prompt.identifier === "prompt-usage-stats") {
     displayIcon = Icon.BarChart;
   }
@@ -198,6 +200,32 @@ export function PromptListItem({
           onAction={() => {
             openExtensionPreferences();
             closeMainWindow();
+          }}
+        />
+      );
+    } else if (prompt.identifier === "create-prompt-library") {
+      return (
+        <Action
+          title="Create"
+          icon={Icon.NewDocument}
+          onAction={async () => {
+            try {
+              const result = await createPromptLibrary();
+              const createdAnything = result.createdDirectory || result.copiedFile;
+              await showToast({
+                style: Toast.Style.Success,
+                title: createdAnything ? "Prompt library created" : "Prompt library already exists",
+                message: `Set Custom Prompts to ${result.directory}`,
+              });
+              await openExtensionPreferences();
+              await closeMainWindow();
+            } catch (error) {
+              await showToast({
+                style: Toast.Style.Failure,
+                title: "Couldn't create prompt library",
+                message: String(error),
+              });
+            }
           }}
         />
       );
@@ -249,12 +277,8 @@ export function PromptListItem({
       }
 
       if (prompt.filePath) {
-        const customEditor = configurationManager.getPreference("customEditor") as unknown as Application;
-        const editorApp = customEditor;
-        let editorDisplayName = editorApp.name;
-        if (editorDisplayName.endsWith(".app")) {
-          editorDisplayName = editorDisplayName.slice(0, -4);
-        }
+        const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
+        const editorDisplayName = getEditorDisplayName(editorApp);
 
         folderActions.push(
           <Action
@@ -389,6 +413,7 @@ export function PromptListItem({
     if (
       prompt.identifier === "manage-temporary-directory" ||
       prompt.identifier === "open-preferences" ||
+      prompt.identifier === "create-prompt-library" ||
       prompt.identifier === "open-custom-prompts-dir" ||
       prompt.identifier === "open-scripts-dir"
     ) {

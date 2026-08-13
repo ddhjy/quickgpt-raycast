@@ -60,7 +60,7 @@ export function PromptList({
   currentPath = "",
   isLoading = false,
 }: PromptListProps) {
-  const { currentInput, setCurrentInput, resetHistory, addToHistory } = useInputHistory("");
+  const { currentInput, setCurrentInput, addToHistory } = useInputHistory("");
   const searchText = currentInput;
   const [refreshKey, setRefreshKey] = useState(0);
   const scriptDirectories = useMemo(() => configurationManager.getDirectories("scripts"), []);
@@ -449,11 +449,6 @@ export function PromptList({
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
       filtering={false}
-      onSelectionChange={() => {
-        if (!searchMode) {
-          resetHistory();
-        }
-      }}
       searchBarAccessory={
         searchMode ? (
           <List.Dropdown

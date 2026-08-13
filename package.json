@@ -76,16 +76,15 @@
           "name": "primaryAction",
           "title": "Actions",
           "required": false,
-          "description": "Set the primary action(s) to execute, separated by commas. Example: Copy, Paste, MyScript",
+          "description": "Comma-separated pinned actions. Built-in names: copyToClipboard, paste, copyAsFile. Script names match the AppleScript filename without extension.",
           "type": "textfield"
         },
         {
           "name": "customEditor",
           "title": "Editor Application",
-          "description": "Select the application to open and edit prompt files (`.hjson`).",
+          "description": "Application used to open and edit prompt files (`.hjson`). Leave empty to use the system default app.",
           "type": "appPicker",
-          "required": true,
-          "default": "com.todesktop.230313mzl4w4u92"
+          "required": false
         },
         {
           "name": "pathAliases",
@@ -104,7 +103,6 @@
     "@types/hjson": "^2.4.6",
     "hjson": "^3.2.2",
     "ignore": "^7.0.5",
-    "markdown-it": "^14.1.0",
     "md5": "^2.3.0",
     "pinyin-pro": "^3.27.0"
   },
@@ -112,7 +110,6 @@
     "@raycast/eslint-config": "^2.0.4",
     "@testing-library/jest-dom": "^6.6.4",
     "@types/jest": "^30.0.0",
-    "@types/markdown-it": "^14.1.2",
     "@types/md5": "^2.3.5",
     "@types/node": "24.2.0",
     "@types/react": "^19.1.9",

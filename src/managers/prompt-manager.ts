@@ -13,15 +13,11 @@ export type PromptProps = {
   identifier: string;
   title: string;
   content?: string;
-  pattern?: string;
   icon?: string;
   subprompts?: PromptProps[];
   pinned?: boolean;
   prefix?: string;
   suffix?: string;
-  noexplanation?: boolean;
-  forbidChinese?: boolean;
-  ref?: { [key: string]: string | string[] };
   options?: { [key: string]: string[] | Record<string, string> };
   actions?: string[];
   textInputs?: { [key: string]: string };
@@ -223,7 +219,6 @@ class PromptManager {
         })
         .filter((p) => typeof p.title === "string" && p.title.length > 0) as PromptProps[];
 
-      const baseDir = path.dirname(filePath);
       const isTemporarySource = this.temporaryDirectoryPaths.some((tempDir) => filePath.startsWith(tempDir));
 
       let tempDirSource = "";
@@ -244,15 +239,14 @@ class PromptManager {
             .filter((action) => action.length > 0);
         }
 
-        const processedPrompt = this.loadPromptContentFromFileSync(prompt, baseDir);
-        processedPrompt.filePath = filePath;
+        prompt.filePath = filePath;
 
         if (isTemporarySource) {
-          processedPrompt.isTemporary = true;
-          processedPrompt.temporaryDirSource = tempDirSource;
+          prompt.isTemporary = true;
+          prompt.temporaryDirSource = tempDirSource;
         }
 
-        return processedPrompt;
+        return prompt;
       });
     } catch (error) {
       console.error(`Failed to process prompt file ${filePath}:`, error);
@@ -521,13 +515,6 @@ class PromptManager {
 
   private isBundledAssetPath(filePath: string): boolean {
     return this.getSignaturePath(filePath).startsWith("$extension-assets/");
-  }
-
-  private loadPromptContentFromFileSync(prompt: PromptProps, baseDir: string): PromptProps {
-    if (Array.isArray(prompt.subprompts)) {
-      prompt.subprompts = prompt.subprompts.map((subprompt) => this.loadPromptContentFromFileSync(subprompt, baseDir));
-    }
-    return prompt;
   }
 
   private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {

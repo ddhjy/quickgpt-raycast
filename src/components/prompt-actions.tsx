@@ -8,7 +8,6 @@ import {
   closeMainWindow,
   showToast,
   Navigation,
-  Application,
 } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
@@ -19,7 +18,7 @@ import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements, extractFinderSelectionPaths } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import { generateGitLink } from "../utils/git-utils";
-import { openPromptFileWithEditor } from "../utils/editor-launcher";
+import { getEditorDisplayName, normalizeEditorApp, openPromptFileWithEditor } from "../utils/editor-launcher";
 import {
   updateTemporaryDirectoryUsage,
   updateAnyTemporaryDirectoryUsage,
@@ -272,11 +271,8 @@ export function generatePromptActions(
       displayName: "Edit with Editor",
       condition: !!prompt.filePath,
       action: (() => {
-        const editorApp = configurationManager.getPreference("customEditor") as unknown as Application;
-        let editorDisplayName = editorApp.name;
-        if (editorDisplayName.endsWith(".app")) {
-          editorDisplayName = editorDisplayName.slice(0, -4);
-        }
+        const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
+        const editorDisplayName = getEditorDisplayName(editorApp);
 
         return (
           <Action
@@ -425,12 +421,7 @@ export function generatePromptActions(
   const baseActionsGroup: ActionItem[] = [];
   const otherActionsGroup: ActionItem[] = [];
 
-  if (defaultActionItem) {
-    pinnedActionsGroup.push(defaultActionItem);
-    actionNames.add(defaultActionItem.name);
-  }
-
-  finalActions.forEach((actionName) => {
+  const addPinnedAction = (actionName: string): void => {
     const matchingAction = eligibleActions.find((item) => {
       const itemName = item.name.toLowerCase().replace(/^script_/, "");
       return itemName === actionName.toLowerCase();
@@ -440,7 +431,18 @@ export function generatePromptActions(
       pinnedActionsGroup.push(matchingAction);
       actionNames.add(matchingAction.name);
     }
-  });
+  };
+
+  // Prompt-defined actions take precedence over the user's global Preferred action.
+  promptDefinedActions.forEach(addPinnedAction);
+
+  if (defaultActionItem && !actionNames.has(defaultActionItem.name)) {
+    pinnedActionsGroup.push(defaultActionItem);
+    actionNames.add(defaultActionItem.name);
+  }
+
+  // Global Actions fill in the remaining pinned actions after Preferred action.
+  configuredActions.forEach(addPinnedAction);
 
   eligibleActions.forEach((item) => {
     if (!actionNames.has(item.name)) {

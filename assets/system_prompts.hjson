@@ -12,6 +12,11 @@
       actions: ["open-preferences"] // Action to trigger opening preferences
     }
     {
+      title: "Create My Prompt Library"
+      icon: ""
+      identifier: "create-prompt-library"
+    }
+    {
       title: "Scripts Directory"
       icon: ""
       identifier: "open-scripts-dir"
@@ -36,4 +41,4 @@
       // No content, actions handled specially in PromptListItem
     }
   ]
-} 
+}

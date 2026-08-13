@@ -1,183 +1,139 @@
 # QuickGPT for Raycast
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ddhjy/quickgpt-raycast)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A professional prompt management extension for Raycast that **streamlines** your workflow by providing efficient access to a comprehensive library of **prompts** with advanced placeholder capabilities.
+A Raycast extension for managing prompts like code. Load `.hjson` libraries, inject live context through placeholders, then copy, paste, or hand the result to your own AppleScript.
 
-1. **Manage prompts like code**: Iterate and maintain 200+ prompts with HJSON format and git version control, develop prompts like a software project
+QuickGPT does **not** call an LLM API. It prepares the prompt; you send it to ChatGPT, Claude, or any other app.
 
-<img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="图片描述" >
+<img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="QuickGPT prompt list">
 
-2. **Use prompts like tools**: Seamlessly integrated with PopClip and Gemini, every prompt becomes a powerful tool in your workflow
+## Quick Start
 
-<video src="https://github.com/user-attachments/assets/e1a222b3-2df2-496f-bf8d-7726f7fab5d0">
-</video>
-
-## Overview
-
-QuickGPT is a sophisticated prompt management tool designed specifically for Raycast. It enables users to organize, access, and utilize extensive prompt libraries directly within the Raycast interface. The extension supports dynamic content injection through an advanced placeholder system and seamlessly integrates with various applications and workflows.
-
-## Key Features
-
-### Advanced Prompt Management
-
-- **HJSON Format Support**: Utilize the human-readable HJSON format (`.hjson`) for defining prompts, enabling version control and collaborative development
-- **Hierarchical Organization**: Structure prompts in nested folders for better organization and accessibility
-- **Temporary Directories**: Add temporary prompt directories with automatic expiration (7 days)
-- **Multiple Source Directories**: Configure up to 5 custom prompt directories for different contexts or projects
-
-### Sophisticated Placeholder System
-
-- **Context-Aware Placeholders**: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{allApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
-- **File Content Integration**: `{{file:path/to/file}}` for including external file contents
-- **Dynamic Options**: `{{option:key}}` for creating interactive dropdown menus
-- **Fallback Logic**: `{{selection|clipboard}}` for intelligent placeholder resolution
-- **Property References**: Access prompt properties directly using `{{propertyName}}` notation
-
-### Integration Capabilities
-
-- **System-Wide Accessibility**: Invoke QuickGPT from any application via Raycast
-- **AppleScript Support**: Execute custom AppleScript files as actions
-- **Clipboard Management**: Seamless copy/paste operations with formatted content
-
-## Installation
-
-### Prerequisites
-
-- macOS with [Raycast](https://www.raycast.com/) installed
-- Node.js 20.8.10 or higher
-- npm or yarn package manager
-
-### Installation Steps
-
-1. **Clone the Repository**
+1. Install [Raycast](https://www.raycast.com/) and [Node.js 22.14.0](https://nodejs.org/) or later.
+2. Clone and run the extension:
 
    ```bash
    git clone https://github.com/ddhjy/quickgpt-raycast.git
    cd quickgpt-raycast
-   ```
-
-2. **Install Dependencies**
-
-   ```bash
    npm install
-   ```
-
-3. **Build the Extension**
-
-   ```bash
    npm run dev
    ```
 
+3. In Raycast, open **Prompt Lab**. A built-in bilingual library is available immediately: Ask, Translate, Writing, Summarize, Code, and What is this. Copy or Paste works with no extra setup.
+
+### Next steps (optional)
+
+- **Your own library**: open Settings → **Create My Prompt Library**. This creates `~/Documents/QuickGPT Prompts/` with a starter template, then opens Preferences so you can set **Custom Prompts** to that folder.
+- **Send prompts to an app**: point **Scripts Directory** at [`example/script/`](example/script/) (or your own `.applescript` files). Grant Accessibility permission to Raycast and the target app.
+- **Edit prompts in your editor**: set **Editor Application** in Preferences. Leave it empty to open files with the system default app.
+
+## Overview
+
+QuickGPT lets you organize, search, and run an extensive prompt library from Raycast. Prompts are HJSON files you can version with git. At run time, placeholders pull in selected text, clipboard, Finder items, git diffs, and more.
+
+## Key Features
+
+### Prompt management
+
+- **HJSON format**: human-readable `.hjson` files with nested `subprompts`
+- **Built-in starter library**: usable on first launch, no directory required
+- **Up to 5 custom prompt directories** plus temporary directories (expire after 30 days)
+- **Pin, search, and deeplink** prompts, including Pinyin matching
+
+### Placeholder system
+
+- Context: `{{input}}`, `{{selection}}`, `{{clipboard}}`, `{{currentApp}}`, `{{allApp}}`, `{{browserContent}}`, `{{now}}`, `{{promptTitles}}`
+- Files: `{{file:path}}`, `{{content:path}}`
+- Options: `{{option:key}}` for dropdowns
+- Fallbacks: `{{selection|clipboard}}`
+- Prompt properties: `{{propertyName}}`
+
+### Actions
+
+- Built-in: Copy, Copy as File, Paste, Edit, Pin, Share
+- Custom AppleScript actions from configured script directories
+
 ## Configuration
 
-Configure QuickGPT through Raycast Preferences (`Raycast Settings > Extensions > QuickGPT`):
+Open Raycast Preferences → Extensions → QuickGPT (or Settings → Extension Preferences inside Prompt Lab).
 
-### Prompt Directories
+### Prompt directories
 
-- **Custom Prompts**: Primary directory for prompt files
-- **Custom Prompts 1-4**: Additional directories for organizing prompts by context
+- **Custom Prompts** / **Custom Prompts 1–4**: folders of `.hjson` files
+- If none are set, the bundled `assets/prompts.hjson` library is used
+- **Create My Prompt Library** writes a starter file to `~/Documents/QuickGPT Prompts/`
 
-**Recommended Setup**: To get started quickly, configure your first prompt directory to point to the included example:
+A larger example lives in [`example/prompt/prompt-template.hjson`](example/prompt/prompt-template.hjson). Point a custom directory at `example/prompt/` if you want to load it.
 
-[example/prompt/](example/prompt/)
+### Scripts directory
 
-This directory contains a comprehensive `prompt-template.hjson` file that demonstrates:
+- **Scripts Directory** / **Scripts Directory 1–2**: folders of `.applescript` or `.scpt` files
+- Each file becomes an action named after the filename (without extension)
+- Example: [`example/script/ChatGPT.applescript`](example/script/ChatGPT.applescript)
 
-- Advanced placeholder usage (`{{input}}`, `{{selection}}`, `{{option:key}}`)
-- Nested subprompts with hierarchical organization
-- Dynamic dropdown options and property references
-- Professional writing assistant templates
+Script conventions:
 
-### Scripts Directory
+- QuickGPT copies the formatted prompt to the clipboard, then runs the script
+- Scripts whose name ends with `ChatGPT` receive the prompt text as an argument
+- A script named exactly `Notion Chat` runs in a detached process
+- Scripts whose name contains `Raycast` keep the Raycast window open
+- macOS Accessibility permission is required for scripts that control other apps
 
-- **Scripts Directory**: Location for AppleScript files (`.applescript`, `.scpt`)
+### Path aliases (JSON)
 
-**Recommended Setup**: Configure the scripts directory to:
+Map short codes to absolute directories so Finderlink-style paths resolve:
 
-[example/script/](example/script/)
+```json
+{ "work": "~/Documents/Work", "notes": "~/Documents/Notes" }
+```
 
-### Path Aliases (JSON)
+Used for `{{file:...}}` and Finder selections such as `fk:work` or `📁 work.**notes**`.
 
-- **Path Aliases (JSON)**: Provide a JSON object that maps short codes to absolute directories so QuickGPT can understand Finderlink-style paths (e.g., `📁 TTIOS.**kmp_wiki**`).
-- Example: `{"TTIOS": "/Users/zengkai/TTIOS", "wiki": "/Users/zengkai/TTIOS/kmp_wiki"}`
-- These aliases are used when resolving `{{file:...}}` placeholders and when detecting Finder selections, so copied entries from Finderlink or `fk:` style links resolve correctly.
+### Actions preference
 
-### Actions Configuration
+Comma-separated pinned action names. Matching uses the internal action name, not the menu title:
 
-- **Actions**: Comma-separated list of default actions (e.g., `Copy,CopyAsFile,Paste,OpenAI`)
+- Built-in: `copyToClipboard`, `paste`, `copyAsFile`
+- Scripts: the AppleScript filename without extension (for example `ChatGPT`)
 
-### Editor Settings
+### Editor application
 
-- **Editor Application**: Select the application for editing prompt files
+Optional. Used to open `.hjson` files. If empty, files and folders open with the system default app.
 
 ## Usage
 
-### Basic Operation
+1. Activate Raycast and run **Prompt Lab**.
+2. Search prompts (Pinyin is supported) or press Space to enter input mode for `{{input}}`.
+3. Pin frequently used prompts with `⌘ + Shift + P`.
+4. Open the Action Panel with `⌘ + K`. `⌘ + Enter` runs the first action.
 
-1. **Launch QuickGPT**
-   - Activate Raycast and type the command alias (default: `prompt` or `quickgpt`)
+### Temporary directories
 
-2. **Browse and Search**
-   - Navigate through prompts using arrow keys
-   - Search by typing (supports Pinyin matching)
-   - Pin frequently used prompts with `⌘ + Shift + P`
+Temporary prompt directories expire after 30 days:
 
-3. **Input Modes**
-   - **Search Mode**: Browse and filter prompts
-   - **Input Mode**: Type text followed by space to provide input for `{{input}}` placeholder
+1. Select a folder in Finder
+2. Settings → Temporary Prompts Directory → Add Temporary Directory from Finder
 
-4. **Execute Actions**
-   - Press `⌘ + K` to open the Action Panel
-   - Use `⌘ + Enter` for the default action
-   - Available actions include Copy, Copy as File (`⌘ + Shift + F`), Paste, Script execution, and AI service calls
+### Input and clipboard history
 
-### Advanced Features
+- `⌘ + Y` in input mode: last 50 unique inputs
+- `⌘ + Shift + Y`: up to 6 recent clipboard items
 
-#### Temporary Directories
-
-Add temporary prompt directories that automatically expire after 7 days:
-
-1. Select a directory in Finder
-2. Choose "Manage Temporary Directory" from the Settings menu
-3. Select "Add Temporary Directory from Finder"
-
-#### Input History
-
-QuickGPT automatically saves your previously entered inputs for quick reuse:
-
-- Access history using `⌘ + Y` shortcut in input mode
-- History stores up to 50 most recent unique inputs
-- Select any previous input to reuse it instantly
-
-#### Clipboard History
-
-Access your recent clipboard entries:
-
-- Use `⌘ + Shift + Y` to view clipboard history
-- Browse up to 6 recent clipboard items
-- Select any item to copy it to the current clipboard
-
-#### Deeplinks
-
-Access specific prompts directly using deeplinks:
+### Deeplinks
 
 ```
 raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt-[identifier]"}
 ```
 
-**Placeholder Parameters**: You can pass custom placeholder values directly through DeepLink URLs. Any non-system field in the arguments will be treated as a placeholder parameter:
+Any extra argument becomes a placeholder value and overrides context:
 
 ```
 raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt-translate","input":"Hello","language":"Chinese"}
 ```
 
-DeepLink parameters have the highest priority and will override context values.
-
-## Prompt File Format
-
-Prompts are defined in HJSON files with the following structure:
+## Prompt file format
 
 ```hjson
 {
@@ -198,7 +154,7 @@ Prompts are defined in HJSON files with the following structure:
   '''
 
   // Optional: Preferred actions for this prompt
-  actions: ["Copy", "Paste"]
+  actions: ["copyToClipboard", "paste"]
 
   // Optional: Array property for dropdown options
   languages: ["French", "Spanish", "German", "Japanese"]
@@ -214,7 +170,7 @@ Prompts are defined in HJSON files with the following structure:
 }
 ```
 
-### Nested Prompts
+### Nested prompts
 
 ```hjson
 {
@@ -222,7 +178,6 @@ Prompts are defined in HJSON files with the following structure:
   icon: "pencil"
   identifier: "writing_tools"
 
-  // Inheritable properties
   prefix: "tone"
   tone: "Professional writing style"
 
@@ -231,20 +186,19 @@ Prompts are defined in HJSON files with the following structure:
       title: "Grammar Check"
       identifier: "grammar_check"
       content: "Check and improve grammar: {{selection}}"
-      // Inherits prefix from parent
     }
     {
       title: "Summarize"
       identifier: "summarize"
       content: "Summarize: {{selection}}"
-      prefix: "length" // Overrides parent prefix
+      prefix: "length"
       length: "Keep it under 100 words"
     }
   ]
 }
 ```
 
-## Placeholder Reference
+## Placeholder reference
 
 | Placeholder          | Alias    | Description                                          |
 | -------------------- | -------- | ---------------------------------------------------- |
@@ -253,7 +207,7 @@ Prompts are defined in HJSON files with the following structure:
 | `{{selection}}`      | `{{s}}`  | Selected text or Finder items                        |
 | `{{currentApp}}`     |          | Name of frontmost application                        |
 | `{{allApp}}`         |          | Comma-separated list of all installed applications   |
-| `{{browserContent}}` |          | Markdown content from active browser tab             |
+| `{{browserContent}}` |          | Markdown from the active tab (Raycast Browser Extension) |
 | `{{now}}`            | `{{n}}`  | Current date and time                                |
 | `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                   |
 | `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content |
@@ -264,15 +218,13 @@ Prompts are defined in HJSON files with the following structure:
 | `{{property}}`       |          | Value from prompt property                           |
 | `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)               |
 
-### Fallback Chains with Directives
+`{{browserContent}}` is fetched when the frontmost app is a common browser (Safari, Chrome, Arc, Edge, Brave, Firefox, and similar) and the [Raycast Browser Extension](https://www.raycast.com/browser-extension) is installed. Failures are ignored.
 
-You can use `option:` and `file:` directives within fallback chains:
+### Fallback chains with directives
 
-- `{{i|option:type}}` - Use input if available, otherwise use the first value from the `type` option array
-- `{{i|file:config.txt}}` - Use input if available, otherwise load content from `config.txt`
-- `{{selection|file:template.md|clipboard}}` - Try selection first, then file content, finally clipboard
-
-Example in HJSON:
+- `{{i|option:type}}` — input, otherwise the first `type` option
+- `{{i|file:config.txt}}` — input, otherwise `config.txt`
+- `{{selection|file:template.md|clipboard}}` — selection, then file, then clipboard
 
 ```hjson
 {
@@ -282,15 +234,11 @@ Example in HJSON:
 }
 ```
 
-Placeholder usage example:
+See [`example/prompt/prompt-template.hjson`](example/prompt/prompt-template.hjson) for a fuller example.
 
-[example/prompt/prompt-template.hjson](example/prompt/prompt-template.hjson)
+### Ignoring files in directory placeholders
 
-### Ignoring Files in Directory Placeholders
-
-When `{{file:path}}` or `{{content:path}}` reads a directory, QuickGPT respects `.quickgptignore` files in that directory tree. The syntax follows `.gitignore` rules.
-
-Example `.quickgptignore`:
+When `{{file:path}}` or `{{content:path}}` reads a directory, QuickGPT respects `.quickgptignore` files (gitignore syntax):
 
 ```gitignore
 node_modules/
@@ -301,65 +249,44 @@ dist/
 
 ## Development
 
-### Project Structure
-
 ```
 quickgpt-raycast/
 ├── src/
 │   ├── components/     # React components
-│   ├── hooks/         # Custom React hooks
-│   ├── managers/      # Core managers (Prompt, Pins)
-│   ├── stores/        # Data stores
-│   ├── utils/         # Utility functions
-│   └── prompt-lab.tsx # Main entry point
-├── assets/            # Static assets and default prompts
-├── package.json       # Project configuration
-└── tsconfig.json     # TypeScript configuration
+│   ├── hooks/          # Custom React hooks
+│   ├── managers/       # Prompt, pins, and configuration
+│   ├── stores/         # LocalStorage / cache stores
+│   ├── utils/          # Placeholder, editor, script helpers
+│   ├── tests/          # Jest unit tests
+│   └── prompt-lab.tsx  # Command entry point
+├── assets/             # Icon, built-in prompts, starter library
+├── example/            # Sample prompts and AppleScripts
+├── package.json
+└── tsconfig.json
 ```
 
-### Available Scripts
-
 ```bash
-npm run build    # Build for production
+npm run build    # Production build
 npm run dev      # Development mode with hot reload
-npm run lint     # Run ESLint
-npm run format   # Format code with Prettier
-npm run test     # Run tests
-```
-
-### Testing
-
-The project uses Jest for unit testing. Run tests with:
-
-```bash
-npm test
+npm run lint     # ESLint
+npm run format   # Prettier
+npm test         # Jest
 ```
 
 ## Contributing
-
-Contributions are welcome. Please follow these guidelines:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/your-feature`)
 3. Commit your changes (`git commit -am 'Add new feature'`)
 4. Push to the branch (`git push origin feature/your-feature`)
-5. Create a Pull Request
+5. Open a Pull Request
 
-### Code Style
-
-- TypeScript with strict mode enabled
-- ESLint configuration extends `@raycast`
-- Prettier for code formatting
-- Comprehensive JSDoc comments
+Code style: TypeScript strict mode, `@raycast` ESLint config, Prettier. Comments in English.
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+MIT. See [LICENSE](LICENSE).
 
 ## Support
 
-For bug reports and feature requests, please use the [GitHub Issues](https://github.com/ddhjy/quickgpt-raycast/issues) page.
-
-## Acknowledgments
-
-Built for the Raycast community to enhance productivity and streamline AI-powered workflows.
+Bug reports and feature requests: [GitHub Issues](https://github.com/ddhjy/quickgpt-raycast/issues).

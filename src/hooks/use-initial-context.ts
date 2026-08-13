@@ -121,7 +121,21 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         frontmostApp: fetchedFrontmostApp,
       });
 
-      const browserNames = ["Arc"];
+      const browserNames = [
+        "Arc",
+        "Safari",
+        "Chrome",
+        "Chromium",
+        "Edge",
+        "Brave",
+        "Firefox",
+        "Opera",
+        "Vivaldi",
+        "Orion",
+        "Zen",
+        "Dia",
+        "DuckDuckGo",
+      ];
       if (browserNames.some((browser) => fetchedFrontmostApp.includes(browser))) {
         void (async () => {
           const browserStarted = startupNowMs();
