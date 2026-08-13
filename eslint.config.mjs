@@ -15,7 +15,7 @@ export default [
       },
     },
   },
-  ...raycastPlugin.configs.recommended,  // This is an array, so we spread it
+  ...raycastPlugin.configs.recommended, // This is an array, so we spread it
   prettier,
   {
     ignores: ["dist/**", "node_modules/**", "*.config.*"],

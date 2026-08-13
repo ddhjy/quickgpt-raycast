@@ -21,11 +21,7 @@ interface RawPromptNode {
 // `{ title:` or `, title:`.
 const TITLE_KEY_PATTERN = /(^|[{,]|\s)["']?title["']?\s*:/;
 
-function findLineIndex(
-  lines: string[],
-  fromIndex: number,
-  predicate: (line: string) => boolean,
-): number | undefined {
+function findLineIndex(lines: string[], fromIndex: number, predicate: (line: string) => boolean): number | undefined {
   for (let index = fromIndex; index < lines.length; index++) {
     if (predicate(lines[index])) {
       return index;

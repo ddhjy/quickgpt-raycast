@@ -1,19 +1,32 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "quickgpt",
-  "title": "Quickgpt",
-  "description": "A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.",
+  "title": "QuickGPT",
+  "description": "Prepare prompt templates with live Mac context, then copy, paste, or send them to ChatGPT and other apps.",
   "icon": "command-icon.png",
   "author": "ddhjy2012",
+  "platforms": [
+    "macOS"
+  ],
   "categories": [
-    "Productivity"
+    "Productivity",
+    "Developer Tools"
+  ],
+  "keywords": [
+    "prompt",
+    "chatgpt",
+    "claude",
+    "llm",
+    "hjson",
+    "template",
+    "ai"
   ],
   "license": "MIT",
   "commands": [
     {
       "name": "prompt-lab",
       "title": "Prompt Lab",
-      "description": "A professional prompt management extension for Raycast that streamlines your workflow by providing efficient access to a comprehensive library of prompts with advanced placeholder capabilities.",
+      "description": "Browse your prompt library, fill placeholders, then copy, paste, or run an AppleScript.",
       "mode": "view",
       "preferences": [
         {
@@ -74,10 +87,11 @@
         },
         {
           "name": "primaryAction",
-          "title": "Actions",
+          "title": "Pinned Actions",
           "required": false,
           "description": "Comma-separated pinned actions. Built-in names: copyToClipboard, paste, copyAsFile. Script names match the AppleScript filename without extension.",
-          "type": "textfield"
+          "type": "textfield",
+          "placeholder": "copyToClipboard, paste"
         },
         {
           "name": "customEditor",
@@ -92,14 +106,15 @@
           "description": "JSON map for shortlinks, e.g., {\"work\": \"~/Documents/Work\"}",
           "type": "textfield",
           "required": false,
-          "default": "{}"
+          "default": "{}",
+          "placeholder": "{\"work\": \"~/Documents/Work\"}"
         }
       ]
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.102.3",
-    "@raycast/utils": "^2.2.0",
+    "@raycast/api": "^1.104.24",
+    "@raycast/utils": "^2.3.0",
     "@types/hjson": "^2.4.6",
     "hjson": "^3.2.2",
     "ignore": "^7.0.5",
@@ -128,7 +143,11 @@
     "publish": "npx @raycast/api@latest publish",
     "format": "prettier --write .",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1"
+  },
+  "engines": {
+    "node": ">=22.14.0"
   },
   "overrides": {
     "tmp": "^0.2.4"

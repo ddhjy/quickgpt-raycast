@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  Action,
-  ActionPanel,
-  Icon,
-  Clipboard,
-  Toast,
-  closeMainWindow,
-  showToast,
-  Navigation,
-} from "@raycast/api";
+import { Action, ActionPanel, Icon, Clipboard, Toast, closeMainWindow, showToast, Navigation } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
@@ -449,9 +440,15 @@ export function generatePromptActions(
       if (item.name.startsWith("script_")) {
         scriptActionsGroup.push(item);
       } else if (
-        ["copyToClipboard", "copyAsFile", "copyOriginalPrompt", "paste", "sharePrompt", "editWithEditor", "pin"].includes(
-          item.name,
-        )
+        [
+          "copyToClipboard",
+          "copyAsFile",
+          "copyOriginalPrompt",
+          "paste",
+          "sharePrompt",
+          "editWithEditor",
+          "pin",
+        ].includes(item.name)
       ) {
         baseActionsGroup.push(item);
       } else {

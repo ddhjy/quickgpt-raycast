@@ -1,32 +1,31 @@
-# QuickGPT for Raycast
+# QuickGPT
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ddhjy/quickgpt-raycast)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Raycast extension for managing prompts like code. Load `.hjson` libraries, inject live context through placeholders, then copy, paste, or hand the result to your own AppleScript.
 
 QuickGPT does **not** call an LLM API. It prepares the prompt; you send it to ChatGPT, Claude, or any other app.
 
+**Requirements:** macOS and [Raycast](https://www.raycast.com/).
+
 <img src="https://github.com/user-attachments/assets/d94fc5b5-4e9a-41e9-abd4-ff5c48c601d6" alt="QuickGPT prompt list">
 
-## Quick Start
+## Install from the Store
 
-1. Install [Raycast](https://www.raycast.com/) and [Node.js 22.14.0](https://nodejs.org/) or later.
-2. Clone and run the extension:
+1. Open Raycast.
+2. Run **Store**, search for **QuickGPT**, and install it.
+3. Run **Prompt Lab**.
 
-   ```bash
-   git clone https://github.com/ddhjy/quickgpt-raycast.git
-   cd quickgpt-raycast
-   npm install
-   npm run dev
-   ```
+A built-in bilingual library is available immediately: Ask, Translate, Writing, Summarize, Code, and What is this. Copy or Paste works with no extra setup. You do not need Node.js, `git clone`, or `npm run dev`.
 
-3. In Raycast, open **Prompt Lab**. A built-in bilingual library is available immediately: Ask, Translate, Writing, Summarize, Code, and What is this. Copy or Paste works with no extra setup.
+After Raycast review merges the Store listing, QuickGPT will also appear at [raycast.com/store](https://www.raycast.com/store).
 
-### Next steps (optional)
+## Optional setup
 
-- **Your own library**: open Settings → **Create My Prompt Library**. This creates `~/Documents/QuickGPT Prompts/` with a starter template, then opens Preferences so you can set **Custom Prompts** to that folder.
-- **Send prompts to an app**: point **Scripts Directory** at [`example/script/`](example/script/) (or your own `.applescript` files). Grant Accessibility permission to Raycast and the target app.
+None of this is required for the bundled library.
+
+- **Your own library**: in Prompt Lab, open Settings → **Create My Prompt Library**. This creates `~/Documents/QuickGPT Prompts/` with a starter template, then opens Preferences so you can set **Custom Prompts** to that folder.
+- **Send prompts to an app**: point **Scripts Directory** at a folder of `.applescript` files (see [`example/script/`](example/script/) in the [source repository](https://github.com/ddhjy/quickgpt-raycast)). Grant Accessibility permission to Raycast and the target app.
 - **Edit prompts in your editor**: set **Editor Application** in Preferences. Leave it empty to open files with the system default app.
 
 ## Overview
@@ -65,7 +64,7 @@ Open Raycast Preferences → Extensions → QuickGPT (or Settings → Extension 
 - If none are set, the bundled `assets/prompts.hjson` library is used
 - **Create My Prompt Library** writes a starter file to `~/Documents/QuickGPT Prompts/`
 
-A larger example lives in [`example/prompt/prompt-template.hjson`](example/prompt/prompt-template.hjson). Point a custom directory at `example/prompt/` if you want to load it.
+A larger example lives in [`example/prompt/prompt-template.hjson`](example/prompt/prompt-template.hjson) in the [source repository](https://github.com/ddhjy/quickgpt-raycast). Point a custom directory at `example/prompt/` if you want to load it.
 
 ### Scripts directory
 
@@ -91,7 +90,7 @@ Map short codes to absolute directories so Finderlink-style paths resolve:
 
 Used for `{{file:...}}` and Finder selections such as `fk:work` or `📁 work.**notes**`.
 
-### Actions preference
+### Pinned actions
 
 Comma-separated pinned action names. Matching uses the internal action name, not the menu title:
 
@@ -200,23 +199,23 @@ raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt
 
 ## Placeholder reference
 
-| Placeholder          | Alias    | Description                                          |
-| -------------------- | -------- | ---------------------------------------------------- |
-| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field                  |
-| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                            |
-| `{{selection}}`      | `{{s}}`  | Selected text or Finder items                        |
-| `{{currentApp}}`     |          | Name of frontmost application                        |
-| `{{allApp}}`         |          | Comma-separated list of all installed applications   |
+| Placeholder          | Alias    | Description                                              |
+| -------------------- | -------- | -------------------------------------------------------- |
+| `{{input}}`          | `{{i}}`  | Text entered in Raycast input field                      |
+| `{{clipboard}}`      | `{{c}}`  | Current clipboard content                                |
+| `{{selection}}`      | `{{s}}`  | Selected text or Finder items                            |
+| `{{currentApp}}`     |          | Name of frontmost application                            |
+| `{{allApp}}`         |          | Comma-separated list of all installed applications       |
 | `{{browserContent}}` |          | Markdown from the active tab (Raycast Browser Extension) |
-| `{{now}}`            | `{{n}}`  | Current date and time                                |
-| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                   |
-| `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content |
-| `{{diff}}`           |          | Git diff of selected file or current repository      |
-| `{{file:path}}`      |          | File or directory content                            |
-| `{{content:path}}`   |          | Raw file content without filename header             |
-| `{{option:key}}`     |          | Dropdown selection from array property               |
-| `{{property}}`       |          | Value from prompt property                           |
-| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)               |
+| `{{now}}`            | `{{n}}`  | Current date and time                                    |
+| `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                       |
+| `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content     |
+| `{{diff}}`           |          | Git diff of selected file or current repository          |
+| `{{file:path}}`      |          | File or directory content                                |
+| `{{content:path}}`   |          | Raw file content without filename header                 |
+| `{{option:key}}`     |          | Dropdown selection from array property                   |
+| `{{property}}`       |          | Value from prompt property                               |
+| `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)                   |
 
 `{{browserContent}}` is fetched when the frontmost app is a common browser (Safari, Chrome, Arc, Edge, Brave, Firefox, and similar) and the [Raycast Browser Extension](https://www.raycast.com/browser-extension) is installed. Failures are ignored.
 
@@ -249,37 +248,21 @@ dist/
 
 ## Development
 
-```
-quickgpt-raycast/
-├── src/
-│   ├── components/     # React components
-│   ├── hooks/          # Custom React hooks
-│   ├── managers/       # Prompt, pins, and configuration
-│   ├── stores/         # LocalStorage / cache stores
-│   ├── utils/          # Placeholder, editor, script helpers
-│   ├── tests/          # Jest unit tests
-│   └── prompt-lab.tsx  # Command entry point
-├── assets/             # Icon, built-in prompts, starter library
-├── example/            # Sample prompts and AppleScripts
-├── package.json
-└── tsconfig.json
+Source: [github.com/ddhjy/quickgpt-raycast](https://github.com/ddhjy/quickgpt-raycast). Requires Node.js 22.14.0 or later.
+
+```bash
+git clone https://github.com/ddhjy/quickgpt-raycast.git
+cd quickgpt-raycast
+npm install
+npm run dev
 ```
 
 ```bash
 npm run build    # Production build
-npm run dev      # Development mode with hot reload
-npm run lint     # ESLint
+npm run lint     # ESLint and Prettier
 npm run format   # Prettier
 npm test         # Jest
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
 
 Code style: TypeScript strict mode, `@raycast` ESLint config, Prettier. Comments in English.
 
