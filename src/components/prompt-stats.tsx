@@ -19,7 +19,7 @@ export function PromptStats() {
       console.error("Failed to load prompt usage stats:", error);
       await showToast({
         style: Toast.Style.Failure,
-        title: "Couldn't load usage stats",
+        title: "Couldn't load usage data",
         message: String(error),
       });
     } finally {
@@ -33,10 +33,10 @@ export function PromptStats() {
 
   const handleClearStats = useCallback(async () => {
     const confirmed = await confirmAlert({
-      title: "Clear all usage stats?",
-      message: "This will reset all prompt usage counts and can't be undone.",
+      title: "Reset all usage data?",
+      message: "All usage counts will be cleared. This can't be undone.",
       primaryAction: {
-        title: "Clear Stats",
+        title: "Reset",
         style: Alert.ActionStyle.Destructive,
       },
     });
@@ -49,19 +49,19 @@ export function PromptStats() {
     await loadRows();
     await showToast({
       style: Toast.Style.Success,
-      title: "Usage stats cleared",
+      title: "Usage data reset",
     });
   }, [loadRows]);
 
   const sections = buildPromptUsageSections(rows);
 
   return (
-    <List isLoading={isLoading} navigationTitle="Prompt Stats" searchBarPlaceholder="Filter usage stats…">
+    <List isLoading={isLoading} navigationTitle="Prompt Stats" searchBarPlaceholder="Search prompts…">
       <List.Section title="Top Used" subtitle={`${sections.topUsed.length} prompts`}>
         {sections.topUsed.length > 0 ? (
           sections.topUsed.map((row) => renderUsageItem(row, "top", handleClearStats, loadRows))
         ) : (
-          <List.Item key="top-empty" title="No usage data yet" icon={Icon.BarChart} />
+          <List.Item key="top-empty" title="No prompts used yet" icon={Icon.BarChart} />
         )}
       </List.Section>
 
@@ -69,7 +69,7 @@ export function PromptStats() {
         {sections.recent7d.length > 0 ? (
           sections.recent7d.map((row) => renderUsageItem(row, "recent", handleClearStats, loadRows))
         ) : (
-          <List.Item key="recent-empty" title="No activity this week" icon={Icon.Clock} />
+          <List.Item key="recent-empty" title="Nothing used this week" icon={Icon.Clock} />
         )}
       </List.Section>
 

@@ -68,7 +68,7 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       void promptManager.refreshPrompts("prompt-lab-startup").catch((error) =>
         showToast({
           style: Toast.Style.Failure,
-          title: "Couldn't refresh prompts",
+          title: "Couldn't load prompts",
           message: String(error),
         }),
       );

@@ -445,7 +445,7 @@ export function PromptList({
   return (
     <List
       isLoading={isLoading || isWaitingForSelectedScript}
-      searchBarPlaceholder={searchMode ? "Search prompts…" : "Type to fill prompt…"}
+      searchBarPlaceholder={searchMode ? "Search prompts…" : "Type your input…"}
       onSearchTextChange={handleSearchTextChange}
       searchText={searchText}
       filtering={false}
@@ -453,7 +453,7 @@ export function PromptList({
         searchMode ? (
           <List.Dropdown
             id="preferred-action"
-            tooltip="Select preferred action"
+            tooltip="Default action"
             storeValue={false}
             value={selectedAction}
             onChange={async (newValue: string) => {
@@ -468,7 +468,7 @@ export function PromptList({
                 await defaultActionPreferenceStore.saveDefaultActionPreference("");
                 showToast({
                   style: Toast.Style.Success,
-                  title: "Preferred action cleared",
+                  title: "Default action reset",
                 });
                 forceUpdate();
                 return;
@@ -478,7 +478,7 @@ export function PromptList({
               await defaultActionPreferenceStore.saveDefaultActionPreference(newValue);
               showToast({
                 style: Toast.Style.Success,
-                title: "Preferred action set",
+                title: "Default action saved",
                 message: newValue === "lastUsed" ? getLastUsedActionDisplay() : newValue,
               });
               forceUpdate();
@@ -491,7 +491,7 @@ export function PromptList({
               <List.Dropdown.Item key="paste" title="Paste" value="paste" />
             </List.Dropdown.Section>
             {shouldShowSelectedScriptPlaceholder && (
-              <List.Dropdown.Section title={hasResolvedScripts ? "Unavailable Script" : "Restoring Selection"}>
+              <List.Dropdown.Section title={hasResolvedScripts ? "Unavailable" : "Loading…"}>
                 <List.Dropdown.Item
                   key={selectedAction}
                   title={selectedScriptName.replace(/^Raycast\s+/, "")}

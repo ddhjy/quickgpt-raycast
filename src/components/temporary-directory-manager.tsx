@@ -84,7 +84,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     } catch (error) {
       console.error(`Failed to open directory ${dirPath}:`, error);
       await showToast({
-        title: "Couldn't open directory",
+        title: "Couldn't open folder",
         message: String(error),
         style: Toast.Style.Failure,
       });
@@ -100,8 +100,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       const selectedItems = await getSelectedFinderItems();
       if (selectedItems.length === 0) {
         await showToast({
-          title: "No directory selected",
-          message: "Select a folder in Finder first, then try again",
+          title: "No folder selected",
+          message: "Select a folder in Finder first",
           style: Toast.Style.Failure,
         });
         return;
@@ -111,8 +111,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       const stats = fs.statSync(selectedPath);
       if (!stats.isDirectory()) {
         await showToast({
-          title: "That's a file",
-          message: "Select a folder instead",
+          title: "Not a folder",
+          message: "Select a folder in Finder",
           style: Toast.Style.Failure,
         });
         return;
@@ -127,7 +127,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       refreshDirectories();
 
       await showToast({
-        title: "Directory added",
+        title: "Folder added",
         message: path.basename(selectedPath),
         style: Toast.Style.Success,
       });
@@ -138,7 +138,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       }
       console.error("Failed to add temporary directory:", error);
       await showToast({
-        title: "Couldn't add directory",
+        title: "Couldn't add folder",
         message: String(error),
         style: Toast.Style.Failure,
       });
@@ -161,7 +161,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       refreshDirectories();
 
       await showToast({
-        title: "Directory removed",
+        title: "Folder removed",
         message: path.basename(dirPath),
         style: Toast.Style.Success,
       });
@@ -172,7 +172,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       }
       console.error("Failed to remove temporary directory:", error);
       await showToast({
-        title: "Couldn't remove directory",
+        title: "Couldn't remove folder",
         message: String(error),
         style: Toast.Style.Failure,
       });
@@ -186,8 +186,8 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     let refreshCompleted = false;
     try {
       const confirmed = await confirmAlert({
-        title: "Remove all temporary directories?",
-        message: "This can't be undone. You can re-add them from Finder.",
+      title: "Remove all temporary folders?",
+      message: "You can always re-add them from Finder.",
         primaryAction: {
           title: "Remove All",
           style: Alert.ActionStyle.Destructive,
@@ -205,7 +205,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
         refreshDirectories();
 
         await showToast({
-          title: "All directories removed",
+          title: "All folders removed",
           style: Toast.Style.Success,
         });
       }
@@ -216,7 +216,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       }
       console.error("Failed to remove all temporary directories:", error);
       await showToast({
-        title: "Couldn't remove directories",
+        title: "Couldn't remove folders",
         message: String(error),
         style: Toast.Style.Failure,
       });
@@ -226,22 +226,22 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
   const getNavigationTitle = () => {
     switch (type) {
       case "temporary":
-        return "Manage Temporary Directories";
+        return "Temporary Folders";
       case "scripts":
-        return "Scripts Directories";
+        return "Script Folders";
       case "prompts":
-        return "Prompts Directories";
+        return "Prompt Folders";
     }
   };
 
   const getEmptyTitle = () => {
     switch (type) {
       case "temporary":
-        return "No temporary directories";
+        return "No temporary folders";
       case "scripts":
-        return "No scripts directories";
+        return "No script folders";
       case "prompts":
-        return "No prompts directories";
+        return "No prompt folders";
     }
   };
 
@@ -250,9 +250,9 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
       case "temporary":
         return "Select a folder in Finder, then press ↵ to add it";
       case "scripts":
-        return "Set up a scripts folder in extension preferences";
+        return "Add a scripts folder in extension preferences";
       case "prompts":
-        return "Set up a prompts folder in extension preferences";
+        return "Add a prompts folder in extension preferences";
     }
   };
 
@@ -260,7 +260,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     <List
       isLoading={isLoading}
       navigationTitle={getNavigationTitle()}
-      searchBarPlaceholder={`Filter ${type} directories…`}
+      searchBarPlaceholder="Search folders…"
     >
       {directories.length === 0 ? (
         <List.EmptyView
@@ -270,7 +270,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
           actions={
             <ActionPanel>
               {type === "temporary" ? (
-                <Action title="Add Temporary Directory from Finder" icon={Icon.Plus} onAction={handleAddDirectory} />
+                <Action title="Add Folder from Finder" icon={Icon.Plus} onAction={handleAddDirectory} />
               ) : (
                 <Action
                   title="Configure"
@@ -320,7 +320,7 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
                           onAction={() => handleRemoveDirectory(dir.path)}
                         />
                         <Action
-                          title="Add New Directory from Finder"
+                          title="Add Folder from Finder"
                           icon={Icon.Plus}
                           onAction={handleAddDirectory}
                           shortcut={{ modifiers: ["cmd"], key: "n" }}

@@ -167,7 +167,7 @@ export function generatePromptActions(
           onAction={wrapActionHandler(async () => {
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
-            await showToast(Toast.Style.Success, "Copied to clipboard");
+            await showToast(Toast.Style.Success, "Copied");
             await closeMainWindow({ clearRootSearch: true });
           }, "copyToClipboard")}
         />
@@ -191,7 +191,7 @@ export function generatePromptActions(
               await closeMainWindow({ clearRootSearch: true });
             } catch (error) {
               console.error("Failed to copy as file:", error);
-              await showToast(Toast.Style.Failure, "Copy as file failed", String(error));
+              await showToast(Toast.Style.Failure, "Couldn't copy as file", String(error));
               return false;
             }
           }, "copyAsFile")}
@@ -212,7 +212,7 @@ export function generatePromptActions(
             const originalContent = prompt.content || "";
             const formattedContent = title + "\n---\n" + originalContent;
             await Clipboard.copy(formattedContent);
-            await showToast(Toast.Style.Success, "Copied Original Prompt");
+            await showToast(Toast.Style.Success, "Prompt template copied");
             await closeMainWindow({ clearRootSearch: true });
           }, "copyOriginalPrompt")}
         />
@@ -231,7 +231,7 @@ export function generatePromptActions(
             const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
-            await showToast(Toast.Style.Success, "Pasted to app");
+            await showToast(Toast.Style.Success, "Pasted");
           }, "paste")}
         />
       ),
@@ -247,7 +247,7 @@ export function generatePromptActions(
           shortcut={{ modifiers: ["cmd", "shift"], key: "s" }}
           onAction={wrapActionHandler(async () => {
             if (!prompt.filePath) {
-              await showToast(Toast.Style.Failure, "Can't share this prompt", "Only file-based prompts can be shared");
+              await showToast(Toast.Style.Failure, "Can't share", "This prompt isn't linked to a file");
               return;
             }
             const gitLink = await generateGitLink(prompt.filePath);
@@ -255,13 +255,13 @@ export function generatePromptActions(
             if (gitLink) {
               const markdownLink = `[Prompt: ${prompt.title}](${gitLink})`;
               await Clipboard.copy(markdownLink);
-              await showToast(Toast.Style.Success, "Share link copied");
+              await showToast(Toast.Style.Success, "Link copied");
               await closeMainWindow({ clearRootSearch: true });
             } else {
               await showToast(
                 Toast.Style.Failure,
-                "Can't generate share link",
-                "This file isn't in a Git repo with a remote origin",
+                "Can't create share link",
+                "No Git remote found for this file",
               );
             }
           }, "sharePrompt")}
@@ -294,7 +294,7 @@ export function generatePromptActions(
                 await closeMainWindow();
 
                 await showToast({
-                  title: openedAtLine ? "Opened at prompt definition" : "Opened — title copied",
+                  title: openedAtLine ? "Opened at definition" : "Opened — title copied to find it",
                   style: Toast.Style.Success,
                 });
               } catch (error) {
@@ -355,8 +355,8 @@ export function generatePromptActions(
               }
               await showToast(
                 Toast.Style.Success,
-                "Directory removed",
-                `${path.basename(tempDirSourcePath)} prompts are no longer available`,
+                "Folder removed",
+                `${path.basename(tempDirSourcePath)} prompts are no longer loaded`,
               );
               navigation.pop();
             } catch (error) {
@@ -365,7 +365,7 @@ export function generatePromptActions(
               }
               await showToast({
                 style: Toast.Style.Failure,
-                title: "Couldn't refresh prompts",
+                title: "Couldn't load prompts",
                 message: String(error),
               });
             }

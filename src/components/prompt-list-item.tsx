@@ -214,8 +214,8 @@ export function PromptListItem({
               const createdAnything = result.createdDirectory || result.copiedFile;
               await showToast({
                 style: Toast.Style.Success,
-                title: createdAnything ? "Prompt library created" : "Prompt library already exists",
-                message: `Set Custom Prompts to ${result.directory}`,
+                title: createdAnything ? "Prompt library ready" : "Prompt library found",
+                message: `Now set Custom Prompts to ${result.directory}`,
               });
               await openExtensionPreferences();
               await closeMainWindow();
@@ -299,14 +299,14 @@ export function PromptListItem({
                 await closeMainWindow();
 
                 await showToast({
-                  title: openedAtLine ? "Opened at prompt definition" : "Opened — title copied",
+                  title: openedAtLine ? "Opened at definition" : "Opened — title copied to find it",
                   style: Toast.Style.Success,
                 });
               } catch (error) {
                 console.error("Failed to open editor:", error);
                 await showToast({
-                  title: "Error Opening Editor",
-                  message: `Failed to open with ${editorDisplayName}. Error: ${String(error)}`,
+                  title: `Couldn't open ${editorDisplayName}`,
+                  message: String(error),
                   style: Toast.Style.Failure,
                 });
               }
@@ -336,8 +336,8 @@ export function PromptListItem({
                 }
                 await showToast(
                   Toast.Style.Success,
-                  "Temporary Directory Removed",
-                  `Directory ${path.basename(tempDirSourcePath)} and its prompts have been unlisted.`,
+                  "Folder removed",
+                  `${path.basename(tempDirSourcePath)} prompts are no longer loaded`,
                 );
                 navigation.pop();
               } catch (error) {
@@ -346,7 +346,7 @@ export function PromptListItem({
                 }
                 await showToast({
                   style: Toast.Style.Failure,
-                  title: "Couldn't refresh prompts",
+                  title: "Couldn't load prompts",
                   message: String(error),
                 });
               }
@@ -539,8 +539,8 @@ export function PromptListItem({
 
                     if (clipboardHistory.length === 0) {
                       await showToast({
-                        style: Toast.Style.Failure,
-                        title: "Clipboard is empty",
+                      style: Toast.Style.Failure,
+                      title: "Nothing on clipboard",
                       });
                       return;
                     }
@@ -561,10 +561,10 @@ export function PromptListItem({
                                     onAction={async () => {
                                       await Clipboard.copy(item.text);
                                       navigation.pop();
-                                      await showToast({
-                                        style: Toast.Style.Success,
-                                        title: "Copied to clipboard",
-                                      });
+                    await showToast({
+                      style: Toast.Style.Success,
+                      title: "Copied",
+                    });
                                     }}
                                   />
                                   <Action.CopyToClipboard title="Copy Text" content={item.text} />
