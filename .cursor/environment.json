@@ -1,0 +1,4 @@
+{
+  "name": "QuickGPT Raycast",
+  "install": "npm ci && npm run build"
+}
