@@ -37,6 +37,7 @@ import promptManager from "../managers/prompt-manager";
 import inputHistoryStore from "../stores/input-history-store";
 import { getEditorDisplayName, normalizeEditorApp, openPromptFileWithEditor } from "../utils/editor-launcher";
 import { createPromptLibrary } from "../utils/prompt-library-onboarding";
+import { openPromptMap } from "../utils/prompt-map-launcher";
 
 interface PromptListItemProps {
   prompt: PromptProps;
@@ -157,6 +158,8 @@ export function PromptListItem({
     displayIcon = Icon.NewDocument;
   } else if (prompt.identifier === "prompt-usage-stats") {
     displayIcon = Icon.BarChart;
+  } else if (prompt.identifier === "prompt-map") {
+    displayIcon = Icon.Network;
   }
 
   const placeholderIcons = useMemo(
@@ -231,6 +234,29 @@ export function PromptListItem({
       );
     } else if (prompt.identifier === "prompt-usage-stats") {
       return <Action.Push title="Open" icon={Icon.BarChart} target={<PromptStats />} />;
+    } else if (prompt.identifier === "prompt-map") {
+      return (
+        <Action
+          title="Open"
+          icon={Icon.Network}
+          onAction={async () => {
+            const toast = await showToast({ style: Toast.Style.Animated, title: "Opening Prompt Map…" });
+            try {
+              const result = await openPromptMap();
+              toast.style = Toast.Style.Success;
+              toast.title = result.mode === "server" ? "Prompt Map opened" : "Prompt Map opened (read-only)";
+              if (result.mode === "static") {
+                toast.message = "The local server couldn't start, so editing is unavailable.";
+              }
+              await closeMainWindow();
+            } catch (error) {
+              toast.style = Toast.Style.Failure;
+              toast.title = "Couldn't open Prompt Map";
+              toast.message = String(error);
+            }
+          }}
+        />
+      );
     } else if (prompt.subprompts) {
       const folderActions: React.ReactElement[] = [];
 
@@ -415,7 +441,8 @@ export function PromptListItem({
       prompt.identifier === "open-preferences" ||
       prompt.identifier === "create-prompt-library" ||
       prompt.identifier === "open-custom-prompts-dir" ||
-      prompt.identifier === "open-scripts-dir"
+      prompt.identifier === "open-scripts-dir" ||
+      prompt.identifier === "prompt-map"
     ) {
       return directoryCount !== undefined ? [{ text: String(directoryCount) }] : [];
     }

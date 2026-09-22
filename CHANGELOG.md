@@ -1,5 +1,10 @@
 # QuickGPT Changelog
 
+## [Prompt Map] - {PR_MERGE_DATE}
+
+- Add Prompt Map: open the whole library as an outline and mind map in the browser, search with Pinyin, and edit prompts in place
+- Edits rewrite only the changed span of the `.hjson` file, preserving comments and formatting, with a backup before every write
+
 ## [Initial Release] - {PR_MERGE_DATE}
 
 - Add Prompt Lab for searching and running HJSON prompt templates

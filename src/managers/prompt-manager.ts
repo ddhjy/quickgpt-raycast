@@ -1,13 +1,20 @@
 import * as fs from "fs";
 import * as path from "path";
 import md5 from "md5";
-import * as hjson from "hjson";
 import { environment, type Cache } from "@raycast/api";
 import * as temporaryDirectoryStore from "../stores/temporary-directory-store";
 import configurationManager from "./configuration-manager";
 import { startupElapsedMs, startupLog, startupNowMs, startupWarn } from "../utils/startup-profiler";
 import { createNamespacedCache } from "../utils/extension-cache";
-import { assignPromptLineNumbers } from "../utils/prompt-line-locator";
+import {
+  createPromptParseState,
+  parsePromptsFromFile,
+  processPrompts,
+  type PromptParseState,
+  type PromptProps,
+} from "../utils/prompt-parsing";
+
+export type { PromptProps } from "../utils/prompt-parsing";
 
 export function isPathInsideDirectory(filePath: string, directoryPath: string): boolean {
   const relativePath = path.relative(directoryPath, filePath);
@@ -18,36 +25,6 @@ export function isPathInsideDirectory(filePath: string, directoryPath: string): 
     !path.isAbsolute(relativePath)
   );
 }
-
-export type PromptProps = {
-  identifier: string;
-  title: string;
-  content?: string;
-  icon?: string;
-  subprompts?: PromptProps[];
-  pinned?: boolean;
-  prefix?: string;
-  suffix?: string;
-  options?: { [key: string]: string[] | Record<string, string> };
-  actions?: string[];
-  textInputs?: { [key: string]: string };
-  path?: string;
-  filePath?: string;
-  /** 1-based line in `filePath` where this prompt is defined. */
-  lineNumber?: number;
-  isTemporary?: boolean;
-  temporaryDirSource?: string;
-};
-
-const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
-  "subprompts",
-  "identifier",
-  "path",
-  "pinned",
-  "options",
-  "textInputs",
-  "lineNumber",
-];
 
 interface PromptWorkspaceSnapshot {
   signature: string;
@@ -61,13 +38,14 @@ interface PromptWorkspaceSnapshot {
 class PromptManager {
   private promptFilePaths: string[];
   private prompts: PromptProps[] = [];
-  private mergedRootProperties: Partial<PromptProps> = {};
+  private parseState: PromptParseState = createPromptParseState();
   private temporaryDirectoryPaths: string[] = [];
-  // v2: cached prompts include `lineNumber`; bumping the namespace forces a
-  // one-time re-parse so stale v1 payloads without line info are discarded.
-  private cache: Cache = createNamespacedCache(`prompts-v2-${environment.commandName}`);
-  private readonly CACHE_KEY_DATA = "prompts_data_v2";
-  private readonly CACHE_KEY_SIG = "prompts_signature_v2";
+  // v3: cached prompts include `sourceIndexPath` and `hasOwnContent` for the
+  // Prompt Map editor; bumping the namespace forces a one-time re-parse so
+  // stale payloads without those fields are discarded.
+  private cache: Cache = createNamespacedCache(`prompts-v3-${environment.commandName}`);
+  private readonly CACHE_KEY_DATA = "prompts_data_v3";
+  private readonly CACHE_KEY_SIG = "prompts_signature_v3";
   private readonly listeners = new Set<(promptsChanged: boolean) => void>();
   private hasHydratedFromCache = false;
   private isRefreshing = false;
@@ -98,7 +76,7 @@ class PromptManager {
     try {
       const parsedData = JSON.parse(cachedData);
       this.prompts = Array.isArray(parsedData.prompts) ? parsedData.prompts : [];
-      this.mergedRootProperties = parsedData.mergedRootProperties ?? {};
+      this.parseState = { mergedRootProperties: parsedData.mergedRootProperties ?? {} };
       this.lastSignature = this.cache.get(this.CACHE_KEY_SIG) ?? "";
       this.hasHydratedFromCache = true;
       startupLog("PromptManager cache hydrated", {
@@ -174,79 +152,14 @@ class PromptManager {
 
   private parsePromptsFromFile(data: string, filePath: string): PromptProps[] {
     try {
-      let parsed: unknown;
-      try {
-        parsed = hjson.parse(data);
-      } catch (parseError) {
-        console.error(`HJSON parsing failed ${filePath}:`, parseError);
-        return [];
-      }
-
-      let promptsData: Record<string, unknown>[] = [];
-
-      if (Array.isArray(parsed)) {
-        promptsData = parsed.filter((item) => typeof item === "object" && item !== null) as Record<string, unknown>[];
-      } else if (typeof parsed === "object" && parsed !== null) {
-        const parsedObject = parsed as Record<string, unknown>;
-        if (parsedObject.rootProperty && typeof parsedObject.rootProperty === "object") {
-          const fileRootProperty = parsedObject.rootProperty as Partial<PromptProps>;
-          this.mergedRootProperties = { ...this.mergedRootProperties, ...fileRootProperty };
-
-          if (parsedObject.prompts && Array.isArray(parsedObject.prompts)) {
-            promptsData = parsedObject.prompts.filter((item) => typeof item === "object" && item !== null) as Record<
-              string,
-              unknown
-            >[];
-          } else if (parsedObject.title || (parsedObject.content && typeof parsedObject.content === "string")) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { rootProperty, ...promptObject } = parsedObject;
-            if (Object.keys(promptObject).length > 0) {
-              promptsData = [promptObject];
-            }
-          }
-        } else {
-          if (parsedObject.prompts && Array.isArray(parsedObject.prompts)) {
-            promptsData = parsedObject.prompts.filter((item) => typeof item === "object" && item !== null) as Record<
-              string,
-              unknown
-            >[];
-          } else if (parsedObject.title || (parsedObject.content && typeof parsedObject.content === "string")) {
-            promptsData = [parsedObject];
-          }
-        }
-      } else {
-        console.warn(`Unsupported HJSON root structure in ${filePath}`);
-      }
-
-      assignPromptLineNumbers(promptsData, data);
-
-      const prompts = promptsData
-        .map((p) => {
-          if (!p.title && typeof p.content === "string" && p.content.trim().length > 0) {
-            p.title = p.content.trim().split("\n")[0].trim();
-          }
-          return p;
-        })
-        .filter((p) => typeof p.title === "string" && p.title.length > 0) as PromptProps[];
-
+      const prompts = parsePromptsFromFile(this.parseState, data, filePath);
       const tempDirSource = this.temporaryDirectoryPaths.find((tempDir) => isPathInsideDirectory(filePath, tempDir));
-      const isTemporarySource = tempDirSource !== undefined;
-
-      return prompts.map((prompt: PromptProps) => {
-        if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
-          prompt.actions = (prompt as PromptProps & { actions: string }).actions
-            .split(",")
-            .map((action) => action.trim())
-            .filter((action) => action.length > 0);
-        }
-
-        prompt.filePath = filePath;
-
-        if (isTemporarySource) {
-          prompt.isTemporary = true;
-          prompt.temporaryDirSource = tempDirSource;
-        }
-
+      if (tempDirSource === undefined) {
+        return prompts;
+      }
+      return prompts.map((prompt) => {
+        prompt.isTemporary = true;
+        prompt.temporaryDirSource = tempDirSource;
         return prompt;
       });
     } catch (error) {
@@ -278,7 +191,7 @@ class PromptManager {
   private async performLoadAllPrompts(reason: string, force: boolean): Promise<void> {
     const started = startupNowMs();
     const previousPrompts = this.prompts;
-    const previousMergedRootProperties = this.mergedRootProperties;
+    const previousParseState = this.parseState;
     const previousSignature = this.lastSignature;
     const hadPreviousSnapshot = this.hasHydratedFromCache || previousPrompts.length > 0;
     let promptsChanged = false;
@@ -333,13 +246,13 @@ class PromptManager {
         throw new Error(`Prompt scan skipped ${snapshot.unreadablePathCount + failedReadCount} unreadable path(s)`);
       }
 
-      this.mergedRootProperties = {};
+      this.parseState = createPromptParseState();
       const loadedPrompts = promptFiles.flatMap(({ promptPath, data }) => {
         return this.parsePromptsFromFile(data, promptPath);
       });
 
       const processStarted = startupNowMs();
-      this.prompts = this.processPrompts(loadedPrompts);
+      this.prompts = processPrompts(this.parseState, loadedPrompts);
       promptsChanged = true;
       const processMs = startupElapsedMs(processStarted);
       this.lastSignature = isComplete ? currentSignature : "";
@@ -349,7 +262,7 @@ class PromptManager {
         try {
           const cachePayload = {
             prompts: this.prompts,
-            mergedRootProperties: this.mergedRootProperties,
+            mergedRootProperties: this.parseState.mergedRootProperties,
           };
           this.cache.set(this.CACHE_KEY_DATA, JSON.stringify(cachePayload));
           if (currentSignature) {
@@ -379,7 +292,7 @@ class PromptManager {
       });
     } catch (error) {
       this.prompts = previousPrompts;
-      this.mergedRootProperties = previousMergedRootProperties;
+      this.parseState = previousParseState;
       startupWarn("PromptManager refresh failed", {
         reason,
         durationMs: startupElapsedMs(started),
@@ -518,78 +431,14 @@ class PromptManager {
     return this.getSignaturePath(filePath).startsWith("$extension-assets/");
   }
 
-  private processPrompts(prompts: PromptProps[], parentPrompt?: PromptProps): PromptProps[] {
-    return prompts.map((prompt) => {
-      if (!prompt.title && prompt.content) {
-        prompt.title = prompt.content.trim().split("\n")[0].trim();
-      }
-
-      const baseProperties: Partial<PromptProps> = { ...this.mergedRootProperties };
-
-      if (parentPrompt) {
-        for (const key in parentPrompt) {
-          if (Object.prototype.hasOwnProperty.call(parentPrompt, key)) {
-            const propKey = key as keyof PromptProps;
-            if (!NON_INHERITED_PROPS.includes(propKey) && parentPrompt[propKey] !== undefined) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (baseProperties as any)[propKey] = parentPrompt[propKey];
-            }
-          }
-        }
-      }
-
-      const originalFilePath = prompt.filePath;
-
-      prompt = { ...baseProperties, ...prompt };
-
-      if (typeof (prompt as PromptProps & { actions?: string | string[] }).actions === "string") {
-        prompt.actions = (prompt as PromptProps & { actions: string }).actions
-          .split(",")
-          .map((action) => action.trim())
-          .filter((action) => action.length > 0);
-      }
-
-      if (originalFilePath) {
-        prompt.filePath = originalFilePath;
-      } else if (NON_INHERITED_PROPS.includes("filePath")) {
-        if (!prompt.filePath) {
-          prompt.filePath = this.mergedRootProperties.filePath;
-        }
-      }
-
-      prompt = this.processPrompt(prompt);
-
-      if (!prompt.content) {
-        prompt.content = prompt.title;
-      }
-
-      const currentPath = parentPrompt?.path ? `${parentPrompt.path} / ${prompt.title}` : prompt.title;
-      prompt.path = currentPath;
-
-      if (prompt.subprompts) {
-        prompt.subprompts = this.processPrompts(prompt.subprompts, prompt);
-      }
-
-      return prompt;
-    });
-  }
-
-  private processPrompt(prompt: PromptProps): PromptProps {
-    if (!prompt.identifier) {
-      const emojiRegex = /[\p{Emoji}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
-      const emojis = prompt.title.match(emojiRegex) || [];
-      const emojiStr = emojis.join("");
-
-      const placeholderRegex = /{{([^}]+)}}/g;
-      const placeholders = prompt.content?.match(placeholderRegex) || [];
-      const placeholderStr = placeholders.map((p) => p.replace(/[{}]/g, "")).join("-");
-
-      const baseStr = [emojiStr, prompt.title.replace(emojiRegex, "").trim(), placeholderStr].filter(Boolean).join("-");
-
-      prompt.identifier = md5(baseStr).substring(0, 8);
-    }
-
-    return prompt;
+  /**
+   * Prompt sources shown in Prompt Map: the configured directories, active
+   * temporary directories, or the bundled library, without the settings
+   * prompts that only exist for the Raycast UI.
+   */
+  public getLibrarySourcePaths(): string[] {
+    const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
+    return this.getPromptFilePaths().filter((promptPath) => promptPath !== systemPromptsPath);
   }
 
   public getRootPrompts(): PromptProps[] {

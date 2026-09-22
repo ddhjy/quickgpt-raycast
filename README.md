@@ -54,6 +54,14 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 - Built-in: Copy, Copy as File, Paste, Edit, Pin, Share
 - Custom AppleScript actions from configured script directories
 
+### Prompt Map
+
+- **Settings → Prompt Map** opens the whole library in your browser: an outline of grouped cards and a mind map, with a detail panel for every prompt
+- Search matches titles, content, paths and Pinyin initials; the outline is fully keyboard driven (arrows, Enter, E to edit)
+- Edit titles and content, add subprompts and delete prompts in place. Edits rewrite only the changed span of the `.hjson` file, so comments and formatting are preserved
+- Editing runs through a small local server (127.0.0.1 only, token protected) that QuickGPT starts on demand with Raycast's Node runtime; it exits after 30 minutes of inactivity. Every write is backed up under the extension's support folder (`prompt-map/backups`)
+- The bundled starter library is read-only; create your own library to edit
+
 ## Configuration
 
 Open Raycast Preferences → Extensions → QuickGPT (or Settings → Extension Preferences inside Prompt Lab).

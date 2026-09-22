@@ -128,6 +128,7 @@
     "@types/md5": "^2.3.5",
     "@types/node": "24.2.0",
     "@types/react": "^19.1.9",
+    "esbuild": "^0.25.8",
     "eslint": "^9.32.0",
     "jest": "^30.0.5",
     "prettier": "^3.6.2",
@@ -137,7 +138,10 @@
   },
   "scripts": {
     "build": "ray build -e dist -o dist",
+    "prebuild": "npm run bundle:prompt-map",
+    "bundle:prompt-map": "node scripts/bundle-prompt-map-server.mjs",
     "dev": "ray develop",
+    "predev": "npm run bundle:prompt-map",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "npx @raycast/api@latest publish",

@@ -40,5 +40,11 @@
       identifier: "prompt-usage-stats"
       // No content, actions handled specially in PromptListItem
     }
+    {
+      title: "Prompt Map"
+      icon: ""
+      identifier: "prompt-map"
+      // Opens the whole library as an outline and mind map in the browser
+    }
   ]
 }

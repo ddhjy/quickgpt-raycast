@@ -1,0 +1,1330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Prompt Map</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: oklch(0.975 0.004 250);
+    --surface: oklch(1 0 0);
+    --surface-2: oklch(0.955 0.006 250);
+    --border: oklch(0.90 0.006 250);
+    --border-strong: oklch(0.82 0.008 250);
+    --ink: oklch(0.22 0.012 260);
+    --ink-2: oklch(0.42 0.012 260);
+    --muted: oklch(0.52 0.012 260);
+    --hover: oklch(0.955 0.006 250);
+    --sel: oklch(0.94 0.018 250);
+    --match: oklch(0.93 0.09 90);
+    --ph-bg: oklch(0.93 0.04 200);
+    --ph-ink: oklch(0.38 0.09 200);
+    --danger: oklch(0.55 0.19 25);
+    --danger-bg: oklch(0.95 0.03 25);
+    --focus: oklch(0.62 0.17 255);
+    --ok: oklch(0.62 0.16 150);
+    --on-ink: oklch(0.985 0.003 250);
+    --shadow-pop: 0 8px 24px oklch(0 0 0 / 0.12), 0 1px 2px oklch(0 0 0 / 0.08);
+    --ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --t-fast: 120ms;
+    --t-mid: 180ms;
+    --t-slow: 240ms;
+    --r-sm: 6px; --r-md: 8px; --r-lg: 10px;
+    --row-pad: 3px;
+    --row-font: 13px;
+    --z-sticky: 10; --z-toast: 30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: oklch(0.17 0.008 260);
+      --surface: oklch(0.21 0.01 260);
+      --surface-2: oklch(0.245 0.01 260);
+      --border: oklch(0.30 0.012 260);
+      --border-strong: oklch(0.38 0.012 260);
+      --ink: oklch(0.93 0.006 260);
+      --ink-2: oklch(0.78 0.01 260);
+      --muted: oklch(0.68 0.012 260);
+      --hover: oklch(0.26 0.012 260);
+      --sel: oklch(0.30 0.03 250);
+      --match: oklch(0.42 0.08 85);
+      --ph-bg: oklch(0.32 0.05 200);
+      --ph-ink: oklch(0.86 0.08 200);
+      --danger: oklch(0.72 0.17 25);
+      --danger-bg: oklch(0.30 0.05 25);
+      --ok: oklch(0.72 0.16 150);
+      --on-ink: oklch(0.17 0.008 260);
+      --shadow-pop: 0 8px 24px oklch(0 0 0 / 0.45), 0 1px 2px oklch(0 0 0 / 0.4);
+    }
+  }
+  body.dense { --row-pad: 1px; --row-font: 12px; }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--ui);
+    display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  svg.ic.fill { fill: currentColor; stroke: none; }
+  kbd {
+    font: 500 10.5px/1 var(--ui); color: var(--ink-2); background: var(--surface); border: 1px solid var(--border-strong);
+    border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; min-width: 18px; display: inline-block; text-align: center; vertical-align: middle;
+  }
+  mark { background: var(--match); color: inherit; border-radius: 2px; padding: 0; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  ::placeholder { color: var(--muted); opacity: 1; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font-size: 12.5px; font-weight: 500;
+    cursor: pointer; text-decoration: none; white-space: nowrap; user-select: none;
+    transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  }
+  .btn:hover { background: var(--hover); }
+  .btn:active { transform: translateY(0.5px); }
+  .btn[disabled] { opacity: .5; cursor: default; pointer-events: none; }
+  .btn kbd { margin-left: 2px; }
+  .btn-primary { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  .btn-primary:hover { background: var(--ink-2); border-color: var(--ink-2); }
+  .btn-primary kbd { color: var(--on-ink); background: transparent; border-color: oklch(from var(--on-ink) l c h / 0.4); }
+  .btn-danger { color: var(--danger); }
+  .btn-danger:hover { background: var(--danger-bg); border-color: var(--danger); }
+  .icon-btn {
+    width: 28px; height: 28px; padding: 0; justify-content: center; border-color: transparent; background: transparent; color: var(--ink-2);
+  }
+  .icon-btn:hover { background: var(--hover); color: var(--ink); }
+  .icon-btn[aria-pressed="true"] { background: var(--sel); color: var(--ink); }
+
+  /* ---------- Top bar ---------- */
+  .top {
+    display: grid; grid-template-columns: minmax(200px, 1fr) minmax(280px, 560px) minmax(200px, 1fr); align-items: center; gap: 16px;
+    height: 48px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex: none;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+  .brand-meta { font: 11.5px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search {
+    display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 10px; border-radius: var(--r-md);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted);
+    transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  }
+  .search:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px oklch(from var(--focus) l c h / 0.2); }
+  .search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 13px; color: var(--ink); }
+  .search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .search-count { font: 500 11.5px var(--mono); color: var(--ink-2); white-space: nowrap; }
+  .search-count:empty, .search:focus-within kbd { display: none; }
+  .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .seg { display: inline-flex; padding: 2px; border-radius: var(--r-md); background: oklch(from var(--border) l c h / 0.6); gap: 2px; }
+  .seg button {
+    display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--ink-2); font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px oklch(0 0 0 / 0.08); }
+  .tool-group { display: flex; align-items: center; gap: 2px; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--border-strong); }
+  .tool-group select {
+    height: 28px; padding: 0 24px 0 8px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--ink-2);
+    font-size: 12.5px; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%23888' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m4 6 4 4 4-4'/></svg>");
+    background-repeat: no-repeat; background-position: right 6px center;
+  }
+  .tool-group select:hover { background-color: var(--hover); color: var(--ink); }
+  body.view-map .outline-only { display: none !important; }
+  body.view-outline .map-only { display: none !important; }
+
+  /* ---------- Help popover ---------- */
+  [popover] { margin: 0; padding: 0; border: 0; background: transparent; }
+  .pop {
+    position: fixed; width: 340px; padding: 14px 16px 16px; border-radius: var(--r-lg); border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop);
+  }
+  .pop h3 { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .pop h3 + h3 { margin-top: 14px; }
+  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+  .pop .keys span:nth-child(odd) { display: flex; gap: 3px; justify-content: flex-end; }
+  .pop .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; color: var(--ink-2); }
+  .pop select { height: 28px; padding: 0 8px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); }
+  .pop .path { font: 11px var(--mono); color: var(--muted); word-break: break-all; margin-top: 4px; }
+
+  /* ---------- Layout ---------- */
+  .main { flex: 1; display: flex; min-height: 0; }
+  .board-wrap { flex: 1; overflow: auto; padding: 14px 16px 40px; outline: none; }
+  .board-wrap:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
+  body.view-map .board-wrap { display: none; }
+  .board { columns: 300px; column-gap: 14px; }
+  aside {
+    width: clamp(320px, 32vw, 520px); flex: none; border-left: 1px solid var(--border); background: var(--surface); overflow: auto;
+    padding: 14px 18px 28px; position: relative;
+  }
+  .status {
+    display: flex; align-items: center; gap: 16px; height: 28px; padding: 0 14px; border-top: 1px solid var(--border); background: var(--surface-2);
+    font-size: 11.5px; color: var(--muted); flex: none; white-space: nowrap;
+  }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; vertical-align: 0; }
+  .status .dot.on { background: var(--ok); }
+  .status .mono { font: 11px var(--mono); overflow: hidden; text-overflow: ellipsis; }
+  .status-hint { margin-left: auto; display: flex; align-items: center; gap: 10px; overflow: hidden; }
+  .status-hint span { display: inline-flex; align-items: center; gap: 4px; }
+  .status .zoom-btn { height: 20px; padding: 0 6px; font: 500 11px var(--mono); }
+  .empty { padding: 48px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+  .empty b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- Outline groups ---------- */
+  .card {
+    break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-lg); vertical-align: top;
+  }
+  .card.hidden, .item.hidden { display: none; }
+  .card-head {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid var(--border); cursor: default;
+    border-radius: var(--r-lg) var(--r-lg) 0 0; transition: background var(--t-fast) var(--ease);
+  }
+  .card:not(:has(.card-body)) .card-head { border-bottom: 0; border-radius: var(--r-lg); }
+  .card-head:hover { background: var(--hover); }
+  .card-head.active { background: var(--sel); }
+  .card-head.locked { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .card-head .bdot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--c); }
+  .card-head .ico { font-size: 15px; width: 18px; text-align: center; flex: none; }
+  .card-head .ttl { font-weight: 650; font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-head .file { color: var(--muted); font: 11px var(--mono); max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-head .cnt { color: var(--ink-2); font: 500 11px var(--mono); background: var(--surface-2); padding: 2px 7px; border-radius: 99px; flex: none; }
+  .card-body { padding: 5px 8px 7px; }
+
+  .node {
+    display: flex; align-items: center; gap: 5px; padding: var(--row-pad) 6px var(--row-pad) 4px; border-radius: var(--r-sm);
+    font-size: var(--row-font); line-height: 1.5; cursor: default; transition: background var(--t-fast) var(--ease);
+  }
+  .node:hover { background: var(--hover); }
+  .node.active { background: var(--sel); }
+  .node.locked { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .node .tw { width: 16px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; border-radius: 4px; transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+  .node .tw:hover { background: oklch(from var(--muted) l c h / 0.15); color: var(--ink); }
+  .node .tw.leaf { visibility: hidden; }
+  .node .tw.closed { transform: rotate(-90deg); }
+  .node .ico { width: 16px; flex: none; text-align: center; font-size: 12px; }
+  .node .ttl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node.folder .ttl { font-weight: 600; }
+  .node .n { font: 500 10.5px var(--mono); color: var(--muted); flex: none; }
+  .chips { display: flex; gap: 3px; flex: none; }
+  .chip { font: 500 10px/16px var(--mono); background: var(--surface-2); color: var(--ink-2); padding: 0 4px; border-radius: 4px; }
+  .children { margin-left: 12px; border-left: 1px solid var(--border); padding-left: 3px; }
+  .children.collapsed { display: none; }
+
+  /* ---------- Mind map ---------- */
+  .map-wrap { flex: 1; position: relative; overflow: hidden; display: none; cursor: grab; background: var(--bg); }
+  body.view-map .map-wrap { display: block; }
+  .map-wrap.dragging { cursor: grabbing; }
+  #map { width: 100%; height: 100%; display: block; user-select: none; }
+  #map-root { transition: transform var(--t-slow) var(--ease); transform-origin: 0 0; }
+  .map-wrap.no-anim #map-root { transition: none; }
+  .mm-links path { fill: none; stroke-width: 1.5; opacity: .5; }
+  .mm-node rect { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; transition: fill var(--t-fast) var(--ease); }
+  .mm-node.d0 rect { stroke: var(--c); stroke-width: 1.5; }
+  .mm-node.d2 rect { fill: transparent; stroke: transparent; }
+  .mm-block { fill: var(--c); fill-opacity: .07; stroke: var(--c); stroke-opacity: .3; stroke-width: 1; }
+  .mm-node.in-block rect { fill: var(--surface); stroke: var(--border); }
+  .mm-node:hover rect { fill: var(--hover); }
+  .mm-node.active rect { fill: var(--sel); }
+  .mm-node.match rect { fill: var(--match); stroke: var(--c); }
+  .mm-node.locked rect { stroke: var(--ink); stroke-width: 1.75; fill: var(--sel); }
+  .mm-node text { font: 12.5px var(--ui); fill: var(--ink); dominant-baseline: central; pointer-events: none; }
+  .mm-node.d0 text { font-weight: 600; }
+  .mm-badge circle { fill: var(--surface); stroke: var(--c); stroke-width: 1.2; cursor: pointer; transition: fill var(--t-fast) var(--ease); }
+  .mm-badge:hover circle { fill: var(--hover); }
+  .mm-badge text { font: 600 9px var(--ui); fill: var(--c); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .mm-badge.closed circle { fill: var(--c); }
+  .mm-badge.closed text { fill: #fff; }
+  .mm-root rect { fill: var(--ink); }
+  .mm-root text { font: 700 14px var(--ui); fill: var(--on-ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .map-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .map-wrap.is-empty .map-empty { display: flex; }
+
+  /* ---------- Detail panel ---------- */
+  .p-empty { color: var(--muted); font-size: 13px; padding: 56px 8px; text-align: center; line-height: 2; }
+  .p-empty kbd { margin: 0 2px; }
+  .p-status { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); min-height: 20px; }
+  .p-status .pin { color: var(--ink); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+  .p-status .dirty { color: var(--danger); font-weight: 600; }
+  .p-status kbd { margin: 0 1px; }
+  .p-crumb { font-size: 11.5px; color: var(--muted); word-break: break-all; margin-top: 8px; line-height: 1.6; }
+  .p-crumb b { color: var(--ink-2); font-weight: 500; }
+  .p-crumb .sep { margin: 0 4px; opacity: .6; }
+  .p-title { font-size: 17px; font-weight: 600; margin: 6px 0 8px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.3; letter-spacing: -0.01em; text-wrap: balance; }
+  .p-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); font: 500 11px var(--mono); }
+  .p-sec { margin-top: 18px; }
+  .p-label { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .p-label .meta { font: 11px var(--mono); font-weight: 400; }
+  pre.p-content {
+    white-space: pre-wrap; word-break: break-word; font: 12.5px/1.6 var(--mono); background: var(--surface-2); padding: 10px 12px;
+    border-radius: var(--r-md); margin: 0; max-width: 72ch; color: var(--ink);
+  }
+  .ph { color: var(--ph-ink); background: var(--ph-bg); border-radius: 3px; padding: 0 3px; }
+  .kv { font-size: 12.5px; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: baseline; }
+  .kv b { font: 500 11.5px var(--mono); color: var(--muted); }
+  .kv span { white-space: pre-wrap; color: var(--ink); }
+  .kv .undef { color: var(--muted); font-style: italic; }
+  .p-children { list-style: none; margin: 0; padding: 0; }
+  .p-children li { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: var(--r-sm); font-size: 12.5px; cursor: pointer; transition: background var(--t-fast) var(--ease); }
+  .p-children li:hover { background: var(--hover); }
+  .p-children li .n { font: 500 10.5px var(--mono); color: var(--muted); }
+  .p-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 18px; }
+  .p-edit-actions { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-strong); display: flex; gap: 6px; flex-wrap: wrap; }
+  .p-note { font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+  .p-note kbd { margin: 0 1px; }
+  .panel-swap { animation: swap var(--t-mid) var(--ease); }
+  @keyframes swap { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+  /* Editor */
+  .field { display: block; margin-top: 14px; }
+  .input {
+    width: 100%; border-radius: var(--r-md); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); padding: 8px 10px;
+    transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  }
+  .input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px oklch(from var(--focus) l c h / 0.2); }
+  .p-edit-title { font-size: 15px; font-weight: 600; }
+  .p-edit-content { min-height: 240px; resize: vertical; font: 12.5px/1.6 var(--mono); tab-size: 2; }
+  .insert-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .insert-row .lbl { font-size: 11.5px; color: var(--muted); margin-right: 4px; }
+  .chip-btn { height: 22px; padding: 0 7px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ph-ink); font: 500 11px var(--mono); cursor: pointer; }
+  .chip-btn:hover { background: var(--ph-bg); }
+  .p-actions.sticky { position: sticky; bottom: -28px; margin: 18px -18px -28px; padding: 12px 18px 16px; background: var(--surface); border-top: 1px solid var(--border); }
+
+  /* Toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(8px); display: flex; align-items: center; gap: 10px;
+    background: var(--ink); color: var(--on-ink); padding: 8px 8px 8px 14px; border-radius: var(--r-md); font-size: 12.5px; box-shadow: var(--shadow-pop);
+    opacity: 0; pointer-events: none; z-index: var(--z-toast); max-width: 70vw; transition: opacity var(--t-mid) var(--ease), transform var(--t-mid) var(--ease);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+  #toast.error { background: var(--danger); color: #fff; }
+  #toast .toast-act { height: 24px; padding: 0 8px; border-radius: 5px; border: 1px solid oklch(from var(--on-ink) l c h / 0.35); background: transparent; color: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  #toast .toast-act:hover { background: oklch(from var(--on-ink) l c h / 0.15); }
+  #toast .toast-act:empty { display: none; }
+
+  @media (max-width: 1100px) {
+    .top { grid-template-columns: auto minmax(200px, 1fr) auto; gap: 10px; }
+    .brand-meta { display: none; }
+    aside { width: 320px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+  }
+</style>
+</head>
+<body class="view-outline">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></symbol>
+  <symbol id="i-list" viewBox="0 0 16 16"><path d="M3 4h3M8 4h5M5 8h3M10 8h3M5 12h3M10 12h3"/></symbol>
+  <symbol id="i-map" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.5"/><circle cx="12.5" cy="4" r="1.5"/><circle cx="12.5" cy="12" r="1.5"/><path d="M5 8h3.5M8.5 8 11 5M8.5 8l2.5 3"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 16 16"><path d="m4 4.5 4 3 4-3M4 9.5l4 3 4-3"/></symbol>
+  <symbol id="i-collapse" viewBox="0 0 16 16"><path d="m4 7.5 4-3 4 3M4 12.5l4-3 4 3"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 16 16"><path d="M3 6.5V3h3.5M9.5 3H13v3.5M13 9.5V13H9.5M6.5 13H3V9.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 16 16"><path d="M3.5 8h9"/></symbol>
+  <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.2 6.3a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.3"/><circle cx="8" cy="11.6" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-dense" viewBox="0 0 16 16"><path d="M3 4h10M3 6.5h10M3 9h10M3 11.5h10"/></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.5 8z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.7 9.3a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.9.9"/><path d="M9.3 6.7a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.9-.9"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 16 16"><path d="m11.3 2.7 2 2L6 12l-3 1 1-3z"/></symbol>
+  <symbol id="i-add" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v5M5.5 8h5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 16 16"><path d="M9 2.5 13.5 7l-2.2.5L9 9.8V13l-1-1-2-2-3.5 3.5L6 10 4 8l-1-1h3.2L8.5 4.7z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 16 16"><path d="M6 3.5 3 6.5l3 3"/><path d="M3 6.5h6.5a3.25 3.25 0 0 1 0 6.5H8"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="brand"><span class="brand-name">Prompt Map</span><span class="brand-meta" id="stats"></span></div>
+  <label class="search">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input id="q" type="search" placeholder="搜索标题、正文、路径或拼音首字母" autocomplete="off" spellcheck="false" aria-label="搜索提示词">
+    <span class="search-count" id="count"></span>
+    <kbd>/</kbd>
+  </label>
+  <div class="top-right">
+    <div class="seg" id="view-seg" role="tablist" aria-label="视图">
+      <button role="tab" data-view="outline" aria-selected="true"><svg class="ic"><use href="#i-list"/></svg>大纲</button>
+      <button role="tab" data-view="map" aria-selected="false"><svg class="ic"><use href="#i-map"/></svg>导图</button>
+    </div>
+    <div class="tool-group outline-only">
+      <button class="btn icon-btn" id="expand" title="全部展开"><svg class="ic"><use href="#i-expand"/></svg></button>
+      <button class="btn icon-btn" id="collapse" title="全部折叠"><svg class="ic"><use href="#i-collapse"/></svg></button>
+      <button class="btn icon-btn" id="dense" title="紧凑行距" aria-pressed="false"><svg class="ic"><use href="#i-dense"/></svg></button>
+    </div>
+    <div class="tool-group map-only">
+      <select id="mm-level" title="展开层级" aria-label="展开层级">
+        <option value="1">1 层</option>
+        <option value="2">2 层</option>
+        <option value="99" selected>全部</option>
+      </select>
+      <button class="btn icon-btn" id="mm-fit" title="适应窗口 (0)"><svg class="ic"><use href="#i-fit"/></svg></button>
+      <button class="btn icon-btn" id="mm-out" title="缩小"><svg class="ic"><use href="#i-minus"/></svg></button>
+      <button class="btn icon-btn" id="mm-in" title="放大"><svg class="ic"><use href="#i-plus"/></svg></button>
+    </div>
+    <div class="tool-group">
+      <button class="btn icon-btn" id="help-btn" popovertarget="help" title="快捷键与设置"><svg class="ic"><use href="#i-help"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div id="help" popover class="pop">
+  <h3>快捷键</h3>
+  <div class="keys">
+    <span><kbd>/</kbd></span><span>搜索</span>
+    <span><kbd>↑</kbd><kbd>↓</kbd></span><span>在大纲中移动选择</span>
+    <span><kbd>←</kbd><kbd>→</kbd></span><span>折叠 / 展开当前目录</span>
+    <span><kbd>Enter</kbd></span><span>固定或取消固定</span>
+    <span><kbd>E</kbd></span><span>编辑固定的提示词</span>
+    <span><kbd>⌘</kbd><kbd>S</kbd></span><span>保存</span>
+    <span><kbd>Esc</kbd></span><span>取消固定、清空搜索或退出编辑</span>
+    <span><kbd>0</kbd></span><span>导图适应窗口</span>
+  </div>
+  <h3>设置</h3>
+  <div class="row"><span>「在编辑器打开」使用</span>
+    <select id="editor" aria-label="编辑器">
+      <option value="cursor">Cursor</option>
+      <option value="vscode">VS Code</option>
+      <option value="zed">Zed</option>
+    </select>
+  </div>
+  <h3>数据来源</h3>
+  <div class="path" id="help-source"></div>
+  <div class="path" id="help-backup"></div>
+</div>
+
+<div class="main">
+  <div class="board-wrap" id="board-wrap" tabindex="0" aria-label="提示词大纲"><div class="board" id="board"></div><div class="empty" id="board-empty" hidden></div></div>
+  <div class="map-wrap" id="map-wrap">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg"><g id="map-root"></g></svg>
+    <div class="map-empty empty" id="map-empty"></div>
+  </div>
+  <aside id="panel" aria-live="polite"></aside>
+</div>
+
+<footer class="status">
+  <span id="status-mode"><i class="dot"></i>只读</span>
+  <span class="mono" id="status-source"></span>
+  <span class="status-hint" id="status-hint"></span>
+  <button class="btn zoom-btn map-only" id="mm-zoom" title="适应窗口">100%</button>
+</footer>
+<div id="toast"><span id="toast-text"></span><button class="toast-act" id="toast-act"></button></div>
+
+<script id="prompt-map-data" type="application/json">/*__PROMPT_MAP_DATA__*/</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const TOKEN = new URLSearchParams(location.search).get("t") || "";
+  const board = $("board"), boardWrap = $("board-wrap"), boardEmpty = $("board-empty"), panel = $("panel"), q = $("q"), countEl = $("count");
+  const mapWrap = $("map-wrap"), mapSvg = $("map"), mapRoot = $("map-root"), mapEmpty = $("map-empty"), mapZoomEl = $("mm-zoom");
+  const toastEl = $("toast"), toastText = $("toast-text"), toastAct = $("toast-act");
+
+  /* ---------- Utilities ---------- */
+  const EMOJI = /\p{Extended_Pictographic}/u;
+  const PALETTE = ["#3b82f6", "#f97316", "#10b981", "#8b5cf6", "#ef4444", "#eab308", "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#14b8a6", "#f43f5e"];
+  const ICON = (name) => `<svg class="ic" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+  function iconHtml(icon, isFolder) {
+    if (icon && EMOJI.test(icon)) return esc(icon);
+    if (icon) return "◇";
+    return isFolder ? "▣" : "";
+  }
+  function markTerms(text, terms) {
+    if (!terms.length) return esc(text);
+    const pattern = new RegExp(terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "gi");
+    return esc(text).replace(pattern, (m) => `<mark>${m}</mark>`);
+  }
+  function shortHome(p) {
+    return p.replace(/^\/Users\/[^/]+/, "~");
+  }
+  let toastTimer, toastAction = null;
+  function toast(msg, opts = {}) {
+    toastText.textContent = msg;
+    toastEl.classList.toggle("error", Boolean(opts.error));
+    toastAction = opts.action || null;
+    toastAct.textContent = opts.actionLabel || "";
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), opts.action ? 8000 : opts.error ? 3600 : 1400);
+  }
+  toastAct.addEventListener("click", () => {
+    const action = toastAction;
+    toastAction = null;
+    toastEl.classList.remove("show");
+    if (action) action();
+  });
+  function pref(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem("promptMap." + key);
+      localStorage.setItem("promptMap." + key, value);
+    } catch (_) { return null; }
+  }
+
+  /* ---------- State ---------- */
+  let DATA;
+  let nodes = [], byUid = new Map(), byKey = new Map(), parentOf = new Map(), wrapByUid = new Map(), cards = [];
+  let uidCounter = 0;
+  let lockedUid = null, activeUid = null;
+  let view = "outline";
+  let mm = { k: 1, tx: 0, ty: 0 };
+  let mapDirty = true, mapFitted = false;
+  let editing = null;
+  const outlineCollapsed = new Set();
+  const mapCollapsed = new Set();
+  let VROOT;
+
+  /* ---------- Model loading ---------- */
+  function indexNode(node, parent, fileName, color) {
+    node.uid = uidCounter++;
+    node.parent = parent ? parent.uid : null;
+    node.fileName = fileName;
+    node.color = color;
+    node.ownIcon = parent && parent.icon === node.icon ? "" : node.icon;
+    node.descendants = 0;
+    node.hidden = false;
+    node.match = false;
+    node.hay = (node.title + " " + node.path + " " + (node.content || "")).toLowerCase();
+    nodes.push(node);
+    byUid.set(node.uid, node);
+    byKey.set(node.key, node);
+    if (parent) parentOf.set(node.uid, parent);
+    for (const child of node.children) {
+      indexNode(child, node, fileName, color);
+      node.descendants += 1 + child.descendants;
+    }
+  }
+
+  function renderNode(node) {
+    const isFolder = node.children.length > 0;
+    const collapsed = outlineCollapsed.has(node.key);
+    const row = document.createElement("div");
+    row.className = "node" + (isFolder ? " folder" : "");
+    row.dataset.uid = node.uid;
+    const chips = node.placeholders.slice(0, 4).map((p) => `<span class="chip">${esc(p)}</span>`).join("");
+    row.innerHTML =
+      `<span class="tw ${isFolder ? "" : "leaf"}${collapsed ? " closed" : ""}" title="${isFolder ? "折叠 / 展开" : ""}">${ICON("chev").replace('class="ic"', 'class="ic" style="transform:rotate(90deg)"')}</span>` +
+      `<span class="ico">${iconHtml(node.ownIcon, isFolder)}</span>` +
+      `<span class="ttl" title="${esc(node.title)}">${esc(node.title)}</span>` +
+      (isFolder ? `<span class="n">${node.children.length}</span>` : `<span class="chips">${chips}</span>`);
+    const wrap = document.createElement("div");
+    wrap.className = "item";
+    wrap.appendChild(row);
+    if (isFolder) {
+      const ch = document.createElement("div");
+      ch.className = "children" + (collapsed ? " collapsed" : "");
+      for (const child of node.children) ch.appendChild(renderNode(child));
+      wrap.appendChild(ch);
+    }
+    wrapByUid.set(node.uid, wrap);
+    return wrap;
+  }
+
+  function loadModel(model, opts = {}) {
+    DATA = model;
+    nodes = []; byUid = new Map(); byKey = new Map(); parentOf = new Map(); wrapByUid = new Map(); cards = [];
+    uidCounter = 0; lockedUid = null; activeUid = null; editing = null;
+    let rootIndex = 0;
+    for (const file of DATA.files) for (const root of file.roots) indexNode(root, null, file.name, PALETTE[rootIndex++ % PALETTE.length]);
+
+    board.innerHTML = "";
+    for (const file of DATA.files) {
+      for (const root of file.roots) {
+        const card = document.createElement("section");
+        card.className = "card";
+        card.dataset.uid = root.uid;
+        const head = document.createElement("div");
+        head.className = "card-head";
+        head.dataset.uid = root.uid;
+        head.style.setProperty("--c", root.color);
+        head.innerHTML =
+          `<i class="bdot"></i><span class="ico">${iconHtml(root.icon, true)}</span>` +
+          `<span class="ttl" title="${esc(root.title)}">${esc(root.title)}</span>` +
+          `<span class="file" title="${esc(file.path)}">${esc(file.name)}</span>` +
+          `<span class="cnt">${root.descendants}</span>`;
+        card.appendChild(head);
+        if (root.children.length) {
+          const body = document.createElement("div");
+          body.className = "card-body";
+          for (const child of root.children) body.appendChild(renderNode(child));
+          card.appendChild(body);
+        }
+        board.appendChild(card);
+        cards.push({ card, root });
+      }
+    }
+
+    $("stats").textContent = `${DATA.totals.prompts} 条 · ${DATA.totals.files} 个文件`;
+    document.title = `Prompt Map · ${DATA.totals.prompts}`;
+    $("status-mode").innerHTML = DATA.editable ? '<i class="dot on"></i>可编辑 · 本地服务' : '<i class="dot"></i>只读 · 静态快照';
+    $("status-source").textContent = DATA.sourceDirs.map(shortHome).join(", ");
+    $("status-source").title = DATA.sourceDirs.join("\n");
+    $("help-source").textContent = "提示词目录 " + DATA.sourceDirs.map(shortHome).join(", ");
+    $("help-backup").textContent = DATA.editable ? "每次保存前先备份到扩展 Support 目录的 prompt-map/backups 下" : "静态快照不能编辑；从 Raycast 打开可编辑版本。";
+
+    prepareMap();
+    mapDirty = true;
+    renderEmptyPanel();
+    applySearch({ fit: false });
+    if (view === "map") renderMap();
+    if (opts.lockKey && byKey.has(opts.lockKey)) {
+      const uid = byKey.get(opts.lockKey).uid;
+      lock(uid);
+      if (view === "map") { expandAncestors(uid); renderMap(); centerOn(uid); }
+      if (opts.edit) showEditor(uid, opts.selectTitle);
+    }
+  }
+
+  function renderEmptyPanel() {
+    panel.innerHTML = `<div class="p-empty">从左侧选择一条提示词<br>悬停预览，点击固定<br><kbd>↑</kbd><kbd>↓</kbd> 移动 · <kbd>E</kbd> 编辑 · <kbd>/</kbd> 搜索</div>`;
+    delete panel.dataset.uid;
+  }
+
+  /* ---------- Element lookup ---------- */
+  function outlineRowFor(uid) {
+    const node = byUid.get(uid);
+    if (node.parent === null) return board.querySelector(`.card-head[data-uid="${uid}"]`);
+    return wrapByUid.get(uid).firstElementChild;
+  }
+  function elsFor(uid) {
+    return [outlineRowFor(uid), mapRoot.querySelector(`.mm-node[data-uid="${uid}"]`)].filter(Boolean);
+  }
+
+  /* ---------- Detail panel (view mode) ---------- */
+  function setActive(uid) {
+    if (activeUid !== null && activeUid !== uid && byUid.has(activeUid)) elsFor(activeUid).forEach((el) => el.classList.remove("active"));
+    activeUid = uid;
+    elsFor(uid).forEach((el) => el.classList.add("active"));
+  }
+  function deeplink(node) {
+    return `${DATA.deeplinkBase}?arguments=${encodeURIComponent(JSON.stringify({ target: `quickgpt-${node.id}` }))}`;
+  }
+  function editorLink(node) {
+    return `${$("editor").value}://file${encodeURI(node.file)}${node.line ? ":" + node.line : ""}`;
+  }
+  function renderContent(text) {
+    return esc(text).replace(/{{([^}]+)}}/g, (m) => `<span class="ph">${m}</span>`);
+  }
+  function kvRows(items) {
+    return `<div class="kv">${items
+      .map((it) => `<b>${esc(it.key)}</b><span>${it.text === undefined ? '<span class="undef">未定义</span>' : esc(it.text)}</span>`)
+      .join("")}</div>`;
+  }
+  function crumbHtml(node) {
+    const crumb = [node.fileName + ".hjson", ...node.path.split(" / ")];
+    return crumb.map((c, i) => (i === crumb.length - 1 ? `<b>${esc(c)}</b>` : esc(c))).join('<span class="sep">›</span>');
+  }
+  function contentStats(text) {
+    const lines = text.split("\n").length;
+    return `${lines} 行 · ${text.length} 字`;
+  }
+  function swapPanel(html, uid) {
+    panel.innerHTML = html;
+    if (uid !== undefined) panel.dataset.uid = uid; else delete panel.dataset.uid;
+    panel.scrollTop = 0;
+    panel.classList.remove("panel-swap");
+    void panel.offsetWidth;
+    panel.classList.add("panel-swap");
+  }
+
+  function show(uid, animate) {
+    if (editing) return;
+    const node = byUid.get(uid);
+    setActive(uid);
+    const isFolder = node.children.length > 0;
+    const isLocked = lockedUid === uid;
+    let html = `<div class="p-status">${isLocked
+      ? `<span class="pin">${ICON("pin")}已固定</span><span><kbd>Esc</kbd> 取消</span>`
+      : `<span>悬停预览</span><span>点击或 <kbd>Enter</kbd> 固定</span>`}</div>`;
+    html += `<nav class="p-crumb">${crumbHtml(node)}</nav>`;
+    html += `<h2 class="p-title"><span>${iconHtml(node.icon, isFolder)}</span><span>${esc(node.title)}</span></h2>`;
+    const meta = [`<span class="pill">${esc(node.fileName)}.hjson${node.line ? ":" + node.line : ""}</span>`, `<span class="pill">id ${esc(node.id)}</span>`];
+    if (node.actions.length) meta.push(`<span class="pill">actions ${esc(node.actions.join(", "))}</span>`);
+    if (isFolder) meta.push(`<span class="pill">${node.descendants} 条子项</span>`);
+    html += `<div class="p-meta">${meta.join("")}</div>`;
+
+    if (node.prefix.length) html += `<section class="p-sec"><div class="p-label">前缀</div>${kvRows(node.prefix)}</section>`;
+    if (node.content) {
+      html += `<section class="p-sec"><div class="p-label">内容<span class="meta">${contentStats(node.content)}</span></div><pre class="p-content">${renderContent(node.content)}</pre></section>`;
+    } else if (isFolder) {
+      html += `<section class="p-sec"><div class="p-label">内容</div><div class="kv"><span class="undef">目录节点，没有正文</span></div></section>`;
+    }
+    if (node.suffix.length) html += `<section class="p-sec"><div class="p-label">后缀</div>${kvRows(node.suffix)}</section>`;
+    if (node.options.length) html += `<section class="p-sec"><div class="p-label">选项</div>${kvRows(node.options.map((o) => ({ key: o.key, text: o.values.join(" · ") })))}</section>`;
+    if (node.textInputs.length) html += `<section class="p-sec"><div class="p-label">文本输入</div><div class="kv"><span>${esc(node.textInputs.join(" · "))}</span></div></section>`;
+    if (isFolder) {
+      html += `<section class="p-sec"><div class="p-label">子项<span class="meta">${node.children.length}</span></div><ul class="p-children">${node.children
+        .map((c) => `<li data-uid="${c.uid}"><span class="ico">${iconHtml(c.ownIcon, c.children.length > 0)}</span><span>${esc(c.title)}</span>${c.children.length ? `<span class="n">${c.children.length}</span>` : ""}</li>`)
+        .join("")}</ul></section>`;
+    }
+    html += `<div class="p-actions">`;
+    html += `<a class="btn btn-primary" href="${esc(deeplink(node))}">${ICON("play")}在 Raycast 运行</a>`;
+    if (node.content) html += `<button class="btn" data-copy="content">${ICON("copy")}复制内容</button>`;
+    html += `<button class="btn" data-copy="deeplink">${ICON("link")}复制链接</button>`;
+    html += `<a class="btn" href="${esc(editorLink(node))}" title="${esc(editorLink(node))}">${ICON("pencil")}在编辑器打开${node.line ? `：第 ${node.line} 行` : ""}</a>`;
+    html += `</div>`;
+    if (DATA.editable && node.readonly) {
+      html += `<div class="p-edit-actions"><p class="p-note">这是内置示例库，不能在这里编辑。在 Raycast 的 Settings 里用「Create My Prompt Library」创建自己的库后即可编辑。</p></div>`;
+    } else if (DATA.editable) {
+      if (isLocked) {
+        html += `<div class="p-edit-actions">`;
+        html += `<button class="btn" data-act="edit">${ICON("pencil")}编辑<kbd>E</kbd></button>`;
+        html += `<button class="btn" data-act="add">${ICON("add")}新建子提示词</button>`;
+        html += `<button class="btn btn-danger" data-act="delete">${ICON("trash")}删除</button>`;
+        html += `</div>`;
+      } else {
+        html += `<div class="p-edit-actions"><p class="p-note">点击这条提示词固定后，可以编辑、新建子项或删除。</p></div>`;
+      }
+    }
+    if (animate) swapPanel(html, uid);
+    else { panel.innerHTML = html; panel.dataset.uid = uid; panel.scrollTop = 0; }
+  }
+
+  function lock(uid) {
+    if (lockedUid !== null && byUid.has(lockedUid)) elsFor(lockedUid).forEach((el) => el.classList.remove("locked"));
+    lockedUid = uid;
+    if (uid !== null) {
+      elsFor(uid).forEach((el) => el.classList.add("locked"));
+      show(uid, true);
+    }
+  }
+  function unlock() {
+    const prev = lockedUid;
+    lock(null);
+    if (prev !== null && activeUid === prev) show(prev, true);
+  }
+  function focusNode(uid) {
+    if (editing && !closeEditor()) return;
+    lock(uid);
+    if (view === "map") {
+      expandAncestors(uid);
+      renderMap();
+      centerOn(uid, 1);
+    } else {
+      outlineRowFor(uid).scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  /* ---------- Outline keyboard navigation ---------- */
+  function visibleRows() {
+    const rows = [];
+    for (const { card, root } of cards) {
+      if (card.classList.contains("hidden")) continue;
+      rows.push(root.uid);
+      const walk = (node) => {
+        if (outlineCollapsed.has(node.key)) return;
+        for (const child of node.children) {
+          if (child.hidden) continue;
+          rows.push(child.uid);
+          if (child.children.length) walk(child);
+        }
+      };
+      walk(root);
+    }
+    return rows;
+  }
+  function selectByKeyboard(uid) {
+    lock(uid);
+    outlineRowFor(uid).scrollIntoView({ block: "nearest" });
+  }
+  function setCollapsed(node, collapsed) {
+    if (!node.children.length || node.parent === null) return;
+    const wrap = wrapByUid.get(node.uid);
+    wrap.querySelector(":scope > .children").classList.toggle("collapsed", collapsed);
+    wrap.firstElementChild.querySelector(".tw").classList.toggle("closed", collapsed);
+    collapsed ? outlineCollapsed.add(node.key) : outlineCollapsed.delete(node.key);
+  }
+  function outlineKey(e) {
+    const rows = visibleRows();
+    if (!rows.length) return false;
+    const current = lockedUid !== null ? lockedUid : activeUid;
+    const index = rows.indexOf(current);
+    if (e.key === "ArrowDown") { selectByKeyboard(rows[Math.min(rows.length - 1, index + 1)]); return true; }
+    if (e.key === "ArrowUp") { selectByKeyboard(rows[Math.max(0, index - 1)]); return true; }
+    if (e.key === "Home") { selectByKeyboard(rows[0]); return true; }
+    if (e.key === "End") { selectByKeyboard(rows[rows.length - 1]); return true; }
+    if (current === null || index < 0) return false;
+    const node = byUid.get(current);
+    if (e.key === "ArrowRight") {
+      if (node.children.length && outlineCollapsed.has(node.key)) setCollapsed(node, false);
+      else if (node.children.length) { const first = node.children.find((c) => !c.hidden); if (first) selectByKeyboard(first.uid); }
+      return true;
+    }
+    if (e.key === "ArrowLeft") {
+      if (node.children.length && node.parent !== null && !outlineCollapsed.has(node.key)) setCollapsed(node, true);
+      else if (node.parent !== null) selectByKeyboard(node.parent);
+      return true;
+    }
+    return false;
+  }
+
+  /* ---------- Editing ---------- */
+  async function api(path, payload) {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-Prompt-Map-Token": TOKEN }, body: JSON.stringify(payload) });
+    const body = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+    if (!res.ok || !body.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  }
+  function editorValues() {
+    const titleEl = panel.querySelector(".p-edit-title");
+    const contentEl = panel.querySelector(".p-edit-content");
+    return { title: titleEl ? titleEl.value : "", content: contentEl ? contentEl.value : "" };
+  }
+  function isDirty() {
+    if (!editing) return false;
+    const v = editorValues();
+    return v.title !== editing.title || v.content !== editing.content;
+  }
+  function updateDirtyBadge() {
+    const badge = panel.querySelector(".p-status .dirty");
+    if (badge) badge.hidden = !isDirty();
+  }
+
+  function showEditor(uid, selectTitle) {
+    const node = byUid.get(uid);
+    if (!node) return;
+    lock(uid);
+    editing = { uid, key: node.key, title: node.title, content: node.ownContent || "" };
+    const isFolder = node.children.length > 0;
+    let html = `<div class="p-status"><span class="pin">${ICON("pencil")}编辑中</span><span><kbd>⌘</kbd><kbd>S</kbd> 保存 · <kbd>Esc</kbd> 取消</span><span class="dirty" hidden>未保存</span></div>`;
+    html += `<nav class="p-crumb">${crumbHtml(node)}</nav>`;
+    html += `<label class="field"><div class="p-label">标题</div><input class="input p-edit-title" value="${esc(editing.title)}" placeholder="标题" spellcheck="false"></label>`;
+    html += `<label class="field"><div class="p-label">内容<span class="meta">${isFolder ? "目录节点可以没有正文，填写后会被子项继承" : "支持 {{i|s|c}} 等占位符"}</span></div><textarea class="input p-edit-content" spellcheck="false" placeholder="提示词正文">${esc(editing.content)}</textarea></label>`;
+    html += `<div class="insert-row"><span class="lbl">插入</span>${["{{i}}", "{{s}}", "{{c}}", "{{i|s|c}}", "{{option:key}}", "{{file:path}}"].map((p) => `<button type="button" class="chip-btn" data-insert="${esc(p)}">${esc(p)}</button>`).join("")}</div>`;
+    html += `<p class="p-note">保存会写入 ${esc(node.fileName)}.hjson${node.line ? " 第 " + node.line + " 行附近" : ""}，只替换这一条的标题和正文，文件其余部分原样保留。</p>`;
+    html += `<div class="p-actions sticky"><button class="btn btn-primary" data-act="save">保存<kbd>⌘S</kbd></button><button class="btn" data-act="cancel">取消<kbd>Esc</kbd></button></div>`;
+    swapPanel(html, uid);
+    const titleEl = panel.querySelector(".p-edit-title");
+    const contentEl = panel.querySelector(".p-edit-content");
+    const grow = () => { contentEl.style.height = "auto"; contentEl.style.height = Math.max(240, contentEl.scrollHeight + 4) + "px"; };
+    grow();
+    contentEl.addEventListener("input", () => { grow(); updateDirtyBadge(); });
+    titleEl.addEventListener("input", updateDirtyBadge);
+    if (selectTitle) { titleEl.focus(); titleEl.select(); } else contentEl.focus();
+  }
+  function insertAtCursor(text) {
+    const ta = panel.querySelector(".p-edit-content");
+    if (!ta) return;
+    ta.focus();
+    ta.setRangeText(text, ta.selectionStart, ta.selectionEnd, "end");
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  function closeEditor() {
+    if (!editing) return true;
+    if (isDirty() && !confirm("有未保存的修改，放弃？")) return false;
+    const uid = editing.uid;
+    editing = null;
+    if (byUid.has(uid)) show(uid, true);
+    return true;
+  }
+  async function saveEditor() {
+    if (!editing) return;
+    const node = byUid.get(editing.uid);
+    const values = editorValues();
+    if (!values.title.trim()) { toast("标题不能为空", { error: true }); panel.querySelector(".p-edit-title").focus(); return; }
+    const payload = { op: "update", file: node.file, indexPath: node.indexPath, expect: { title: editing.title, content: editing.content } };
+    if (values.title !== editing.title) payload.title = values.title.trim();
+    if (values.content !== editing.content) payload.content = values.content;
+    if (payload.title === undefined && payload.content === undefined) { editing = null; show(node.uid, true); return; }
+    const saveBtn = panel.querySelector("[data-act=save]");
+    const buttons = panel.querySelectorAll("[data-act]");
+    buttons.forEach((b) => (b.disabled = true));
+    saveBtn.textContent = "保存中…";
+    try {
+      const res = await api("/api/edit", payload);
+      editing = null;
+      loadModel(res.model, { lockKey: res.focusKey || node.key });
+      toast("已保存");
+    } catch (error) {
+      buttons.forEach((b) => (b.disabled = false));
+      saveBtn.innerHTML = "保存<kbd>⌘S</kbd>";
+      toast(`保存失败：${error.message}`, { error: true });
+    }
+  }
+  async function addChildTo(uid) {
+    const node = byUid.get(uid);
+    if (editing && !closeEditor()) return;
+    try {
+      const res = await api("/api/edit", { op: "add", file: node.file, indexPath: node.indexPath, title: "新提示词", content: "" });
+      mapCollapsed.delete(node.key);
+      outlineCollapsed.delete(node.key);
+      loadModel(res.model, { lockKey: res.focusKey, edit: true, selectTitle: true });
+      toast("已新建，改好标题后保存");
+    } catch (error) {
+      toast(`新建失败：${error.message}`, { error: true });
+    }
+  }
+  async function deleteNode(uid) {
+    const node = byUid.get(uid);
+    if (editing && !closeEditor()) return;
+    try {
+      const res = await api("/api/edit", { op: "delete", file: node.file, indexPath: node.indexPath, expect: { title: node.title, content: node.ownContent || "" } });
+      const parent = parentOf.get(uid);
+      loadModel(res.model, { lockKey: parent ? parent.key : undefined });
+      const label = node.descendants ? `已删除「${node.title}」及 ${node.descendants} 条子项` : `已删除「${node.title}」`;
+      const token = res.undoToken;
+      toast(label, {
+        actionLabel: "撤销",
+        action: async () => {
+          try {
+            const undone = await api("/api/undo", { token });
+            loadModel(undone.model, { lockKey: node.key });
+            toast("已恢复");
+          } catch (error) {
+            toast(`撤销失败：${error.message}`, { error: true });
+          }
+        },
+      });
+    } catch (error) {
+      toast(`删除失败：${error.message}`, { error: true });
+    }
+  }
+
+  /* ---------- Outline events ---------- */
+  board.addEventListener("mouseover", (e) => {
+    const row = e.target.closest(".node, .card-head");
+    if (!row || lockedUid !== null) return;
+    const uid = Number(row.dataset.uid);
+    if (uid !== activeUid) show(uid);
+  });
+  board.addEventListener("click", (e) => {
+    const tw = e.target.closest(".tw");
+    if (tw && !tw.classList.contains("leaf")) {
+      const node = byUid.get(Number(tw.closest(".node").dataset.uid));
+      setCollapsed(node, !outlineCollapsed.has(node.key));
+      return;
+    }
+    const row = e.target.closest(".node, .card-head");
+    if (!row) return;
+    boardWrap.focus({ preventScroll: true });
+    const uid = Number(row.dataset.uid);
+    if (editing && !closeEditor()) return;
+    if (lockedUid === uid) unlock();
+    else lock(uid);
+  });
+  panel.addEventListener("click", (e) => {
+    const li = e.target.closest(".p-children li");
+    if (li) { focusNode(Number(li.dataset.uid)); return; }
+    const ins = e.target.closest("[data-insert]");
+    if (ins) { insertAtCursor(ins.dataset.insert); return; }
+    const copy = e.target.closest("[data-copy]");
+    if (copy) {
+      const node = byUid.get(Number(panel.dataset.uid));
+      const text = copy.dataset.copy === "content" ? node.content : deeplink(node);
+      navigator.clipboard.writeText(text).then(() => toast(copy.dataset.copy === "content" ? "已复制内容" : "已复制链接"), () => toast("复制失败", { error: true }));
+      return;
+    }
+    const act = e.target.closest("[data-act]");
+    if (!act || act.disabled) return;
+    const uid = Number(panel.dataset.uid);
+    if (act.dataset.act === "edit") showEditor(uid);
+    else if (act.dataset.act === "add") addChildTo(uid);
+    else if (act.dataset.act === "delete") deleteNode(uid);
+    else if (act.dataset.act === "save") saveEditor();
+    else if (act.dataset.act === "cancel") closeEditor();
+  });
+
+  /* ---------- Outline tools ---------- */
+  function setAll(collapsed) {
+    for (const n of nodes) if (n.children.length && n.parent !== null) setCollapsed(n, collapsed);
+  }
+  $("expand").addEventListener("click", () => setAll(false));
+  $("collapse").addEventListener("click", () => setAll(true));
+  const denseBtn = $("dense");
+  function setDense(on) {
+    document.body.classList.toggle("dense", on);
+    denseBtn.setAttribute("aria-pressed", String(on));
+    pref("dense", on ? "1" : "0");
+  }
+  denseBtn.addEventListener("click", () => setDense(!document.body.classList.contains("dense")));
+  setDense(pref("dense") === "1");
+  const editorSel = $("editor");
+  if (pref("editor")) editorSel.value = pref("editor");
+  editorSel.addEventListener("change", () => {
+    pref("editor", editorSel.value);
+    if (panel.dataset.uid && !editing) show(Number(panel.dataset.uid));
+  });
+  const help = $("help"), helpBtn = $("help-btn");
+  help.addEventListener("toggle", (e) => {
+    if (e.newState !== "open") return;
+    const r = helpBtn.getBoundingClientRect();
+    help.style.top = `${r.bottom + 8}px`;
+    help.style.left = `${Math.max(8, Math.min(window.innerWidth - 348, r.right - 340))}px`;
+  });
+
+  /* ---------- Status bar ---------- */
+  function updateStatusHint() {
+    const hint = $("status-hint");
+    hint.innerHTML = view === "map"
+      ? `<span>滚轮平移</span><span><kbd>⌘</kbd>+滚轮缩放</span><span>拖拽画布</span><span>双击节点放大</span><span>点圆点折叠</span>`
+      : `<span>悬停预览</span><span>点击固定</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span><span><kbd>E</kbd> 编辑</span>`;
+  }
+
+  /* ---------- Mind map: layout ---------- */
+  const MM = { h: 26, vGap: 5, hGap: 48, padX: 10, maxTitle: 30 };
+  const UI_FONT = getComputedStyle(document.documentElement).getPropertyValue("--ui").trim() || "sans-serif";
+  const FONT = `12.5px ${UI_FONT}`;
+  const FONT_BOLD = `600 ${FONT}`;
+  const FONT_ROOT = `700 14px ${UI_FONT}`;
+  const measure = document.createElement("canvas").getContext("2d");
+  function textW(text, font) { measure.font = font; return measure.measureText(text).width; }
+  function shortTitle(t) { return t.length > MM.maxTitle ? t.slice(0, MM.maxTitle - 1) + "…" : t; }
+
+  function prepareMap() {
+    VROOT = { uid: -1, title: "Prompt Library", depth: -1, children: [], hidden: false, mm: { collapsed: false } };
+    for (const file of DATA.files) for (const root of file.roots) VROOT.children.push(root);
+    for (const n of nodes) {
+      const label = (n.ownIcon && EMOJI.test(n.ownIcon) ? n.ownIcon + " " : "") + shortTitle(n.title);
+      n.mm = { collapsed: mapCollapsed.has(n.key), label, w: Math.ceil(textW(label, n.depth === 0 ? FONT_BOLD : FONT)) + MM.padX * 2, h: MM.h };
+    }
+    VROOT.mm.w = Math.ceil(textW(VROOT.title, FONT_ROOT)) + 30;
+    VROOT.mm.h = 34;
+  }
+  function visibleKids(n) { return n.mm.collapsed ? [] : n.children.filter((c) => !c.hidden); }
+  const BLK = { minRun: 4, pad: 6, gapX: 8, gapY: 4 };
+  function blockCols(count) { return count <= 10 ? 2 : count <= 24 ? 3 : 4; }
+  function makeBlock(leaves, color) {
+    const cols = blockCols(leaves.length);
+    const rows = Math.ceil(leaves.length / cols);
+    const colW = new Array(cols).fill(0);
+    leaves.forEach((leaf, i) => { const c = Math.floor(i / rows); colW[c] = Math.max(colW[c], leaf.mm.w); });
+    const colX = [];
+    let x = BLK.pad;
+    for (let c = 0; c < cols; c++) { colX.push(x); x += colW[c] + BLK.gapX; }
+    const w = x - BLK.gapX + BLK.pad;
+    const h = BLK.pad * 2 + rows * MM.h + (rows - 1) * BLK.gapY;
+    const block = { type: "block", leaves, cols, rows, colX, w, h, sh: h, color };
+    leaves.forEach((leaf) => { leaf.mm.block = block; leaf.mm.slots = []; leaf.mm.sh = leaf.mm.h; });
+    return block;
+  }
+  function measureSubtree(n) {
+    const kids = visibleKids(n);
+    const slots = [];
+    let run = [];
+    const flush = () => {
+      if (run.length >= BLK.minRun) slots.push(makeBlock(run, n.color));
+      else for (const k of run) slots.push({ type: "node", node: k, sh: measureSubtree(k) });
+      run = [];
+    };
+    for (const k of kids) {
+      k.mm.block = null;
+      if (k.children.filter((c) => !c.hidden).length === 0) run.push(k);
+      else { flush(); slots.push({ type: "node", node: k, sh: measureSubtree(k) }); }
+    }
+    flush();
+    n.mm.slots = slots;
+    if (!slots.length) { n.mm.sh = n.mm.h; n.mm.kidsH = 0; return n.mm.sh; }
+    let sum = 0;
+    for (const slot of slots) sum += slot.sh;
+    sum += MM.vGap * (slots.length - 1);
+    n.mm.kidsH = sum;
+    n.mm.sh = Math.max(n.mm.h, sum);
+    return n.mm.sh;
+  }
+  function placeSubtree(n, innerX, yTop, side) {
+    n.mm.side = side;
+    n.mm.y = yTop + (n.mm.sh - n.mm.h) / 2;
+    n.mm.x = side === "R" ? innerX : innerX - n.mm.w;
+    const slots = n.mm.slots || [];
+    if (!slots.length) return;
+    let cy = yTop + (n.mm.sh - n.mm.kidsH) / 2;
+    const childInnerX = side === "R" ? n.mm.x + n.mm.w + MM.hGap : n.mm.x - MM.hGap;
+    for (const slot of slots) {
+      if (slot.type === "node") placeSubtree(slot.node, childInnerX, cy, side);
+      else {
+        slot.side = side;
+        slot.x = side === "R" ? childInnerX : childInnerX - slot.w;
+        slot.y = cy;
+        slot.leaves.forEach((leaf, i) => {
+          const c = Math.floor(i / slot.rows), r = i % slot.rows;
+          leaf.mm.side = side;
+          leaf.mm.x = slot.x + slot.colX[c];
+          leaf.mm.y = slot.y + BLK.pad + r * (MM.h + BLK.gapY);
+        });
+      }
+      cy += slot.sh + MM.vGap;
+    }
+  }
+  function layoutMap() {
+    const roots = visibleKids(VROOT);
+    roots.forEach(measureSubtree);
+    const total = roots.reduce((s, r) => s + r.mm.sh, 0);
+    const right = [], left = [];
+    let acc = 0;
+    for (const r of roots) { if (acc < total / 2) { right.push(r); acc += r.mm.sh; } else left.push(r); }
+    const stack = (list, side) => {
+      const H = list.reduce((s, r) => s + r.mm.sh, 0) + MM.vGap * Math.max(0, list.length - 1);
+      let y = -H / 2;
+      const innerX = side === "R" ? VROOT.mm.w / 2 + MM.hGap : -VROOT.mm.w / 2 - MM.hGap;
+      for (const r of list) { placeSubtree(r, innerX, y, side); y += r.mm.sh + MM.vGap; }
+    };
+    stack(right, "R");
+    stack(left, "L");
+    VROOT.mm.x = -VROOT.mm.w / 2;
+    VROOT.mm.y = -VROOT.mm.h / 2;
+    return { right, left };
+  }
+
+  /* ---------- Mind map: render ---------- */
+  function renderMap() {
+    const { right, left } = layoutMap();
+    const links = [], blocks = [], groups = [];
+    const drawLink = (p, c) => {
+      const isR = c.mm.side === "R";
+      const x1 = isR ? p.mm.x + p.mm.w : p.mm.x, y1 = p.mm.y + p.mm.h / 2;
+      const x2 = isR ? c.mm.x : c.mm.x + c.mm.w, y2 = c.mm.y + c.mm.h / 2;
+      const mx = (x1 + x2) / 2;
+      links.push(`<path d="M${x1} ${y1} C${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" stroke="${c.color}"/>`);
+    };
+    const drawNode = (n) => {
+      const isFolder = n.children.length > 0;
+      const cls = ["mm-node", `d${Math.min(n.depth, 2)}`];
+      if (isFolder) cls.push("folder");
+      if (n.mm.block) cls.push("in-block");
+      if (n.match) cls.push("match");
+      if (n.uid === activeUid) cls.push("active");
+      if (n.uid === lockedUid) cls.push("locked");
+      let g = `<g class="${cls.join(" ")}" data-uid="${n.uid}" transform="translate(${n.mm.x},${n.mm.y})" style="--c:${n.color}">` +
+        `<rect width="${n.mm.w}" height="${n.mm.h}" rx="6"/><text x="${MM.padX}" y="${n.mm.h / 2}">${esc(n.mm.label)}</text>`;
+      const shownKids = n.children.filter((c) => !c.hidden).length;
+      if (isFolder && shownKids > 0) {
+        const bx = n.mm.side === "R" ? n.mm.w + 11 : -11;
+        g += `<g class="mm-badge${n.mm.collapsed ? " closed" : ""}" transform="translate(${bx},${n.mm.h / 2})"><circle r="7.5"/><text>${n.mm.collapsed ? shownKids : "−"}</text></g>`;
+      }
+      g += `</g>`;
+      groups.push(g);
+      for (const slot of n.mm.slots || []) {
+        if (slot.type === "node") { drawLink(n, slot.node); drawNode(slot.node); continue; }
+        const isR = slot.side === "R";
+        const x1 = isR ? n.mm.x + n.mm.w : n.mm.x, y1 = n.mm.y + n.mm.h / 2;
+        const x2 = isR ? slot.x : slot.x + slot.w, y2 = slot.y + slot.h / 2;
+        const mx = (x1 + x2) / 2;
+        links.push(`<path d="M${x1} ${y1} C${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" stroke="${slot.color}"/>`);
+        blocks.push(`<rect class="mm-block" x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" rx="9" style="--c:${slot.color}"/>`);
+        for (const leaf of slot.leaves) drawNode(leaf);
+      }
+    };
+    for (const r of [...right, ...left]) { drawLink(VROOT, r); drawNode(r); }
+    const rootG = `<g class="mm-root" transform="translate(${VROOT.mm.x},${VROOT.mm.y})"><rect width="${VROOT.mm.w}" height="${VROOT.mm.h}" rx="17"/><text x="${VROOT.mm.w / 2}" y="${VROOT.mm.h / 2}">${esc(VROOT.title)}</text></g>`;
+    mapRoot.innerHTML = `<g class="mm-links">${links.join("")}</g>${blocks.join("")}${groups.join("")}${rootG}`;
+    mapWrap.classList.toggle("is-empty", right.length + left.length === 0);
+    mapDirty = false;
+  }
+  function applyTransform(animate) {
+    mapWrap.classList.toggle("no-anim", !animate);
+    mapRoot.style.transform = `translate(${mm.tx}px, ${mm.ty}px) scale(${mm.k})`;
+    mapZoomEl.textContent = `${Math.round(mm.k * 100)}%`;
+  }
+  function mapBounds() {
+    const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    const visit = (n) => {
+      b.minX = Math.min(b.minX, n.mm.x - 20); b.maxX = Math.max(b.maxX, n.mm.x + n.mm.w + 20);
+      b.minY = Math.min(b.minY, n.mm.y); b.maxY = Math.max(b.maxY, n.mm.y + n.mm.h);
+      visibleKids(n).forEach(visit);
+    };
+    visit(VROOT);
+    return b;
+  }
+  function fitMap(animate = true) {
+    const b = mapBounds();
+    const W = mapWrap.clientWidth, H = mapWrap.clientHeight;
+    const k = Math.min((W - 40) / (b.maxX - b.minX), (H - 40) / (b.maxY - b.minY), 1.25);
+    mm = { k, tx: W / 2 - k * (b.minX + b.maxX) / 2, ty: H / 2 - k * (b.minY + b.maxY) / 2 };
+    applyTransform(animate);
+  }
+  function centerOn(uid, minK) {
+    const n = byUid.get(uid);
+    if (!n || n.mm.x === undefined) return;
+    const k = minK && mm.k < minK ? minK : mm.k;
+    const W = mapWrap.clientWidth, H = mapWrap.clientHeight;
+    mm = { k, tx: W / 2 - k * (n.mm.x + n.mm.w / 2), ty: H / 2 - k * (n.mm.y + n.mm.h / 2) };
+    applyTransform(true);
+  }
+  function zoomAt(factor, px, py, animate) {
+    const nk = Math.min(3, Math.max(0.08, mm.k * factor));
+    mm = { k: nk, tx: px - (px - mm.tx) * (nk / mm.k), ty: py - (py - mm.ty) * (nk / mm.k) };
+    applyTransform(animate);
+  }
+  function expandAncestors(uid) {
+    let p = parentOf.get(uid);
+    while (p) { p.mm.collapsed = false; mapCollapsed.delete(p.key); p = parentOf.get(p.uid); }
+  }
+  function setMapLevel(level) {
+    mapCollapsed.clear();
+    for (const n of nodes) if (n.children.length) { n.mm.collapsed = n.depth >= level - 1; if (n.mm.collapsed) mapCollapsed.add(n.key); }
+    renderMap();
+    fitMap();
+  }
+
+  /* ---------- Mind map: interaction ---------- */
+  mapWrap.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = mapWrap.getBoundingClientRect();
+    if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top, false);
+    else { mm.tx -= e.deltaX; mm.ty -= e.deltaY; applyTransform(false); }
+  }, { passive: false });
+  let drag = null, suppressClick = false;
+  mapWrap.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    suppressClick = false;
+    drag = { x: e.clientX, y: e.clientY, tx: mm.tx, ty: mm.ty, moved: false };
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    mapWrap.classList.add("dragging");
+    mm.tx = drag.tx + dx; mm.ty = drag.ty + dy;
+    applyTransform(false);
+  });
+  window.addEventListener("mouseup", () => {
+    if (drag && drag.moved) suppressClick = true;
+    drag = null;
+    mapWrap.classList.remove("dragging");
+  });
+  mapSvg.addEventListener("click", (e) => {
+    if (suppressClick) { suppressClick = false; return; }
+    const badge = e.target.closest(".mm-badge");
+    if (badge) {
+      const n = byUid.get(Number(badge.closest(".mm-node").dataset.uid));
+      n.mm.collapsed = !n.mm.collapsed;
+      n.mm.collapsed ? mapCollapsed.add(n.key) : mapCollapsed.delete(n.key);
+      renderMap();
+      return;
+    }
+    const g = e.target.closest(".mm-node");
+    if (!g) return;
+    const uid = Number(g.dataset.uid);
+    if (editing && !closeEditor()) return;
+    if (lockedUid === uid) unlock();
+    else lock(uid);
+  });
+  mapSvg.addEventListener("dblclick", (e) => {
+    const g = e.target.closest(".mm-node");
+    if (g) centerOn(Number(g.dataset.uid), 1);
+  });
+  mapSvg.addEventListener("mouseover", (e) => {
+    const g = e.target.closest(".mm-node");
+    if (!g || lockedUid !== null) return;
+    const uid = Number(g.dataset.uid);
+    if (uid !== activeUid) show(uid);
+  });
+  $("mm-fit").addEventListener("click", () => fitMap());
+  mapZoomEl.addEventListener("click", () => fitMap());
+  $("mm-in").addEventListener("click", () => zoomAt(1.25, mapWrap.clientWidth / 2, mapWrap.clientHeight / 2, true));
+  $("mm-out").addEventListener("click", () => zoomAt(0.8, mapWrap.clientWidth / 2, mapWrap.clientHeight / 2, true));
+  $("mm-level").addEventListener("change", (e) => setMapLevel(Number(e.target.value)));
+
+  /* ---------- View switching ---------- */
+  const seg = $("view-seg");
+  function setView(v) {
+    view = v;
+    document.body.classList.toggle("view-map", v === "map");
+    document.body.classList.toggle("view-outline", v === "outline");
+    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+    pref("view", v);
+    updateStatusHint();
+    if (v === "map") {
+      if (mapDirty) renderMap();
+      if (!mapFitted) { fitMap(false); mapFitted = true; }
+      if (lockedUid !== null) { expandAncestors(lockedUid); renderMap(); centerOn(lockedUid, 1); }
+    }
+  }
+  seg.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-view]");
+    if (b) setView(b.dataset.view);
+  });
+
+  /* ---------- Search ---------- */
+  function applySearch(opts = { fit: true }) {
+    const raw = q.value.trim();
+    const terms = raw.toLowerCase().split(/\s+/).filter(Boolean);
+    const compact = terms.map((t) => t.replace(/\s+/g, ""));
+    const visible = new Set();
+    let matches = 0;
+    for (const node of nodes) {
+      const hit = terms.length > 0 && terms.every((t, i) => node.hay.includes(t) || node.py.includes(compact[i]));
+      node.match = hit;
+      if (hit) {
+        matches++;
+        let p = node;
+        while (p) { visible.add(p.uid); p = parentOf.get(p.uid); }
+      }
+    }
+    for (const node of nodes) {
+      node.hidden = terms.length > 0 && !visible.has(node.uid);
+      if (node.match) expandAncestors(node.uid);
+      const el = node.parent === null ? null : wrapByUid.get(node.uid);
+      if (el) el.classList.toggle("hidden", node.hidden);
+      const ttl = outlineRowFor(node.uid).querySelector(".ttl");
+      ttl.innerHTML = node.match ? markTerms(node.title, terms) : esc(node.title);
+    }
+    for (const { card, root } of cards) card.classList.toggle("hidden", root.hidden);
+    if (terms.length) setAll(false);
+    countEl.textContent = terms.length ? `${matches} / ${DATA.totals.prompts}` : "";
+    const emptyHtml = terms.length && matches === 0 ? `没有匹配 <b>${esc(raw)}</b> 的提示词<br>搜索会匹配标题、正文、路径和拼音首字母` : "";
+    boardEmpty.innerHTML = emptyHtml;
+    boardEmpty.hidden = !emptyHtml;
+    mapEmpty.innerHTML = emptyHtml;
+    mapDirty = true;
+    if (view === "map") { renderMap(); if (opts.fit) fitMap(); }
+  }
+  let searchTimer;
+  q.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => applySearch({ fit: true }), 40); });
+
+  /* ---------- Keyboard ---------- */
+  document.addEventListener("keydown", (e) => {
+    const tag = document.activeElement ? document.activeElement.tagName : "";
+    const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(tag);
+    if (editing) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveEditor(); return; }
+      if (e.key === "Escape") { e.preventDefault(); closeEditor(); return; }
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "/" && !typing) { e.preventDefault(); q.focus(); q.select(); return; }
+    if (typing && document.activeElement !== q) return;
+    if (e.key === "Escape") {
+      if (document.activeElement === q && q.value) { q.value = ""; applySearch({ fit: true }); return; }
+      if (document.activeElement === q) { q.blur(); boardWrap.focus({ preventScroll: true }); return; }
+      if (lockedUid !== null) { unlock(); return; }
+      return;
+    }
+    if (document.activeElement === q) {
+      if (e.key === "Enter" || e.key === "ArrowDown") {
+        e.preventDefault();
+        q.blur();
+        boardWrap.focus({ preventScroll: true });
+        if (view === "outline") { const rows = visibleRows(); if (rows.length) selectByKeyboard(rows[0]); }
+      }
+      return;
+    }
+    if (e.key === "0" && view === "map") { fitMap(); return; }
+    if ((e.key === "e" || e.key === "E") && DATA.editable && lockedUid !== null && !byUid.get(lockedUid).readonly) { e.preventDefault(); showEditor(lockedUid); return; }
+    if (e.key === "Enter" && activeUid !== null) { e.preventDefault(); if (lockedUid === activeUid) unlock(); else lock(activeUid); return; }
+    if (view === "outline" && outlineKey(e)) e.preventDefault();
+  });
+  window.addEventListener("beforeunload", (e) => {
+    if (editing && isDirty()) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  /* ---------- Boot ---------- */
+  loadModel(JSON.parse($("prompt-map-data").textContent));
+  setView(pref("view") === "map" ? "map" : "outline");
+  if (DATA.editable && TOKEN) {
+    // Keeps the local server alive while the page is open.
+    setInterval(() => fetch("/api/ping", { headers: { "X-Prompt-Map-Token": TOKEN } }).catch(() => undefined), 120000);
+  }
+})();
+</script>
+</body>
+</html>

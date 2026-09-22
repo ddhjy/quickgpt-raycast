@@ -19,6 +19,6 @@ export default defineConfig([
   ...raycastPlugin.configs.recommended, // This is an array, so we spread it
   prettier,
   {
-    ignores: ["dist/**", "node_modules/**", "*.config.*"],
+    ignores: ["dist/**", "node_modules/**", "*.config.*", "assets/prompt-map/server.js"],
   },
 ]);
