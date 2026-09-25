@@ -89,7 +89,7 @@
           "name": "primaryAction",
           "title": "Pinned Actions",
           "required": false,
-          "description": "Comma-separated pinned actions. Built-in names: copyToClipboard, paste, copyAsFile. Script names match the AppleScript filename without extension.",
+          "description": "Comma-separated pinned actions. Built-in names: copyToClipboard, paste, copyAsFile, openInClaude. Script names match the AppleScript filename without extension.",
           "type": "textfield",
           "placeholder": "copyToClipboard, paste"
         },

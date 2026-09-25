@@ -1,5 +1,5 @@
 import React from "react";
-import { Action, ActionPanel, Icon, Clipboard, Toast, closeMainWindow, showToast, Navigation } from "@raycast/api";
+import { Action, ActionPanel, Icon, Clipboard, Toast, closeMainWindow, open, showToast, Navigation } from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
@@ -23,6 +23,7 @@ import path from "path";
 import configurationManager from "../managers/configuration-manager";
 import { runPromptActionWithTracking } from "../utils/prompt-usage-utils";
 import { writeContentToFile } from "../utils/file-clipboard-utils";
+import { buildClaudeNewChatUrl } from "../utils/claude-deeplink";
 import { runAppleScriptDetached, runAppleScriptFile, runAppleScriptFileDetached } from "../utils/applescript-runner";
 
 type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
@@ -233,6 +234,30 @@ export function generatePromptActions(
             await Clipboard.paste(finalContent);
             await showToast(Toast.Style.Success, "Pasted to app");
           }, "paste")}
+        />
+      ),
+    },
+    {
+      name: "openInClaude",
+      displayName: "Open in Claude",
+      condition: true,
+      action: (
+        <Action
+          title="Open in Claude"
+          icon={Icon.SpeechBubble}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
+          onAction={wrapActionHandler(async () => {
+            try {
+              const finalContent = await getFinalContent();
+              await Clipboard.copy(finalContent);
+              await open(buildClaudeNewChatUrl(finalContent));
+              await closeMainWindow({ clearRootSearch: true });
+            } catch (error) {
+              console.error("Failed to open Claude:", error);
+              await showToast(Toast.Style.Failure, "Couldn't open Claude", "Is Claude Desktop installed?");
+              return false;
+            }
+          }, "openInClaude")}
         />
       ),
     },
@@ -456,6 +481,7 @@ export function generatePromptActions(
           "copyAsFile",
           "copyOriginalPrompt",
           "paste",
+          "openInClaude",
           "sharePrompt",
           "editWithEditor",
           "pin",

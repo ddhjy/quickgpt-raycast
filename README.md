@@ -51,7 +51,7 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 
 ### Actions
 
-- Built-in: Copy, Copy as File, Paste, Edit, Pin, Share
+- Built-in: Copy, Copy as File, Paste, Open in Claude, Edit, Pin, Share
 - Custom AppleScript actions from configured script directories
 
 ### Prompt Map
@@ -102,7 +102,7 @@ Used for `{{file:...}}` and Finder selections such as `fk:work` or `📁 work.**
 
 Comma-separated pinned action names. Matching uses the internal action name, not the menu title:
 
-- Built-in: `copyToClipboard`, `paste`, `copyAsFile`
+- Built-in: `copyToClipboard`, `paste`, `copyAsFile`, `openInClaude`
 - Scripts: the AppleScript filename without extension (for example `ChatGPT`)
 
 ### Editor application
