@@ -35,6 +35,8 @@ export type PromptProps = {
   sourceIndexPath?: number[];
   /** True when the source object defines its own `content` (not inherited). */
   hasOwnContent?: boolean;
+  /** True when the prompt is the file's single root object rather than an array item. */
+  isFileRoot?: boolean;
   isTemporary?: boolean;
   temporaryDirSource?: string;
 };
@@ -49,6 +51,7 @@ export const NON_INHERITED_PROPS: (keyof PromptProps)[] = [
   "lineNumber",
   "sourceIndexPath",
   "hasOwnContent",
+  "isFileRoot",
 ];
 
 /** Accumulates `rootProperty` blocks across every file of a library. */
@@ -115,13 +118,13 @@ export function parsePromptsFromFile(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { rootProperty, ...promptObject } = parsed;
         if (Object.keys(promptObject).length > 0) {
-          promptsData = [Object.assign(promptObject, { __rawIndex: 0 })];
+          promptsData = [Object.assign(promptObject, { __rawIndex: 0, isFileRoot: true })];
         }
       }
     } else if (Array.isArray(parsed.prompts)) {
       promptsData = tagRawIndexes(parsed.prompts);
     } else if (parsed.title || typeof parsed.content === "string") {
-      promptsData = [Object.assign(parsed, { __rawIndex: 0 })];
+      promptsData = [Object.assign(parsed, { __rawIndex: 0, isFileRoot: true })];
     }
   } else {
     onError(`Unsupported HJSON root structure in ${filePath}`, undefined);

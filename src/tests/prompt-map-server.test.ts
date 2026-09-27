@@ -8,6 +8,7 @@ interface ApiResponse {
   ok: boolean;
   changed?: boolean;
   focusKey?: string;
+  focusKeys?: string[];
   undoToken?: string;
   error?: string;
   model: { totals: { files: number; prompts: number } };
@@ -146,6 +147,59 @@ describe("prompt-map server", () => {
     expect(added.ok).toBe(true);
     expect(added.focusKey).toBe(`${libraryFile}#0.2`);
     expect(added.model.totals.prompts).toBe(4);
+  });
+
+  it("moves several prompts and undoes the move", async () => {
+    const before = fs.readFileSync(libraryFile, "utf8");
+    const moved = await readJson(
+      await post("/api/edit", {
+        op: "move",
+        items: [
+          { file: libraryFile, indexPath: [0, 1], expect: { title: "Second" } },
+          { file: libraryFile, indexPath: [0, 0], expect: { title: "Plan" } },
+        ],
+        target: { file: libraryFile, indexPath: [0, 2], where: "after" },
+      }),
+    );
+    expect(moved.ok).toBe(true);
+    expect(moved.changed).toBe(true);
+    expect(moved.focusKeys).toEqual([`${libraryFile}#0.1`, `${libraryFile}#0.2`]);
+    const parsed = hjson.parse(fs.readFileSync(libraryFile, "utf8")) as { subprompts: { title: string }[] }[];
+    expect(parsed[0].subprompts.map((prompt) => prompt.title)).toEqual(["新提示词", "Second", "Plan"]);
+
+    const undone = await readJson(await post("/api/undo", { token: moved.undoToken }));
+    expect(undone.ok).toBe(true);
+    expect(fs.readFileSync(libraryFile, "utf8")).toBe(before);
+  });
+
+  it("deletes several prompts in one request and refuses stale ones", async () => {
+    const stale = await post("/api/edit", {
+      op: "delete",
+      items: [{ file: libraryFile, indexPath: [0, 0], expect: { title: "Not Plan" } }],
+    });
+    expect(stale.status).toBe(409);
+
+    const deleted = await readJson(
+      await post("/api/edit", {
+        op: "delete",
+        items: [
+          { file: libraryFile, indexPath: [0, 0] },
+          { file: libraryFile, indexPath: [0, 2] },
+        ],
+      }),
+    );
+    expect(deleted.ok).toBe(true);
+    expect(deleted.model.totals.prompts).toBe(2);
+    await post("/api/undo", { token: deleted.undoToken });
+  });
+
+  it("rejects moves into a prompt's own subtree", async () => {
+    const response = await post("/api/edit", {
+      op: "move",
+      items: [{ file: libraryFile, indexPath: [0] }],
+      target: { file: libraryFile, indexPath: [0, 0], where: "inside-last" },
+    });
+    expect(response.status).toBe(400);
   });
 
   it("rejects files outside the editable roots", async () => {

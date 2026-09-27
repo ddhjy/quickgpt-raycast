@@ -4,6 +4,8 @@ import * as hjson from "hjson";
 import {
   addChild,
   deletePrompt,
+  deletePrompts,
+  movePrompts,
   needsQuotes,
   promptTree,
   resolvePrompt,
@@ -292,6 +294,171 @@ describe("hjson-edit round trips on every prompt", () => {
       }
     }
   });
+});
+
+const titleOf = (item: unknown): string => {
+  if (typeof item === "string") return item;
+  const raw = item as Raw;
+  return String(raw.title ?? raw.content ?? "");
+};
+
+describe("hjson-edit deletePrompts", () => {
+  it("removes several prompts by their original index paths", () => {
+    const next = deletePrompts(INLINE_LIBRARY, [
+      [1, 0],
+      [1, 2],
+    ]);
+    const subprompts = (hjson.parse(next) as Raw[])[1].subprompts as Raw[];
+    expect(subprompts.map(titleOf)).toEqual(["模拟一个实际场景来演示怎么使用吧"]);
+    expect(next).toContain("# section marker");
+  });
+
+  it("drops a subprompts array that becomes empty", () => {
+    const next = deletePrompts(INLINE_LIBRARY, [[2, 0]]);
+    const folder = (hjson.parse(next) as Raw[])[2];
+    expect(folder.subprompts).toBeUndefined();
+    expect(folder.title).toBe("Folder without content");
+    expect(next).not.toContain("subprompts: [\n    ]");
+  });
+
+  it("ignores prompts whose ancestor is also deleted", () => {
+    const next = deletePrompts(INLINE_LIBRARY, [[1], [1, 1]]);
+    expect((hjson.parse(next) as unknown[]).map(titleOf)).toEqual(["not a prompt", "Folder without content"]);
+  });
+});
+
+const COMMA_LIBRARY = `{
+  prompts: [
+    {
+      title: A
+      subprompts: [
+        { title: "A1", content: "one" },
+        { title: "A2", content: "two" },
+        { title: "A3", content: "three" }
+      ]
+    },
+    {
+      title: B
+      content:
+        '''
+        B body
+          indented
+        '''
+    }
+  ]
+}
+`;
+
+describe("hjson-edit movePrompts", () => {
+  const FILE = "/lib/inline.hjson";
+  const move = (
+    text: string,
+    sources: number[][],
+    target: number[],
+    where: Parameters<typeof movePrompts>[2]["where"],
+  ) =>
+    movePrompts(
+      { [FILE]: text },
+      sources.map((indexPath) => ({ file: FILE, indexPath })),
+      { file: FILE, indexPath: target, where },
+    );
+
+  it("reorders siblings and reports where they landed", () => {
+    const { texts, moved } = move(INLINE_LIBRARY, [[1, 2]], [1, 0], "before");
+    const subprompts = (hjson.parse(texts[FILE]) as Raw[])[1].subprompts as Raw[];
+    expect(subprompts.map(titleOf)).toEqual(["single quoted", "Quick", "模拟一个实际场景来演示怎么使用吧"]);
+    expect(moved).toEqual([{ file: FILE, indexPath: [1, 0] }]);
+    expect(subprompts[0].content).toBe("Line one {{s|c}}\n\n  indented line\nLine three # not a comment");
+    expect(texts[FILE]).toContain("# section marker");
+  });
+
+  it("moves several prompts into another folder in the given order and re-indents them", () => {
+    const { texts, moved } = move(
+      INLINE_LIBRARY,
+      [
+        [1, 2],
+        [1, 0],
+      ],
+      [2],
+      "inside-last",
+    );
+    const parsed = hjson.parse(texts[FILE]) as Raw[];
+    expect((parsed[1].subprompts as Raw[]).map(titleOf)).toEqual(["模拟一个实际场景来演示怎么使用吧"]);
+    const folder = parsed[2].subprompts as Raw[];
+    expect(folder.map(titleOf)).toEqual(["Leaf A", "single quoted", "Quick"]);
+    expect(folder[1].content).toBe("Line one {{s|c}}\n\n  indented line\nLine three # not a comment");
+    expect(moved.map((location) => location.indexPath)).toEqual([
+      [2, 1],
+      [2, 2],
+    ]);
+  });
+
+  it("turns a leaf into a folder and moves prompts to the root level", () => {
+    const intoLeaf = move(INLINE_LIBRARY, [[2]], [1, 0], "inside-first");
+    const quick = ((hjson.parse(intoLeaf.texts[FILE]) as Raw[])[1].subprompts as Raw[])[0];
+    expect((quick.subprompts as Raw[]).map(titleOf)).toEqual(["Folder without content"]);
+    expect(quick.content).toBe("Answer briefly: {{i}}");
+
+    const toRoot = move(INLINE_LIBRARY, [[1, 1]], [1], "after");
+    expect((hjson.parse(toRoot.texts[FILE]) as unknown[]).map(titleOf)).toEqual([
+      "not a prompt",
+      "Ask, then act",
+      "模拟一个实际场景来演示怎么使用吧",
+      "Folder without content",
+    ]);
+  });
+
+  it("keeps the comma style of the target array", () => {
+    const { texts } = move(COMMA_LIBRARY, [[1]], [0, 1], "after");
+    const a = (hjson.parse(texts[FILE]) as { prompts: Raw[] }).prompts[0];
+    expect((a.subprompts as Raw[]).map(titleOf)).toEqual(["A1", "A2", "B", "A3"]);
+    expect((a.subprompts as Raw[])[2].content).toBe("B body\n  indented");
+    expect(texts[FILE]).toMatch(/\{ title: "A2", content: "two" \},\n {8}\{/);
+  });
+
+  it("moves prompts across files", () => {
+    const other = "/lib/other.hjson";
+    const result = movePrompts(
+      { [FILE]: INLINE_LIBRARY, [other]: COMMA_LIBRARY },
+      [{ file: other, indexPath: [0, 1] }],
+      { file: FILE, indexPath: [2], where: "inside-first" },
+    );
+    const a = (hjson.parse(result.texts[other]) as { prompts: Raw[] }).prompts[0];
+    expect((a.subprompts as Raw[]).map(titleOf)).toEqual(["A1", "A3"]);
+    const folder = (hjson.parse(result.texts[FILE]) as Raw[])[2];
+    expect((folder.subprompts as Raw[]).map(titleOf)).toEqual(["A2", "Leaf A"]);
+    expect(result.moved).toEqual([{ file: FILE, indexPath: [2, 0] }]);
+  });
+
+  it("refuses to move a prompt into itself", () => {
+    expect(() => move(INLINE_LIBRARY, [[1]], [1, 0], "inside-last")).toThrow(/自己/);
+    expect(() => move(SINGLE_OBJECT, [[0]], [0], "after")).toThrow();
+  });
+
+  it("returns no changes when the order stays the same", () => {
+    const { texts } = move(INLINE_LIBRARY, [[1, 0]], [1, 1], "before");
+    expect(texts).toEqual({});
+  });
+
+  it.each(fixtures.filter((fixture) => fixture.name !== "single object"))(
+    "moves every nested prompt to the front of its root in $name",
+    ({ text }) => {
+      const parsed = hjson.parse(text);
+      for (const { indexPath } of allIndexPaths(text)) {
+        if (indexPath.length < 3) continue;
+        const root = [indexPath[0]];
+        const expected = structuredClone(parsed);
+        const parent = getAt(expected, indexPath.slice(0, -1));
+        const list = parent.subprompts as unknown[];
+        const [item] = list.splice(indexPath[indexPath.length - 1], 1);
+        if (!list.length) delete parent.subprompts;
+        const rootNode = getAt(expected, root);
+        (rootNode.subprompts as unknown[]).unshift(item);
+        const { texts } = move(text, [indexPath], root, "inside-first");
+        expect(canonical(hjson.parse(texts[FILE]))).toBe(canonical(expected));
+      }
+    },
+  );
 });
 
 describe("needsQuotes", () => {

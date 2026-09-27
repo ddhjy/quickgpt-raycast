@@ -16,7 +16,16 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as http from "http";
 import * as path from "path";
-import { addChild, deletePrompt, resolvePrompt, updateFields, valueOf } from "../utils/hjson-edit";
+import {
+  addChild,
+  deletePrompts,
+  movePrompts,
+  resolvePrompt,
+  updateFields,
+  valueOf,
+  type DropPosition,
+  type PromptShadow,
+} from "../utils/hjson-edit";
 import {
   buildPromptMapModel,
   findPromptMapNode,
@@ -66,20 +75,42 @@ export interface RunningPromptMapServer {
   close(): Promise<void>;
 }
 
+interface Expectation {
+  title?: string;
+  content?: string;
+}
+
+interface EditItem {
+  file: string;
+  indexPath: number[];
+  expect?: Expectation;
+}
+
 interface EditPayload {
-  op: "update" | "add" | "delete";
+  op: "update" | "add" | "delete" | "move";
   file: string;
   indexPath: number[];
   title?: string;
   content?: string;
-  expect?: { title?: string; content?: string };
+  expect?: Expectation;
+  /** `delete` and `move`: the prompts to act on (falls back to file + indexPath). */
+  items?: EditItem[];
+  /** `move`: the prompt to drop next to or into. */
+  target?: { file: string; indexPath: number[]; where: DropPosition };
 }
 
 interface UndoEntry {
-  file: string;
-  before: string;
-  after: string;
+  files: { file: string; before: string; after: string }[];
   expires: number;
+}
+
+const DROP_POSITIONS: readonly DropPosition[] = ["before", "after", "inside-first", "inside-last"];
+
+/** Title as the extension sees it: an untitled prompt takes its first content line. */
+function effectiveTitle(node: PromptShadow): string {
+  const title = valueOf(node, "title");
+  if (title) return title;
+  return (valueOf(node, "content") ?? "").trim().split("\n")[0].trim();
 }
 
 class HttpError extends Error {
@@ -181,25 +212,102 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
     return resolved;
   };
 
-  const applyEdit = (payload: EditPayload): { changed: boolean; focusKey?: string; undoToken?: string } => {
+  const isIndexPath = (value: unknown): value is number[] =>
+    Array.isArray(value) && value.length > 0 && value.every((i) => Number.isInteger(i) && i >= 0);
+
+  // Optimistic concurrency: refuse to overwrite a prompt that changed on disk.
+  const checkExpect = (text: string, indexPath: number[], expect: Expectation | undefined): void => {
+    if (!expect) return;
+    const node = resolvePrompt(text, indexPath);
+    for (const key of ["title", "content"] as const) {
+      const expected = expect[key];
+      if (typeof expected !== "string") continue;
+      const actual = key === "title" ? effectiveTitle(node) : (valueOf(node, key) ?? "");
+      if (actual !== expected) {
+        throw new HttpError(409, `「${expected.split("\n")[0].slice(0, 30)}」已在磁盘上被修改，请刷新页面后再操作`);
+      }
+    }
+  };
+
+  /** Backs up and writes several files, registering one undo entry for all of them. */
+  const writeFiles = (op: string, changes: { file: string; before: string; after: string }[]): string | undefined => {
+    const real = changes.filter((change) => change.after !== change.before);
+    if (!real.length) return undefined;
+    for (const change of real) {
+      const backupPath = backupFile(change.file, backupDir);
+      fs.writeFileSync(change.file, change.after, "utf8");
+      log(`${op} ${path.basename(change.file)} backup=${path.basename(backupPath)}`);
+    }
+    const undoToken = crypto.randomBytes(8).toString("hex");
+    undoStore.set(undoToken, { files: real, expires: Date.now() + UNDO_TTL_MS });
+    return undoToken;
+  };
+
+  const editItems = (payload: EditPayload): EditItem[] => {
+    const items = Array.isArray(payload.items)
+      ? payload.items
+      : [{ file: payload.file, indexPath: payload.indexPath, expect: payload.expect }];
+    if (!items.length) throw new HttpError(400, "Nothing to edit");
+    return items.map((item) => {
+      if (!item || !isIndexPath(item.indexPath)) throw new HttpError(400, "Bad index path");
+      return { file: assertEditable(String(item.file ?? "")), indexPath: item.indexPath, expect: item.expect };
+    });
+  };
+
+  const readAll = (files: Iterable<string>): Record<string, string> => {
+    const texts: Record<string, string> = {};
+    for (const file of files) texts[file] = fs.readFileSync(file, "utf8");
+    return texts;
+  };
+
+  const applyStructural = (payload: EditPayload): { changed: boolean; focusKeys: string[]; undoToken?: string } => {
+    const items = editItems(payload);
+    if (payload.op === "delete") {
+      const texts = readAll(new Set(items.map((item) => item.file)));
+      const changes = Object.entries(texts).map(([file, before]) => {
+        const own = items.filter((item) => item.file === file);
+        own.forEach((item) => checkExpect(before, item.indexPath, item.expect));
+        return {
+          file,
+          before,
+          after: deletePrompts(
+            before,
+            own.map((item) => item.indexPath),
+          ),
+        };
+      });
+      const undoToken = writeFiles("delete", changes);
+      return { changed: Boolean(undoToken), focusKeys: [], undoToken };
+    }
+
+    const target = payload.target;
+    if (!target || !isIndexPath(target.indexPath) || !DROP_POSITIONS.includes(target.where)) {
+      throw new HttpError(400, "Bad move target");
+    }
+    const targetFile = assertEditable(String(target.file ?? ""));
+    const texts = readAll(new Set([...items.map((item) => item.file), targetFile]));
+    items.forEach((item) => checkExpect(texts[item.file], item.indexPath, item.expect));
+    const result = movePrompts(texts, items, { file: targetFile, indexPath: target.indexPath, where: target.where });
+    const undoToken = writeFiles(
+      "move",
+      Object.entries(result.texts).map(([file, after]) => ({ file, before: texts[file], after })),
+    );
+    return {
+      changed: Boolean(undoToken),
+      focusKeys: result.moved.map((location) => `${location.file}#${location.indexPath.join(".")}`),
+      undoToken,
+    };
+  };
+
+  const applyEdit = (payload: EditPayload): { changed: boolean; focusKeys: string[]; undoToken?: string } => {
     if (!payload || typeof payload !== "object") throw new HttpError(400, "Bad payload");
+    if (payload.op === "delete" || payload.op === "move") return applyStructural(payload);
     if (!Array.isArray(payload.indexPath) || !payload.indexPath.every((i) => Number.isInteger(i) && i >= 0)) {
       throw new HttpError(400, "Bad index path");
     }
     const filePath = assertEditable(String(payload.file ?? ""));
     const text = fs.readFileSync(filePath, "utf8");
-
-    // Optimistic concurrency: refuse to overwrite a prompt that changed on disk.
-    if (payload.expect && (payload.op === "update" || payload.op === "delete")) {
-      const node = resolvePrompt(text, payload.indexPath);
-      for (const key of ["title", "content"] as const) {
-        const expected = payload.expect[key];
-        if (typeof expected !== "string") continue;
-        if ((valueOf(node, key) ?? "") !== expected) {
-          throw new HttpError(409, `「${key}」已在磁盘上被修改，请刷新页面后再编辑`);
-        }
-      }
-    }
+    if (payload.op === "update") checkExpect(text, payload.indexPath, payload.expect);
 
     let next: string;
     let focusKey: string | undefined;
@@ -212,36 +320,34 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
       const result = addChild(text, payload.indexPath, { title, content });
       next = result.text;
       focusKey = `${filePath}#${result.indexPath.join(".")}`;
-    } else if (payload.op === "delete") {
-      next = deletePrompt(text, payload.indexPath);
     } else {
       throw new HttpError(400, `Unknown op ${String(payload.op)}`);
     }
 
-    if (next === text) return { changed: false, focusKey };
+    const focusKeys = focusKey ? [focusKey] : [];
+    if (next === text) return { changed: false, focusKeys };
     const backupPath = backupFile(filePath, backupDir);
     fs.writeFileSync(filePath, next, "utf8");
     log(
       `${payload.op} ${path.basename(filePath)} ${JSON.stringify(payload.indexPath)} backup=${path.basename(backupPath)}`,
     );
-
-    let undoToken: string | undefined;
-    if (payload.op === "delete") {
-      undoToken = crypto.randomBytes(8).toString("hex");
-      undoStore.set(undoToken, { file: filePath, before: text, after: next, expires: Date.now() + UNDO_TTL_MS });
-    }
-    return { changed: true, focusKey, undoToken };
+    return { changed: true, focusKeys };
   };
 
   const applyUndo = (undoToken: string): void => {
     const entry = undoStore.get(undoToken);
     if (!entry || entry.expires < Date.now()) throw new HttpError(410, "撤销已过期");
-    const current = fs.readFileSync(entry.file, "utf8");
-    if (current !== entry.after) throw new HttpError(409, "文件在删除后又被修改，无法自动撤销");
-    backupFile(entry.file, backupDir);
-    fs.writeFileSync(entry.file, entry.before, "utf8");
+    for (const change of entry.files) {
+      if (fs.readFileSync(change.file, "utf8") !== change.after) {
+        throw new HttpError(409, `${path.basename(change.file)} 之后又被修改过，无法自动撤销`);
+      }
+    }
+    for (const change of entry.files) {
+      backupFile(change.file, backupDir);
+      fs.writeFileSync(change.file, change.before, "utf8");
+      log(`undo ${path.basename(change.file)}`);
+    }
     undoStore.delete(undoToken);
-    log(`undo ${path.basename(entry.file)}`);
   };
 
   const server = http.createServer(async (req, res) => {
@@ -282,11 +388,12 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
         const payload = JSON.parse(await readBody(req)) as EditPayload;
         const result = applyEdit(payload);
         const model = buildModel();
-        const focus = result.focusKey ? findPromptMapNode(model, result.focusKey) : undefined;
+        const focusKeys = result.focusKeys.filter((key) => findPromptMapNode(model, key));
         sendJson(res, 200, {
           ok: true,
           changed: result.changed,
-          focusKey: focus?.key,
+          focusKey: focusKeys[0],
+          focusKeys,
           undoToken: result.undoToken,
           model,
         });

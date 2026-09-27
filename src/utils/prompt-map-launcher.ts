@@ -107,6 +107,15 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
+/** True when the server script was rebuilt after the running server started, so it runs stale code. */
+function bundleNewerThan(serverScript: string, startedAt: string): boolean {
+  try {
+    return fs.statSync(serverScript).mtimeMs > Date.parse(startedAt);
+  } catch {
+    return false;
+  }
+}
+
 function serverUrl(state: PromptMapServerState): string {
   return `http://127.0.0.1:${state.port}/?t=${state.token}`;
 }
@@ -142,10 +151,14 @@ export async function ensurePromptMapServer(paths: PromptMapPaths = getPromptMap
 
   const existing = readServerState(paths.stateDir);
   if (existing && isProcessAlive(existing.pid) && (await ping(existing))) {
-    if (sameList(existing.sources, sources) && sameList(existing.editableRoots, editableRoots)) {
+    if (
+      sameList(existing.sources, sources) &&
+      sameList(existing.editableRoots, editableRoots) &&
+      !bundleNewerThan(paths.serverScript, existing.startedAt)
+    ) {
       return serverUrl(existing);
     }
-    // The library configuration changed: retire the old server.
+    // The library configuration or the server bundle changed: retire the old server.
     try {
       process.kill(existing.pid, "SIGTERM");
     } catch {

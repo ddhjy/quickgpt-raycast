@@ -12,6 +12,8 @@
  * recorded on a prompt resolves to the matching source object.
  */
 
+import * as hjson from "hjson";
+
 const PUNCTUATORS = new Set(["{", "}", "[", "]", ",", ":"]);
 const NUMBER_RE = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?\s*$/;
 const ESCAPES: Record<string, string> = {
@@ -562,6 +564,22 @@ export function addChild(
 }
 
 /**
+ * Range covering `start..end` plus a trailing comma, widened to the whole line
+ * (and its leading newline) when nothing else shares that line.
+ */
+function lineAwareRange(text: string, start: number, end: number): { start: number; end: number } {
+  while (text[end] === " " || text[end] === "\t") end++;
+  if (text[end] === ",") end++;
+  const lineStart = lineStartOf(text, start);
+  if (/^[ \t]*$/.test(text.slice(lineStart, start))) {
+    const lineEnd = text.indexOf("\n", end);
+    const rest = text.slice(end, lineEnd < 0 ? text.length : lineEnd);
+    if (/^[ \t]*$/.test(rest)) return { start: lineStart > 0 ? lineStart - 1 : lineStart, end: end + rest.length };
+  }
+  return { start, end };
+}
+
+/**
  * Removes the prompt object at `indexPath` together with the line it occupies.
  * Root prompts that are not array elements (single-object files) cannot be
  * removed this way.
@@ -569,17 +587,350 @@ export function addChild(
 export function deletePrompt(text: string, indexPath: readonly number[]): string {
   const node = resolvePrompt(text, indexPath);
   if (!node.arr) throw new Error("This prompt is the whole file; delete the file instead");
-  const obj = node.obj;
-  let start = obj.start;
-  let end = obj.end;
-  while (text[end] === " " || text[end] === "\t") end++;
-  if (text[end] === ",") end++;
-  const lineStart = lineStartOf(text, start);
-  if (/^[ \t]*$/.test(text.slice(lineStart, start))) {
-    start = lineStart > 0 ? lineStart - 1 : lineStart;
-    const lineEnd = text.indexOf("\n", end);
-    const rest = text.slice(end, lineEnd < 0 ? text.length : lineEnd);
-    if (/^[ \t]*$/.test(rest)) end += rest.length;
+  const range = lineAwareRange(text, node.obj.start, node.obj.end);
+  return splice(text, range.start, range.end, "");
+}
+
+/* Structural edits: batch delete and move */
+
+export type DropPosition = "before" | "after" | "inside-first" | "inside-last";
+
+export interface PromptLocation {
+  file: string;
+  indexPath: number[];
+}
+
+export interface MoveTarget extends PromptLocation {
+  where: DropPosition;
+}
+
+interface RangeEdit {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/**
+ * Applies non-overlapping edits given in original coordinates and returns a
+ * mapper from original positions (outside removed ranges) to new ones.
+ */
+function applyEdits(text: string, edits: RangeEdit[]): { text: string; map: (pos: number) => number } {
+  const sorted = [...edits].sort((a, b) => b.start - a.start || b.end - a.end);
+  let next = text;
+  for (const edit of sorted) next = splice(next, edit.start, edit.end, edit.text);
+  const map = (pos: number): number => {
+    let delta = 0;
+    for (const edit of edits) {
+      if (edit.end <= pos && edit.start < pos) delta += edit.text.length - (edit.end - edit.start);
+    }
+    return pos + delta;
+  };
+  return { text: next, map };
+}
+
+function isPrefix(prefix: readonly number[], full: readonly number[]): boolean {
+  return prefix.length <= full.length && prefix.every((value, i) => full[i] === value);
+}
+
+/** Drops duplicates and prompts whose ancestor is also listed. */
+function outermost(indexPaths: readonly (readonly number[])[]): number[][] {
+  const unique = Array.from(new Map(indexPaths.map((p) => [p.join("."), [...p]])).values());
+  return unique.filter((p) => !unique.some((other) => other !== p && isPrefix(other, p)));
+}
+
+function resolveIn(tree: PromptShadow[], indexPath: readonly number[]): PromptShadow {
+  let list = tree;
+  let node: PromptShadow | undefined;
+  for (const index of indexPath) {
+    node = list.find((n) => n.rawIndex === index);
+    if (!node) throw new Error(`Prompt not found at index path ${JSON.stringify(indexPath)}`);
+    list = node.children;
   }
-  return splice(text, start, end, "");
+  if (!node) throw new Error("Empty index path");
+  return node;
+}
+
+/** Finds the prompt object that starts exactly at `pos`, with its index path. */
+function locateAt(tree: PromptShadow[], pos: number): { node: PromptShadow; indexPath: number[] } | undefined {
+  const visit = (list: PromptShadow[], prefix: number[]): { node: PromptShadow; indexPath: number[] } | undefined => {
+    for (const node of list) {
+      const indexPath = [...prefix, node.rawIndex];
+      if (node.obj.start === pos) return { node, indexPath };
+      if (node.obj.start < pos && pos < node.obj.end) return visit(node.children, indexPath);
+    }
+    return undefined;
+  };
+  return visit(tree, []);
+}
+
+function lineIndent(text: string, pos: number): string {
+  return /^[ \t]*/.exec(text.slice(lineStartOf(text, pos)))![0];
+}
+
+/**
+ * Shifts every line after the first by `delta` columns so the snippet reads
+ * the same at a new nesting depth. Lines that are already shallower than the
+ * shift only lose whitespace, which keeps `'''` blocks decoding identically.
+ */
+function reindent(snippet: string, delta: number, padChar: string): string {
+  if (delta === 0) return snippet;
+  return snippet
+    .split("\n")
+    .map((line, i) => {
+      if (i === 0 || line === "") return line;
+      if (delta > 0) return padChar.repeat(delta) + line;
+      const ws = /^[ \t]*/.exec(line)![0].length;
+      return line.slice(Math.min(ws, -delta));
+    })
+    .join("\n");
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function arrayUsesCommas(text: string, arr: ArraySpan): boolean {
+  return arr.items.some((item) => {
+    let i = item.end;
+    while (text[i] === " " || text[i] === "\t") i++;
+    return text[i] === ",";
+  });
+}
+
+interface Insertion {
+  start: number;
+  end: number;
+  indent: string;
+  before: string;
+  sep: string;
+  after: string;
+}
+
+function insertBeforeItem(text: string, arr: ArraySpan, item: ValueSpan): Insertion {
+  const indent = leadingIndent(text, item.start) ?? lineIndent(text, arr.start) + "  ";
+  const comma = arrayUsesCommas(text, arr) ? "," : "";
+  return {
+    start: item.start,
+    end: item.start,
+    indent,
+    before: "",
+    sep: `${comma}\n${indent}`,
+    after: `${comma}\n${indent}`,
+  };
+}
+
+function insertAfterItem(text: string, arr: ArraySpan, item: ValueSpan): Insertion {
+  const indent = leadingIndent(text, item.start) ?? lineIndent(text, arr.start) + "  ";
+  let i = item.end;
+  while (text[i] === " " || text[i] === "\t") i++;
+  if (text[i] === ",")
+    return { start: i + 1, end: i + 1, indent, before: `\n${indent}`, sep: `,\n${indent}`, after: "," };
+  const comma = arrayUsesCommas(text, arr) ? "," : "";
+  return {
+    start: item.end,
+    end: item.end,
+    indent,
+    before: `${comma}\n${indent}`,
+    sep: `${comma}\n${indent}`,
+    after: "",
+  };
+}
+
+function insertionFor(text: string, anchor: PromptShadow, where: DropPosition): Insertion {
+  if (where === "before" || where === "after") {
+    if (!anchor.arr) throw new Error("不能把提示词放在整个文件对象的前后");
+    return where === "before"
+      ? insertBeforeItem(text, anchor.arr, anchor.obj)
+      : insertAfterItem(text, anchor.arr, anchor.obj);
+  }
+  const obj = anchor.obj;
+  const sub = member(obj, "subprompts");
+  if (sub && sub.value.kind !== "array") throw new Error("目标的 subprompts 不是数组");
+  if (sub && sub.value.kind === "array") {
+    const arr = sub.value;
+    if (arr.items.length) {
+      return where === "inside-first"
+        ? insertBeforeItem(text, arr, arr.items[0])
+        : insertAfterItem(text, arr, arr.items[arr.items.length - 1]);
+    }
+    const outer = lineIndent(text, arr.start);
+    const indent = outer + "  ";
+    const innerBlank = /^\s*$/.test(text.slice(arr.start + 1, arr.end - 1));
+    return {
+      start: arr.start + 1,
+      end: innerBlank ? arr.end - 1 : arr.start + 1,
+      indent,
+      before: `\n${indent}`,
+      sep: `\n${indent}`,
+      after: innerBlank ? `\n${outer}` : "",
+    };
+  }
+  const outer = memberIndent(text, obj);
+  const indent = outer + "  ";
+  const anchorMember = obj.members[obj.members.length - 1];
+  const at = anchorMember ? anchorMember.value.end : obj.braceless ? obj.start : obj.start + 1;
+  return {
+    start: at,
+    end: at,
+    indent,
+    before: `\n${outer}subprompts: [\n${indent}`,
+    sep: `\n${indent}`,
+    after: `\n${outer}]`,
+  };
+}
+
+/**
+ * Removes the given prompts (and, for parents left with an empty
+ * `subprompts: []`, that member too). Positions of `keepStarts` are mapped to
+ * the new text; a parent whose start is listed there keeps its empty array.
+ */
+function removePrompts(
+  text: string,
+  indexPaths: readonly (readonly number[])[],
+  keepStarts: number[] = [],
+): { text: string; map: (pos: number) => number; removed: { snippet: string; column: number }[] } {
+  const tree = promptTree(scan(text));
+  const removed: { snippet: string; column: number }[] = [];
+  const edits: RangeEdit[] = [];
+  const parents = new Set<number>();
+  for (const indexPath of outermost(indexPaths)) {
+    const node = resolveIn(tree, indexPath);
+    if (!node.arr) throw new Error("这条提示词是整个文件，不能移动或删除");
+    removed.push({
+      snippet: text.slice(node.obj.start, node.obj.end),
+      column: node.obj.start - lineStartOf(text, node.obj.start),
+    });
+    const range = lineAwareRange(text, node.obj.start, node.obj.end);
+    edits.push({ ...range, text: "" });
+    if (indexPath.length > 1) parents.add(resolveIn(tree, indexPath.slice(0, -1)).obj.start);
+  }
+  const first = applyEdits(text, edits);
+
+  const cleanupTree = promptTree(scan(first.text));
+  const cleanup: RangeEdit[] = [];
+  for (const start of parents) {
+    if (keepStarts.includes(start)) continue;
+    const parent = locateAt(cleanupTree, first.map(start));
+    const sub = parent && member(parent.node.obj, "subprompts");
+    if (!sub || sub.value.kind !== "array" || sub.value.items.length) continue;
+    if (!/^\s*$/.test(first.text.slice(sub.value.start + 1, sub.value.end - 1))) continue;
+    cleanup.push({ ...lineAwareRange(first.text, sub.keyStart, sub.value.end), text: "" });
+  }
+  const second = applyEdits(first.text, cleanup);
+  return { text: second.text, map: (pos) => second.map(first.map(pos)), removed };
+}
+
+/**
+ * Removes several prompts from one file at once. Index paths refer to the
+ * original text, so callers never deal with shifting indexes.
+ */
+export function deletePrompts(text: string, indexPaths: readonly (readonly number[])[]): string {
+  return removePrompts(text, indexPaths).text;
+}
+
+export interface MoveResult {
+  /** New text for every file that changed. */
+  texts: Record<string, string>;
+  /** Where the moved prompts ended up, in the order they were given. */
+  moved: PromptLocation[];
+}
+
+/**
+ * Moves prompts (possibly from several files) next to or into `target`,
+ * keeping each moved object's source text and re-indenting it for its new
+ * depth. `files` maps every involved file path to its current text.
+ */
+export function movePrompts(
+  files: Readonly<Record<string, string>>,
+  sources: readonly PromptLocation[],
+  target: MoveTarget,
+): MoveResult {
+  const textOf = (file: string): string => {
+    const text = files[file];
+    if (typeof text !== "string") throw new Error(`Missing text for ${file}`);
+    return text;
+  };
+  const byFile = new Map<string, number[][]>();
+  for (const source of sources) {
+    if (source.file === target.file && isPrefix(source.indexPath, target.indexPath)) {
+      throw new Error("不能把提示词移动到它自己或它的子项里");
+    }
+    byFile.set(source.file, [...(byFile.get(source.file) ?? []), source.indexPath]);
+  }
+  if (!byFile.size) return { texts: {}, moved: [] };
+
+  const targetOriginal = textOf(target.file);
+  const anchorStart = resolvePrompt(targetOriginal, target.indexPath).obj.start;
+
+  // Phase 1: take the prompts out of their files.
+  const snippets = new Map<string, { snippet: string; column: number }>();
+  const texts: Record<string, string> = {};
+  let anchorPos = anchorStart;
+  for (const [file, indexPaths] of byFile) {
+    const original = textOf(file);
+    const kept = outermost(indexPaths);
+    const tree = promptTree(scan(original));
+    // Remove in document order so snippets can be matched back to sources.
+    const ordered = [...kept].sort((a, b) => resolveIn(tree, a).obj.start - resolveIn(tree, b).obj.start);
+    const result = removePrompts(original, ordered, file === target.file ? [anchorStart] : []);
+    ordered.forEach((indexPath, i) => snippets.set(`${file}#${indexPath.join(".")}`, result.removed[i]));
+    texts[file] = result.text;
+    if (file === target.file) anchorPos = result.map(anchorStart);
+  }
+
+  // Phase 2: insert them at the target, in the order the caller listed them.
+  const targetText = texts[target.file] ?? targetOriginal;
+  const anchor = locateAt(promptTree(scan(targetText)), anchorPos);
+  if (!anchor) throw new Error("Could not find the drop target after removing the moved prompts");
+  const insertion = insertionFor(targetText, anchor.node, target.where);
+  const padChar = insertion.indent.includes("\t") ? "\t" : " ";
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  for (const source of sources) {
+    const key = `${source.file}#${source.indexPath.join(".")}`;
+    const entry = snippets.get(key);
+    if (!entry || seen.has(key)) continue;
+    seen.add(key);
+    const moved = reindent(entry.snippet, insertion.indent.length - entry.column, padChar);
+    if (canonicalJson(hjson.parse(moved)) !== canonicalJson(hjson.parse(entry.snippet))) {
+      throw new Error("移动后的内容校验失败，已取消");
+    }
+    parts.push(moved);
+  }
+  const inserted = insertion.before + parts.join(insertion.sep) + insertion.after;
+  const finalText = splice(targetText, insertion.start, insertion.end, inserted);
+  texts[target.file] = finalText;
+
+  const starts: number[] = [];
+  let offset = insertion.start + insertion.before.length;
+  for (const part of parts) {
+    starts.push(offset);
+    offset += part.length + insertion.sep.length;
+  }
+  const finalTree = promptTree(scan(finalText));
+  const moved = starts.map((start) => {
+    const hit = locateAt(finalTree, start);
+    if (!hit) throw new Error("Could not locate a moved prompt");
+    return { file: target.file, indexPath: hit.indexPath };
+  });
+
+  for (const [file, text] of Object.entries(texts)) {
+    try {
+      hjson.parse(text);
+    } catch (error) {
+      throw new Error(
+        `移动后 ${file} 不是合法的 HJSON，已取消：${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (text === files[file]) delete texts[file];
+  }
+  return { texts, moved };
 }

@@ -47,6 +47,8 @@ export interface PromptMapNode {
   py: string;
   depth: number;
   readonly: boolean;
+  /** The file's single root object: it cannot be moved, deleted or get siblings. */
+  fileRoot: boolean;
   children: PromptMapNode[];
 }
 
@@ -205,6 +207,7 @@ function toNode(prompt: PromptProps, depth: number, readonly: boolean): PromptMa
     py: buildSearchText(prompt.title),
     depth,
     readonly,
+    fileRoot: Boolean(prompt.isFileRoot),
     children,
   };
 }

@@ -214,6 +214,37 @@
   .chips { display: flex; gap: 3px; flex: none; }
   .chip { font: 500 10px/16px var(--mono); background: var(--surface-2); color: var(--ink-2); padding: 0 4px; border-radius: 4px; }
   .children { margin-left: 12px; border-left: 1px solid var(--border); padding-left: 3px; }
+
+  /* Selection, drag and drop */
+  .node, .card-head { position: relative; user-select: none; -webkit-user-select: none; }
+  .node.selected, .card-head.selected { background: var(--sel); }
+  .node.selected::before, .card-head.selected::before {
+    content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: var(--focus);
+  }
+  .drag-src { opacity: .4; }
+  .drop-before::after, .drop-after::after {
+    content: ""; position: absolute; left: 20px; right: 4px; height: 2px; border-radius: 2px; background: var(--focus); pointer-events: none; z-index: 1;
+  }
+  .drop-before::after { top: -1px; }
+  .drop-after::after { bottom: -1px; }
+  .node.drop-after.drop-child::after { left: 38px; }
+  .card-head.drop-before::after { top: -9px; left: 2px; right: 2px; }
+  .card-head.drop-after::after { left: 26px; }
+  .node.drop-inside, .card-head.drop-inside { background: oklch(from var(--focus) l c h / 0.14); box-shadow: inset 0 0 0 1.5px var(--focus); }
+  .card.drop-into { box-shadow: 0 0 0 2px var(--focus); }
+  #drag-ghost {
+    position: fixed; top: -200px; left: 0; max-width: 280px; padding: 4px 10px; border-radius: 99px; background: var(--ink); color: var(--on-ink);
+    font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  }
+  .sel-list li { cursor: pointer; }
+  .sel-list .sel-ttl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sel-list .sel-x {
+    width: 20px; height: 20px; flex: none; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; opacity: 0;
+    display: inline-flex; align-items: center; justify-content: center; transition: opacity var(--t-fast) var(--ease);
+  }
+  .sel-list li:hover .sel-x { opacity: 1; }
+  .sel-list .sel-x:hover { background: oklch(from var(--muted) l c h / 0.15); color: var(--ink); }
+  .p-edit-actions .p-note { flex-basis: 100%; margin: 4px 0 0; }
   .children.collapsed { display: none; }
 
   /* ---------- Mind map ---------- */
@@ -233,6 +264,7 @@
   .mm-node.active rect { fill: var(--sel); }
   .mm-node.match rect { fill: var(--match); stroke: var(--c); }
   .mm-node.locked rect { stroke: var(--ink); stroke-width: 1.75; fill: var(--sel); }
+  .mm-node.selected rect { fill: var(--sel); stroke: var(--focus); stroke-width: 1.5; }
   .mm-node text { font: 12.5px var(--ui); fill: var(--ink); dominant-baseline: central; pointer-events: none; }
   .mm-node.d0 text { font-weight: 600; }
   .mm-badge circle { fill: var(--surface); stroke: var(--c); stroke-width: 1.2; cursor: pointer; transition: fill var(--t-fast) var(--ease); }
@@ -338,6 +370,8 @@
   <symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5"/></symbol>
   <symbol id="i-chev" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></symbol>
   <symbol id="i-pin" viewBox="0 0 16 16"><path d="M9 2.5 13.5 7l-2.2.5L9 9.8V13l-1-1-2-2-3.5 3.5L6 10 4 8l-1-1h3.2L8.5 4.7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></symbol>
   <symbol id="i-undo" viewBox="0 0 16 16"><path d="M6 3.5 3 6.5l3 3"/><path d="M3 6.5h6.5a3.25 3.25 0 0 1 0 6.5H8"/></symbol>
 </svg>
 
@@ -383,8 +417,14 @@
     <span><kbd>←</kbd><kbd>→</kbd></span><span>折叠 / 展开当前目录</span>
     <span><kbd>Enter</kbd></span><span>固定或取消固定</span>
     <span><kbd>E</kbd></span><span>编辑固定的提示词</span>
+    <span><kbd>⌘</kbd>点击</span><span>多选，再点一次取消</span>
+    <span><kbd>⇧</kbd>点击</span><span>连续多选（也可 <kbd>⇧</kbd><kbd>↑</kbd><kbd>↓</kbd>）</span>
+    <span>拖拽</span><span>放到某条的上方、下方或里面</span>
+    <span><kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd></span><span>在同级里上移 / 下移</span>
+    <span><kbd>⌫</kbd></span><span>删除选中的提示词</span>
+    <span><kbd>⌘</kbd><kbd>Z</kbd></span><span>撤销上一次移动或删除</span>
     <span><kbd>⌘</kbd><kbd>S</kbd></span><span>保存</span>
-    <span><kbd>Esc</kbd></span><span>取消固定、清空搜索或退出编辑</span>
+    <span><kbd>Esc</kbd></span><span>取消选择、清空搜索或退出编辑</span>
     <span><kbd>0</kbd></span><span>导图适应窗口</span>
   </div>
   <h3>设置</h3>
@@ -415,6 +455,7 @@
   <span class="status-hint" id="status-hint"></span>
   <button class="btn zoom-btn map-only" id="mm-zoom" title="适应窗口">100%</button>
 </footer>
+<div id="drag-ghost" aria-hidden="true"></div>
 <div id="toast"><span id="toast-text"></span><button class="toast-act" id="toast-act"></button></div>
 
 <script id="prompt-map-data" type="application/json">/*__PROMPT_MAP_DATA__*/</script>
@@ -478,6 +519,7 @@
   let mm = { k: 1, tx: 0, ty: 0 };
   let mapDirty = true, mapFitted = false;
   let editing = null;
+  let selected = new Set(), rangeEnd = null, lastUndo = null, dragState = null;
   const outlineCollapsed = new Set();
   const mapCollapsed = new Set();
   let VROOT;
@@ -492,6 +534,8 @@
     node.descendants = 0;
     node.hidden = false;
     node.match = false;
+    // Collapse state survives moves, which shift index-path keys.
+    node.ck = node.file + "\u0000" + node.path;
     node.hay = (node.title + " " + node.path + " " + (node.content || "")).toLowerCase();
     nodes.push(node);
     byUid.set(node.uid, node);
@@ -505,10 +549,11 @@
 
   function renderNode(node) {
     const isFolder = node.children.length > 0;
-    const collapsed = outlineCollapsed.has(node.key);
+    const collapsed = outlineCollapsed.has(node.ck);
     const row = document.createElement("div");
     row.className = "node" + (isFolder ? " folder" : "");
     row.dataset.uid = node.uid;
+    if (DATA.editable && !node.readonly) row.draggable = true;
     const chips = node.placeholders.slice(0, 4).map((p) => `<span class="chip">${esc(p)}</span>`).join("");
     row.innerHTML =
       `<span class="tw ${isFolder ? "" : "leaf"}${collapsed ? " closed" : ""}" title="${isFolder ? "折叠 / 展开" : ""}">${ICON("chev").replace('class="ic"', 'class="ic" style="transform:rotate(90deg)"')}</span>` +
@@ -531,7 +576,8 @@
   function loadModel(model, opts = {}) {
     DATA = model;
     nodes = []; byUid = new Map(); byKey = new Map(); parentOf = new Map(); wrapByUid = new Map(); cards = [];
-    uidCounter = 0; lockedUid = null; activeUid = null; editing = null;
+    uidCounter = 0; lockedUid = null; activeUid = null; editing = null; selected = new Set(); rangeEnd = null;
+    const scrollTop = boardWrap.scrollTop;
     let rootIndex = 0;
     for (const file of DATA.files) for (const root of file.roots) indexNode(root, null, file.name, PALETTE[rootIndex++ % PALETTE.length]);
 
@@ -544,6 +590,7 @@
         const head = document.createElement("div");
         head.className = "card-head";
         head.dataset.uid = root.uid;
+        if (DATA.editable && !root.readonly && !root.fileRoot) head.draggable = true;
         head.style.setProperty("--c", root.color);
         head.innerHTML =
           `<i class="bdot"></i><span class="ico">${iconHtml(root.icon, true)}</span>` +
@@ -561,6 +608,7 @@
         cards.push({ card, root });
       }
     }
+    boardWrap.scrollTop = scrollTop;
 
     $("stats").textContent = `${DATA.totals.prompts} 条 · ${DATA.totals.files} 个文件`;
     document.title = `Prompt Map · ${DATA.totals.prompts}`;
@@ -580,6 +628,13 @@
       lock(uid);
       if (view === "map") { expandAncestors(uid); renderMap(); centerOn(uid); }
       if (opts.edit) showEditor(uid, opts.selectTitle);
+    }
+    const picked = (opts.selectKeys || []).map((key) => byKey.get(key)).filter(Boolean).map((n) => n.uid);
+    if (picked.length) {
+      picked.forEach((uid) => { revealInOutline(uid); expandAncestors(uid); });
+      if (picked.length === 1) lock(picked[0]); else selectMany(picked, picked[0]);
+      if (view === "map") renderMap();
+      else outlineRowFor(picked[0]).scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -678,19 +733,28 @@
         html += `<div class="p-edit-actions">`;
         html += `<button class="btn" data-act="edit">${ICON("pencil")}编辑<kbd>E</kbd></button>`;
         html += `<button class="btn" data-act="add">${ICON("add")}新建子提示词</button>`;
-        html += `<button class="btn btn-danger" data-act="delete">${ICON("trash")}删除</button>`;
+        if (!node.fileRoot) html += `<button class="btn btn-danger" data-act="delete">${ICON("trash")}删除<kbd>⌫</kbd></button>`;
+        html += node.fileRoot
+          ? `<p class="p-note">这是 ${esc(node.fileName)}.hjson 的根分组，可以把别的提示词拖进来。</p>`
+          : `<p class="p-note">拖动可调整位置，<kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd> 同级上下移动，<kbd>⌘</kbd> 点击其他条目可多选。</p>`;
         html += `</div>`;
       } else {
-        html += `<div class="p-edit-actions"><p class="p-note">点击这条提示词固定后，可以编辑、新建子项或删除。</p></div>`;
+        html += `<div class="p-edit-actions"><p class="p-note">点击这条提示词固定后，可以编辑、新建子项或删除；也可以直接拖动它调整位置。</p></div>`;
       }
     }
     if (animate) swapPanel(html, uid);
     else { panel.innerHTML = html; panel.dataset.uid = uid; panel.scrollTop = 0; }
   }
 
-  function lock(uid) {
+  function clearSelectionMarks() {
+    for (const u of selected) if (byUid.has(u)) elsFor(u).forEach((el) => el.classList.remove("selected"));
     if (lockedUid !== null && byUid.has(lockedUid)) elsFor(lockedUid).forEach((el) => el.classList.remove("locked"));
+  }
+  function lock(uid) {
+    clearSelectionMarks();
+    selected = new Set(uid === null ? [] : [uid]);
     lockedUid = uid;
+    rangeEnd = uid;
     if (uid !== null) {
       elsFor(uid).forEach((el) => el.classList.add("locked"));
       show(uid, true);
@@ -699,8 +763,86 @@
   function unlock() {
     const prev = lockedUid;
     lock(null);
+    if (prev !== null && byUid.has(prev) && activeUid !== prev) setActive(prev);
     if (prev !== null && activeUid === prev) show(prev, true);
   }
+  /** Selects several prompts; `primary` stays the anchor for Shift ranges. */
+  function selectMany(uids, primary) {
+    const list = [...new Set(uids)].filter((u) => byUid.has(u)).sort((a, b) => a - b);
+    if (list.length <= 1) { if (list.length) lock(list[0]); else unlock(); return; }
+    if (editing && !closeEditor()) return;
+    clearSelectionMarks();
+    selected = new Set(list);
+    lockedUid = list.includes(primary) ? primary : list[0];
+    for (const u of selected) elsFor(u).forEach((el) => el.classList.add("selected"));
+    elsFor(lockedUid).forEach((el) => el.classList.add("locked"));
+    setActive(lockedUid);
+    showSelection();
+  }
+  function currentSelection() {
+    if (selected.size) return [...selected];
+    return lockedUid !== null ? [lockedUid] : [];
+  }
+  /** Document order, without prompts whose ancestor is also in the list. */
+  function outermostUids(uids) {
+    const set = new Set(uids);
+    return [...set].filter((u) => {
+      for (let p = parentOf.get(u); p; p = parentOf.get(p.uid)) if (set.has(p.uid)) return false;
+      return true;
+    }).sort((a, b) => a - b);
+  }
+  function clickSelect(uid, e) {
+    if (editing && !closeEditor()) return;
+    if (e.metaKey || e.ctrlKey) {
+      const next = new Set(currentSelection());
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      selectMany([...next], next.has(uid) ? uid : lockedUid);
+      return;
+    }
+    if (e.shiftKey && lockedUid !== null && lockedUid !== uid) {
+      const rows = visibleRows();
+      const a = rows.indexOf(lockedUid), b = rows.indexOf(uid);
+      if (a >= 0 && b >= 0) {
+        selectMany(rows.slice(Math.min(a, b), Math.max(a, b) + 1), lockedUid);
+        rangeEnd = uid;
+        return;
+      }
+    }
+    if (lockedUid === uid && selected.size <= 1) unlock();
+    else lock(uid);
+  }
+  function showSelection() {
+    const list = [...selected].sort((a, b) => a - b);
+    const roots = outermostUids(list);
+    const total = roots.reduce((sum, u) => sum + 1 + byUid.get(u).descendants, 0);
+    const files = new Set(list.map((u) => byUid.get(u).fileName));
+    const readonly = list.some((u) => byUid.get(u).readonly);
+    const fixed = list.some((u) => byUid.get(u).fileRoot);
+    let html = `<div class="p-status"><span class="pin">${ICON("check")}已选 ${list.length} 条</span><span><kbd>Esc</kbd> 取消选择</span></div>`;
+    html += `<h2 class="p-title"><span>${list.length} 条提示词</span></h2>`;
+    const meta = [`<span class="pill">${files.size} 个文件</span>`];
+    if (total > roots.length) meta.push(`<span class="pill">含子项共 ${total} 条</span>`);
+    html += `<div class="p-meta">${meta.join("")}</div>`;
+    html += `<section class="p-sec"><div class="p-label">已选<span class="meta">⌘ 点击增减 · ⇧ 点击连选</span></div><ul class="p-children sel-list">${list
+      .map((u) => {
+        const n = byUid.get(u);
+        return `<li data-uid="${u}"><span class="ico">${iconHtml(n.ownIcon, n.children.length > 0)}</span><span class="sel-ttl" title="${esc(n.path)}">${esc(n.title)}</span><span class="n">${esc(n.fileName)}</span><button class="sel-x" data-unselect="${u}" title="移出选择" aria-label="移出选择">${ICON("x")}</button></li>`;
+      })
+      .join("")}</ul></section>`;
+    if (DATA.editable && readonly) {
+      html += `<div class="p-edit-actions"><p class="p-note">选中项里有内置示例库的提示词，不能移动或删除。</p></div>`;
+    } else if (DATA.editable && fixed) {
+      html += `<div class="p-edit-actions"><p class="p-note">选中项里有整个文件的根分组，不能一起移动或删除；<kbd>⌘</kbd> 点击把它移出选择即可。</p></div>`;
+    } else if (DATA.editable) {
+      html += `<div class="p-edit-actions">`;
+      html += `<button class="btn btn-danger" data-act="delete-many">${ICON("trash")}删除 ${roots.length} 条${total > roots.length ? `（含子项 ${total}）` : ""}<kbd>⌫</kbd></button>`;
+      html += `<button class="btn" data-act="clear-sel">取消选择<kbd>Esc</kbd></button>`;
+      html += `<p class="p-note">拖动任意一条已选中的提示词，可以把它们一起移到另一条的上方、下方或里面；<kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd> 在同级里上下移动。</p>`;
+      html += `</div>`;
+    }
+    swapPanel(html);
+  }
+
   function focusNode(uid) {
     if (editing && !closeEditor()) return;
     lock(uid);
@@ -720,7 +862,7 @@
       if (card.classList.contains("hidden")) continue;
       rows.push(root.uid);
       const walk = (node) => {
-        if (outlineCollapsed.has(node.key)) return;
+        if (outlineCollapsed.has(node.ck)) return;
         for (const child of node.children) {
           if (child.hidden) continue;
           rows.push(child.uid);
@@ -735,12 +877,28 @@
     lock(uid);
     outlineRowFor(uid).scrollIntoView({ block: "nearest" });
   }
+  function revealInOutline(uid) {
+    for (let p = parentOf.get(uid); p; p = parentOf.get(p.uid)) if (p.parent !== null) setCollapsed(p, false);
+  }
+  function extendByKeyboard(dir) {
+    const rows = visibleRows();
+    if (!rows.length) return;
+    if (lockedUid === null) { selectByKeyboard(rows[0]); return; }
+    const anchor = lockedUid;
+    const from = rows.indexOf(rangeEnd !== null ? rangeEnd : anchor);
+    const next = rows[Math.max(0, Math.min(rows.length - 1, from + dir))];
+    const a = rows.indexOf(anchor), b = rows.indexOf(next);
+    if (a < 0 || b < 0) return;
+    selectMany(rows.slice(Math.min(a, b), Math.max(a, b) + 1), anchor);
+    rangeEnd = next;
+    outlineRowFor(next).scrollIntoView({ block: "nearest" });
+  }
   function setCollapsed(node, collapsed) {
     if (!node.children.length || node.parent === null) return;
     const wrap = wrapByUid.get(node.uid);
     wrap.querySelector(":scope > .children").classList.toggle("collapsed", collapsed);
     wrap.firstElementChild.querySelector(".tw").classList.toggle("closed", collapsed);
-    collapsed ? outlineCollapsed.add(node.key) : outlineCollapsed.delete(node.key);
+    collapsed ? outlineCollapsed.add(node.ck) : outlineCollapsed.delete(node.ck);
   }
   function outlineKey(e) {
     const rows = visibleRows();
@@ -754,12 +912,12 @@
     if (current === null || index < 0) return false;
     const node = byUid.get(current);
     if (e.key === "ArrowRight") {
-      if (node.children.length && outlineCollapsed.has(node.key)) setCollapsed(node, false);
+      if (node.children.length && outlineCollapsed.has(node.ck)) setCollapsed(node, false);
       else if (node.children.length) { const first = node.children.find((c) => !c.hidden); if (first) selectByKeyboard(first.uid); }
       return true;
     }
     if (e.key === "ArrowLeft") {
-      if (node.children.length && node.parent !== null && !outlineCollapsed.has(node.key)) setCollapsed(node, true);
+      if (node.children.length && node.parent !== null && !outlineCollapsed.has(node.ck)) setCollapsed(node, true);
       else if (node.parent !== null) selectByKeyboard(node.parent);
       return true;
     }
@@ -841,6 +999,7 @@
     try {
       const res = await api("/api/edit", payload);
       editing = null;
+      lastUndo = null;
       loadModel(res.model, { lockKey: res.focusKey || node.key });
       toast("已保存");
     } catch (error) {
@@ -854,37 +1013,94 @@
     if (editing && !closeEditor()) return;
     try {
       const res = await api("/api/edit", { op: "add", file: node.file, indexPath: node.indexPath, title: "新提示词", content: "" });
-      mapCollapsed.delete(node.key);
-      outlineCollapsed.delete(node.key);
+      mapCollapsed.delete(node.ck);
+      outlineCollapsed.delete(node.ck);
       loadModel(res.model, { lockKey: res.focusKey, edit: true, selectTitle: true });
       toast("已新建，改好标题后保存");
     } catch (error) {
       toast(`新建失败：${error.message}`, { error: true });
     }
   }
-  async function deleteNode(uid) {
-    const node = byUid.get(uid);
-    if (editing && !closeEditor()) return;
+  function itemFor(uid) {
+    const n = byUid.get(uid);
+    return { file: n.file, indexPath: n.indexPath, expect: { title: n.title } };
+  }
+  function offerUndo(label, token, restoreKeys) {
+    lastUndo = token ? { token, restoreKeys } : null;
+    toast(label, token ? { actionLabel: "撤销", action: runUndo } : {});
+  }
+  async function runUndo() {
+    if (!lastUndo) return;
+    const { token, restoreKeys } = lastUndo;
+    lastUndo = null;
     try {
-      const res = await api("/api/edit", { op: "delete", file: node.file, indexPath: node.indexPath, expect: { title: node.title, content: node.ownContent || "" } });
-      const parent = parentOf.get(uid);
-      loadModel(res.model, { lockKey: parent ? parent.key : undefined });
-      const label = node.descendants ? `已删除「${node.title}」及 ${node.descendants} 条子项` : `已删除「${node.title}」`;
-      const token = res.undoToken;
-      toast(label, {
-        actionLabel: "撤销",
-        action: async () => {
-          try {
-            const undone = await api("/api/undo", { token });
-            loadModel(undone.model, { lockKey: node.key });
-            toast("已恢复");
-          } catch (error) {
-            toast(`撤销失败：${error.message}`, { error: true });
-          }
-        },
-      });
+      const res = await api("/api/undo", { token });
+      loadModel(res.model, { selectKeys: restoreKeys });
+      toast("已撤销");
+    } catch (error) {
+      toast(`撤销失败：${error.message}`, { error: true });
+    }
+  }
+  async function deleteNodes(uids) {
+    if (editing && !closeEditor()) return;
+    const list = outermostUids(uids);
+    if (!list.length) return;
+    if (list.some((u) => byUid.get(u).readonly)) { toast("内置示例库的提示词不能删除", { error: true }); return; }
+    if (list.some((u) => byUid.get(u).fileRoot)) { toast("整个文件的根分组不能在这里删除，请直接删除文件", { error: true }); return; }
+    const first = byUid.get(list[0]);
+    const parent = parentOf.get(first.uid);
+    const sub = list.reduce((sum, u) => sum + byUid.get(u).descendants, 0);
+    const restoreKeys = list.map((u) => byUid.get(u).key);
+    const label = list.length === 1
+      ? (sub ? `已删除「${first.title}」及 ${sub} 条子项` : `已删除「${first.title}」`)
+      : `已删除 ${list.length} 条${sub ? `（含 ${sub} 条子项）` : ""}`;
+    try {
+      const res = await api("/api/edit", { op: "delete", items: list.map(itemFor) });
+      loadModel(res.model, { lockKey: list.length === 1 && parent ? parent.key : undefined });
+      offerUndo(label, res.undoToken, restoreKeys);
     } catch (error) {
       toast(`删除失败：${error.message}`, { error: true });
+    }
+  }
+  const WHERE_LABEL = { before: "前面", after: "后面", "inside-first": "里面", "inside-last": "里面" };
+  async function moveNodes(uids, anchorUid, where) {
+    if (editing && !closeEditor()) return;
+    const list = outermostUids(uids);
+    const anchor = byUid.get(anchorUid);
+    if (!list.length || !anchor) return;
+    const restoreKeys = list.map((u) => byUid.get(u).key);
+    const what = list.length === 1 ? `「${byUid.get(list[0]).title}」` : `${list.length} 条`;
+    const label = `已把${what}移到「${anchor.title}」${WHERE_LABEL[where]}`;
+    try {
+      const res = await api("/api/edit", {
+        op: "move",
+        items: list.map(itemFor),
+        target: { file: anchor.file, indexPath: anchor.indexPath, where },
+      });
+      if (!res.changed) { toast("位置没有变化"); return; }
+      loadModel(res.model, { selectKeys: res.focusKeys });
+      offerUndo(label, res.undoToken, restoreKeys);
+    } catch (error) {
+      toast(`移动失败：${error.message}`, { error: true });
+    }
+  }
+  /** Moves the selection one step up or down among its siblings. */
+  function nudge(dir) {
+    const list = outermostUids(currentSelection());
+    if (!list.length) return;
+    const parent = byUid.get(list[0]).parent;
+    if (parent === null || !list.every((u) => byUid.get(u).parent === parent)) {
+      toast("只能在同一层级里上下移动；跨层级请拖拽", { error: true });
+      return;
+    }
+    const siblings = byUid.get(parent).children;
+    const positions = list.map((u) => siblings.findIndex((c) => c.uid === u));
+    if (dir < 0) {
+      const i = Math.min(...positions) - 1;
+      if (i >= 0) moveNodes(list, siblings[i].uid, "before");
+    } else {
+      const i = Math.max(...positions) + 1;
+      if (i < siblings.length) moveNodes(list, siblings[i].uid, "after");
     }
   }
 
@@ -899,18 +1115,21 @@
     const tw = e.target.closest(".tw");
     if (tw && !tw.classList.contains("leaf")) {
       const node = byUid.get(Number(tw.closest(".node").dataset.uid));
-      setCollapsed(node, !outlineCollapsed.has(node.key));
+      setCollapsed(node, !outlineCollapsed.has(node.ck));
       return;
     }
     const row = e.target.closest(".node, .card-head");
     if (!row) return;
     boardWrap.focus({ preventScroll: true });
-    const uid = Number(row.dataset.uid);
-    if (editing && !closeEditor()) return;
-    if (lockedUid === uid) unlock();
-    else lock(uid);
+    clickSelect(Number(row.dataset.uid), e);
   });
   panel.addEventListener("click", (e) => {
+    const unsel = e.target.closest("[data-unselect]");
+    if (unsel) {
+      const uid = Number(unsel.dataset.unselect);
+      selectMany([...selected].filter((u) => u !== uid), lockedUid === uid ? undefined : lockedUid);
+      return;
+    }
     const li = e.target.closest(".p-children li");
     if (li) { focusNode(Number(li.dataset.uid)); return; }
     const ins = e.target.closest("[data-insert]");
@@ -924,13 +1143,114 @@
     }
     const act = e.target.closest("[data-act]");
     if (!act || act.disabled) return;
+    if (act.dataset.act === "delete-many") { deleteNodes(currentSelection()); return; }
+    if (act.dataset.act === "clear-sel") { unlock(); return; }
     const uid = Number(panel.dataset.uid);
     if (act.dataset.act === "edit") showEditor(uid);
     else if (act.dataset.act === "add") addChildTo(uid);
-    else if (act.dataset.act === "delete") deleteNode(uid);
+    else if (act.dataset.act === "delete") deleteNodes([uid]);
     else if (act.dataset.act === "save") saveEditor();
     else if (act.dataset.act === "cancel") closeEditor();
   });
+
+  /* ---------- Drag and drop ---------- */
+  const ghost = $("drag-ghost");
+  function canDropOn(uid) {
+    const node = byUid.get(uid);
+    if (!node || node.readonly) return false;
+    for (let p = node; p; p = parentOf.get(p.uid)) if (dragState.set.has(p.uid)) return false;
+    return true;
+  }
+  /**
+   * Where a drop would land: the top or bottom 30% of a row puts the prompts
+   * before or after it, the middle puts them inside it. The bottom of an
+   * expanded folder means "first child", which is where the line appears.
+   */
+  function dropPlan(e) {
+    const row = e.target.closest(".node, .card-head");
+    if (!row) {
+      // Gutters between nested rows keep the current indicator instead of flickering.
+      if (e.target.closest(".item")) return dragState.plan;
+      const card = e.target.closest(".card");
+      if (!card || !canDropOn(Number(card.dataset.uid))) return null;
+      return { uid: Number(card.dataset.uid), where: "inside-last", el: card, cls: ["drop-into"] };
+    }
+    const uid = Number(row.dataset.uid);
+    if (!canDropOn(uid)) return null;
+    const node = byUid.get(uid);
+    const r = row.getBoundingClientRect();
+    const f = (e.clientY - r.top) / r.height;
+    if (f < 0.3 && !node.fileRoot) return { uid, where: "before", el: row, cls: ["drop-before"] };
+    if (row.classList.contains("card-head")) {
+      if (f > 0.7 && node.children.length) return { uid, where: "inside-first", el: row, cls: ["drop-after"] };
+      return { uid, where: "inside-last", el: row, cls: ["drop-inside"] };
+    }
+    if (f > 0.7) {
+      const open = node.children.length > 0 && !outlineCollapsed.has(node.ck);
+      return open ? { uid, where: "inside-first", el: row, cls: ["drop-after", "drop-child"] } : { uid, where: "after", el: row, cls: ["drop-after"] };
+    }
+    return { uid, where: "inside-last", el: row, cls: ["drop-inside"] };
+  }
+  function showDropPlan(plan) {
+    const prev = dragState.plan;
+    if (prev && plan && prev.el === plan.el && prev.where === plan.where) return;
+    if (prev) prev.el.classList.remove(...prev.cls);
+    clearTimeout(dragState.expandTimer);
+    dragState.plan = plan;
+    if (!plan) return;
+    plan.el.classList.add(...plan.cls);
+    const node = byUid.get(plan.uid);
+    if (plan.where === "inside-last" && node.parent !== null && node.children.length && outlineCollapsed.has(node.ck)) {
+      dragState.expandTimer = setTimeout(() => setCollapsed(node, false), 650);
+    }
+  }
+  function endDrag() {
+    if (!dragState) return;
+    showDropPlan(null);
+    dragState.srcEls.forEach((el) => el.classList.remove("drag-src"));
+    document.body.classList.remove("is-dragging");
+    dragState = null;
+  }
+  board.addEventListener("dragstart", (e) => {
+    const row = e.target.closest && e.target.closest(".node, .card-head");
+    if (!row || !DATA.editable) { e.preventDefault(); return; }
+    if (editing) { e.preventDefault(); toast("先保存或取消正在编辑的内容", { error: true }); return; }
+    const uid = Number(row.dataset.uid);
+    const uids = outermostUids(selected.size > 1 && selected.has(uid) ? [...selected] : [uid]);
+    if (uids.some((u) => byUid.get(u).readonly)) { e.preventDefault(); return; }
+    if (uids.some((u) => byUid.get(u).fileRoot)) { e.preventDefault(); toast("整个文件的根分组不能拖动；可以拖动它里面的提示词", { error: true }); return; }
+    const srcEls = uids.map((u) => (byUid.get(u).parent === null ? board.querySelector(`.card[data-uid="${u}"]`) : wrapByUid.get(u)));
+    dragState = { uids, set: new Set(uids), srcEls, plan: null, expandTimer: 0 };
+    ghost.textContent = uids.length > 1 ? `移动 ${uids.length} 条提示词` : byUid.get(uids[0]).title;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", uids.map((u) => byUid.get(u).title).join("\n"));
+    e.dataTransfer.setDragImage(ghost, 12, 14);
+    requestAnimationFrame(() => {
+      if (!dragState) return;
+      srcEls.forEach((el) => el && el.classList.add("drag-src"));
+      document.body.classList.add("is-dragging");
+    });
+  });
+  boardWrap.addEventListener("dragover", (e) => {
+    if (!dragState) return;
+    const plan = dropPlan(e);
+    showDropPlan(plan);
+    if (!plan) { e.dataTransfer.dropEffect = "none"; return; }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+  boardWrap.addEventListener("dragleave", (e) => {
+    if (dragState && !boardWrap.contains(e.relatedTarget)) showDropPlan(null);
+  });
+  boardWrap.addEventListener("drop", (e) => {
+    if (!dragState) return;
+    e.preventDefault();
+    const plan = dragState.plan;
+    const uids = dragState.uids;
+    endDrag();
+    if (plan) moveNodes(uids, plan.uid, plan.where);
+  });
+  document.addEventListener("dragend", endDrag);
 
   /* ---------- Outline tools ---------- */
   function setAll(collapsed) {
@@ -965,7 +1285,9 @@
     const hint = $("status-hint");
     hint.innerHTML = view === "map"
       ? `<span>滚轮平移</span><span><kbd>⌘</kbd>+滚轮缩放</span><span>拖拽画布</span><span>双击节点放大</span><span>点圆点折叠</span>`
-      : `<span>悬停预览</span><span>点击固定</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span><span><kbd>E</kbd> 编辑</span>`;
+      : DATA && DATA.editable
+        ? `<span>点击固定</span><span><kbd>⌘</kbd>/<kbd>⇧</kbd> 点击多选</span><span>拖拽调整位置</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span><span><kbd>E</kbd> 编辑</span>`
+        : `<span>悬停预览</span><span>点击固定</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span>`;
   }
 
   /* ---------- Mind map: layout ---------- */
@@ -983,7 +1305,7 @@
     for (const file of DATA.files) for (const root of file.roots) VROOT.children.push(root);
     for (const n of nodes) {
       const label = (n.ownIcon && EMOJI.test(n.ownIcon) ? n.ownIcon + " " : "") + shortTitle(n.title);
-      n.mm = { collapsed: mapCollapsed.has(n.key), label, w: Math.ceil(textW(label, n.depth === 0 ? FONT_BOLD : FONT)) + MM.padX * 2, h: MM.h };
+      n.mm = { collapsed: mapCollapsed.has(n.ck), label, w: Math.ceil(textW(label, n.depth === 0 ? FONT_BOLD : FONT)) + MM.padX * 2, h: MM.h };
     }
     VROOT.mm.w = Math.ceil(textW(VROOT.title, FONT_ROOT)) + 30;
     VROOT.mm.h = 34;
@@ -1092,6 +1414,7 @@
       if (n.match) cls.push("match");
       if (n.uid === activeUid) cls.push("active");
       if (n.uid === lockedUid) cls.push("locked");
+      if (selected.size > 1 && selected.has(n.uid)) cls.push("selected");
       let g = `<g class="${cls.join(" ")}" data-uid="${n.uid}" transform="translate(${n.mm.x},${n.mm.y})" style="--c:${n.color}">` +
         `<rect width="${n.mm.w}" height="${n.mm.h}" rx="6"/><text x="${MM.padX}" y="${n.mm.h / 2}">${esc(n.mm.label)}</text>`;
       const shownKids = n.children.filter((c) => !c.hidden).length;
@@ -1155,11 +1478,11 @@
   }
   function expandAncestors(uid) {
     let p = parentOf.get(uid);
-    while (p) { p.mm.collapsed = false; mapCollapsed.delete(p.key); p = parentOf.get(p.uid); }
+    while (p) { p.mm.collapsed = false; mapCollapsed.delete(p.ck); p = parentOf.get(p.uid); }
   }
   function setMapLevel(level) {
     mapCollapsed.clear();
-    for (const n of nodes) if (n.children.length) { n.mm.collapsed = n.depth >= level - 1; if (n.mm.collapsed) mapCollapsed.add(n.key); }
+    for (const n of nodes) if (n.children.length) { n.mm.collapsed = n.depth >= level - 1; if (n.mm.collapsed) mapCollapsed.add(n.ck); }
     renderMap();
     fitMap();
   }
@@ -1197,16 +1520,13 @@
     if (badge) {
       const n = byUid.get(Number(badge.closest(".mm-node").dataset.uid));
       n.mm.collapsed = !n.mm.collapsed;
-      n.mm.collapsed ? mapCollapsed.add(n.key) : mapCollapsed.delete(n.key);
+      n.mm.collapsed ? mapCollapsed.add(n.ck) : mapCollapsed.delete(n.ck);
       renderMap();
       return;
     }
     const g = e.target.closest(".mm-node");
     if (!g) return;
-    const uid = Number(g.dataset.uid);
-    if (editing && !closeEditor()) return;
-    if (lockedUid === uid) unlock();
-    else lock(uid);
+    clickSelect(Number(g.dataset.uid), e);
   });
   mapSvg.addEventListener("dblclick", (e) => {
     const g = e.target.closest(".mm-node");
@@ -1290,6 +1610,20 @@
       if (e.key === "Escape") { e.preventDefault(); closeEditor(); return; }
       return;
     }
+    if (!typing) {
+      const arrow = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        if (lastUndo) { e.preventDefault(); runUndo(); }
+        return;
+      }
+      if (arrow && e.altKey && !e.metaKey && !e.ctrlKey && DATA.editable) { e.preventDefault(); nudge(arrow); return; }
+      if (arrow && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && view === "outline") { e.preventDefault(); extendByKeyboard(arrow); return; }
+      if ((e.key === "Backspace" || e.key === "Delete") && !e.altKey && !e.ctrlKey && DATA.editable && currentSelection().length) {
+        e.preventDefault();
+        deleteNodes(currentSelection());
+        return;
+      }
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "/" && !typing) { e.preventDefault(); q.focus(); q.select(); return; }
     if (typing && document.activeElement !== q) return;
@@ -1309,7 +1643,7 @@
       return;
     }
     if (e.key === "0" && view === "map") { fitMap(); return; }
-    if ((e.key === "e" || e.key === "E") && DATA.editable && lockedUid !== null && !byUid.get(lockedUid).readonly) { e.preventDefault(); showEditor(lockedUid); return; }
+    if ((e.key === "e" || e.key === "E") && DATA.editable && lockedUid !== null && selected.size <= 1 && !byUid.get(lockedUid).readonly) { e.preventDefault(); showEditor(lockedUid); return; }
     if (e.key === "Enter" && activeUid !== null) { e.preventDefault(); if (lockedUid === activeUid) unlock(); else lock(activeUid); return; }
     if (view === "outline" && outlineKey(e)) e.preventDefault();
   });
