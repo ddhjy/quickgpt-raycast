@@ -6,7 +6,8 @@
  * library and applies edits to the `.hjson` files through the surgical HJSON
  * editor. It binds to 127.0.0.1 only, requires a per-launch token on every
  * request, backs up a file before each write, and exits after a period of
- * inactivity.
+ * inactivity. It also reports the git status of the prompt directories and
+ * runs the user's configured commit command on request.
  *
  * CLI usage (what the extension spawns):
  *   node server.js --sources '["/path/to/prompts"]' --editable-roots '["/path/to/prompts"]' --state <dir>
@@ -27,6 +28,13 @@ import {
   type PromptShadow,
 } from "../utils/hjson-edit";
 import {
+  collectGitOverview,
+  defaultShell,
+  runShellCommand,
+  type GitOverview,
+  type ShellRunResult,
+} from "../utils/git-status";
+import {
   buildPromptMapModel,
   findPromptMapNode,
   isInsideAny,
@@ -36,10 +44,13 @@ import {
 import { renderPromptMapPage } from "../utils/prompt-map-page";
 
 export const SERVER_STATE_FILE = "server.json";
+export const GIT_CONFIG_FILE = "git.json";
 export const TOKEN_HEADER = "x-prompt-map-token";
 const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const UNDO_TTL_MS = 10 * 60 * 1000;
 const MAX_BACKUPS = 200;
+const COMMIT_COMMAND_TIMEOUT_MS = 120 * 1000;
+const MAX_COMMIT_COMMAND_LENGTH = 4000;
 
 export interface PromptMapServerOptions {
   /** Directories or files the library is loaded from. */
@@ -57,6 +68,22 @@ export interface PromptMapServerOptions {
   /** Called when the idle timeout elapses; the CLI exits the process. */
   onIdle?: () => void;
   log?: (message: string) => void;
+  /** Time limit for the user's commit command. */
+  commitTimeoutMs?: number;
+}
+
+/** Settings the page can change; persisted as `git.json` in the state directory. */
+export interface PromptMapGitConfig {
+  /** Shell command that commits (and optionally pushes) the prompt repository; empty when unset. */
+  commitCommand: string;
+}
+
+/** `/api/git` payload: repository status plus the commit configuration. */
+export interface PromptMapGitStatus extends GitOverview {
+  commitCommand: string;
+  shell: string;
+  /** True while a commit command is running. */
+  running: boolean;
 }
 
 export interface PromptMapServerState {
@@ -167,6 +194,22 @@ export function backupFile(filePath: string, backupDir: string): string {
   fs.copyFileSync(filePath, target);
   pruneBackups(backupDir);
   return target;
+}
+
+export function readGitConfig(stateDir: string): PromptMapGitConfig {
+  try {
+    const parsed = JSON.parse(
+      fs.readFileSync(path.join(stateDir, GIT_CONFIG_FILE), "utf8"),
+    ) as Partial<PromptMapGitConfig>;
+    return { commitCommand: typeof parsed.commitCommand === "string" ? parsed.commitCommand : "" };
+  } catch {
+    return { commitCommand: "" };
+  }
+}
+
+export function writeGitConfig(stateDir: string, config: PromptMapGitConfig): void {
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(path.join(stateDir, GIT_CONFIG_FILE), JSON.stringify(config, null, 2), "utf8");
 }
 
 export async function startPromptMapServer(options: PromptMapServerOptions): Promise<RunningPromptMapServer> {
@@ -350,6 +393,56 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
     undoStore.delete(undoToken);
   };
 
+  /* ---------- Git ---------- */
+  let commitRunning = false;
+
+  const gitStatus = async (): Promise<PromptMapGitStatus> => ({
+    ...(await collectGitOverview(options.editableRoots)),
+    commitCommand: readGitConfig(options.stateDir).commitCommand,
+    shell: defaultShell(),
+    running: commitRunning,
+  });
+
+  const saveGitConfig = (payload: { commitCommand?: unknown }): void => {
+    if (!payload || typeof payload !== "object") throw new HttpError(400, "Bad payload");
+    const raw = payload.commitCommand;
+    if (raw !== undefined && typeof raw !== "string") throw new HttpError(400, "commitCommand must be a string");
+    const commitCommand = (raw ?? "").trim();
+    if (commitCommand.length > MAX_COMMIT_COMMAND_LENGTH) throw new HttpError(400, "提交命令太长了");
+    writeGitConfig(options.stateDir, { commitCommand });
+    log(
+      commitCommand
+        ? `git config: commit command set (${commitCommand.length} chars)`
+        : "git config: commit command cleared",
+    );
+  };
+
+  /** Runs the configured commit command in one of the detected prompt repositories. */
+  const runCommit = async (payload: { repo?: unknown }): Promise<ShellRunResult> => {
+    if (!payload || typeof payload !== "object") throw new HttpError(400, "Bad payload");
+    if (commitRunning) throw new HttpError(409, "已有一条提交命令在运行，请稍候");
+    const { commitCommand } = readGitConfig(options.stateDir);
+    if (!commitCommand) throw new HttpError(400, "还没有设置提交命令");
+    const requested = path.resolve(String(payload.repo ?? ""));
+
+    // Claim the slot before the first await so concurrent requests cannot both pass the check above.
+    commitRunning = true;
+    try {
+      const overview = await collectGitOverview(options.editableRoots);
+      const target = overview.repos.find((repo) => path.resolve(repo.root) === requested);
+      if (!target) throw new HttpError(403, "这个目录不是提示词所在的 Git 仓库");
+      log(`git commit command start in ${target.root}`);
+      const result = await runShellCommand(commitCommand, {
+        cwd: target.root,
+        timeoutMs: options.commitTimeoutMs ?? COMMIT_COMMAND_TIMEOUT_MS,
+      });
+      log(`git commit command exit=${String(result.exitCode)} timedOut=${result.timedOut} in ${result.durationMs}ms`);
+      return result;
+    } finally {
+      commitRunning = false;
+    }
+  };
+
   const server = http.createServer(async (req, res) => {
     touch();
     const url = new URL(req.url ?? "/", `http://${host}`);
@@ -403,6 +496,20 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
         const payload = JSON.parse(await readBody(req)) as { token?: string };
         applyUndo(String(payload.token ?? ""));
         sendJson(res, 200, { ok: true, model: buildModel() });
+        return;
+      }
+      if (req.method === "GET" && url.pathname === "/api/git") {
+        sendJson(res, 200, { ok: true, git: await gitStatus() });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/git/config") {
+        saveGitConfig(JSON.parse(await readBody(req)) as { commitCommand?: unknown });
+        sendJson(res, 200, { ok: true, git: await gitStatus() });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/git/commit") {
+        const result = await runCommit(JSON.parse(await readBody(req)) as { repo?: unknown });
+        sendJson(res, 200, { ok: true, result, git: await gitStatus() });
         return;
       }
       throw new HttpError(404, "Not found");

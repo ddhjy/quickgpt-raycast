@@ -1,8 +1,16 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import * as hjson from "hjson";
-import { startPromptMapServer, TOKEN_HEADER, type RunningPromptMapServer } from "../prompt-map/server";
+import {
+  GIT_CONFIG_FILE,
+  startPromptMapServer,
+  TOKEN_HEADER,
+  type PromptMapGitStatus,
+  type RunningPromptMapServer,
+} from "../prompt-map/server";
+import type { ShellRunResult } from "../utils/git-status";
 
 interface ApiResponse {
   ok: boolean;
@@ -206,5 +214,197 @@ describe("prompt-map server", () => {
     const response = await post("/api/edit", { op: "update", file: outsideFile, indexPath: [0, 0], content: "x" });
     expect(response.status).toBe(403);
     expect(fs.readFileSync(outsideFile, "utf8")).toBe(LIBRARY);
+  });
+});
+
+interface GitApiResponse {
+  ok: boolean;
+  error?: string;
+  git: PromptMapGitStatus;
+  result?: ShellRunResult;
+}
+
+const hasGit = (() => {
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+(hasGit ? describe : describe.skip)("prompt-map server git", () => {
+  let dir: string;
+  let repoDir: string;
+  let repoRoot: string;
+  let libraryFile: string;
+  let stateDir: string;
+  let server: RunningPromptMapServer;
+  const savedEnv: Record<string, string | undefined> = {};
+
+  const git = (...args: string[]): string =>
+    execFileSync("git", args, { cwd: repoDir, env: process.env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const headers = () => ({ "Content-Type": "application/json", [TOKEN_HEADER]: server.token });
+  const post = (route: string, body: unknown) =>
+    fetch(`http://127.0.0.1:${server.port}${route}`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify(body),
+    });
+  const getGit = async (): Promise<GitApiResponse> =>
+    (await (await fetch(`http://127.0.0.1:${server.port}/api/git`, { headers: headers() })).json()) as GitApiResponse;
+  const readGit = async (response: Response): Promise<GitApiResponse> => (await response.json()) as GitApiResponse;
+
+  beforeAll(async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "quickgpt-map-git-"));
+    // The server runs git with the process environment, so isolate it from the developer's configuration.
+    const isolation: Record<string, string> = {
+      GIT_CONFIG_GLOBAL: path.join(dir, "gitconfig"),
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "Test",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test",
+      GIT_COMMITTER_EMAIL: "test@example.com",
+    };
+    for (const [key, value] of Object.entries(isolation)) {
+      savedEnv[key] = process.env[key];
+      process.env[key] = value;
+    }
+    fs.writeFileSync(isolation.GIT_CONFIG_GLOBAL, "");
+
+    repoDir = path.join(dir, "repo");
+    const libraryDir = path.join(repoDir, "prompts");
+    stateDir = path.join(dir, "state");
+    fs.mkdirSync(libraryDir, { recursive: true });
+    libraryFile = path.join(libraryDir, "code.hjson");
+    fs.writeFileSync(libraryFile, LIBRARY);
+    git("init", "-q");
+    git("symbolic-ref", "HEAD", "refs/heads/main");
+    git("add", "-A");
+    git("commit", "-q", "-m", "init");
+    repoRoot = fs.realpathSync(repoDir);
+
+    const templatePath = path.join(dir, "index.html");
+    fs.writeFileSync(
+      templatePath,
+      '<html><script id="d" type="application/json">/*__PROMPT_MAP_DATA__*/</script></html>',
+    );
+    server = await startPromptMapServer({
+      sources: [libraryDir],
+      editableRoots: [libraryDir],
+      stateDir,
+      templatePath,
+      port: 0,
+      idleTimeoutMs: 0,
+      commitTimeoutMs: 10_000,
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    for (const [key, value] of Object.entries(savedEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("requires the token", async () => {
+    expect((await fetch(`http://127.0.0.1:${server.port}/api/git`)).status).toBe(403);
+  });
+
+  it("reports the repository and marks files edited through the page", async () => {
+    const clean = await getGit();
+    expect(clean.ok).toBe(true);
+    expect(clean.git.available).toBe(true);
+    expect(clean.git.commitCommand).toBe("");
+    expect(clean.git.running).toBe(false);
+    expect(path.isAbsolute(clean.git.shell)).toBe(true);
+    expect(clean.git.unmanaged).toEqual([]);
+    expect(clean.git.repos).toHaveLength(1);
+    expect(clean.git.repos[0]).toMatchObject({ root: repoRoot, name: "repo", head: "main", clean: true, changes: [] });
+    expect(clean.git.repos[0].lastCommit?.subject).toBe("init");
+
+    const edited = await post("/api/edit", {
+      op: "update",
+      file: libraryFile,
+      indexPath: [0, 0],
+      expect: { title: "Plan" },
+      content: "Body {{i}} edited",
+    });
+    expect(edited.status).toBe(200);
+
+    const dirty = await getGit();
+    expect(dirty.git.repos[0].clean).toBe(false);
+    expect(dirty.git.repos[0].changes).toHaveLength(1);
+    // absPath uses the configured directory so the page can match it against its own file paths.
+    expect(dirty.git.repos[0].changes[0]).toMatchObject({
+      path: "prompts/code.hjson",
+      kind: "modified",
+      staged: false,
+      unstaged: true,
+      absPath: libraryFile,
+    });
+  });
+
+  it("refuses to commit without a command and validates the configuration", async () => {
+    const missing = await post("/api/git/commit", { repo: repoRoot });
+    expect(missing.status).toBe(400);
+    expect((await readGit(missing)).error).toContain("提交命令");
+
+    expect((await post("/api/git/config", { commitCommand: 5 })).status).toBe(400);
+    expect((await post("/api/git/config", { commitCommand: "x".repeat(4001) })).status).toBe(400);
+    expect(fs.existsSync(path.join(stateDir, GIT_CONFIG_FILE))).toBe(false);
+  });
+
+  it("stores the commit command and runs it in the repository root", async () => {
+    const command = 'git add -A && git -c commit.gpgsign=false commit -q -m "map commit" && echo "ran in $(pwd -P)"';
+    const saved = await readGit(await post("/api/git/config", { commitCommand: `  ${command}  ` }));
+    expect(saved.ok).toBe(true);
+    expect(saved.git.commitCommand).toBe(command);
+    expect(JSON.parse(fs.readFileSync(path.join(stateDir, GIT_CONFIG_FILE), "utf8"))).toEqual({
+      commitCommand: command,
+    });
+
+    const outside = await post("/api/git/commit", { repo: dir });
+    expect(outside.status).toBe(403);
+    expect(git("log", "--oneline").trim().split("\n")).toHaveLength(1);
+
+    const response = await post("/api/git/commit", { repo: repoRoot });
+    expect(response.status).toBe(200);
+    const body = await readGit(response);
+    expect(body.ok).toBe(true);
+    expect(body.result).toMatchObject({ exitCode: 0, timedOut: false, cwd: repoRoot, command });
+    expect(body.result?.stdout).toContain(`ran in ${repoRoot}`);
+    expect(body.git.running).toBe(false);
+    expect(body.git.repos[0].clean).toBe(true);
+    expect(body.git.repos[0].changes).toEqual([]);
+    expect(body.git.repos[0].lastCommit?.subject).toBe("map commit");
+    expect(git("log", "--oneline").trim().split("\n")).toHaveLength(2);
+  }, 20_000);
+
+  it("returns the output of a failing command without failing the request", async () => {
+    await post("/api/git/config", { commitCommand: "echo boom 1>&2; exit 3" });
+    const body = await readGit(await post("/api/git/commit", { repo: repoRoot }));
+    expect(body.ok).toBe(true);
+    expect(body.result?.exitCode).toBe(3);
+    expect(body.result?.stderr).toContain("boom");
+  }, 20_000);
+
+  it("runs one command at a time and reports it as running", async () => {
+    await post("/api/git/config", { commitCommand: "sleep 1" });
+    const first = post("/api/git/commit", { repo: repoRoot });
+    const second = post("/api/git/commit", { repo: repoRoot });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect((await getGit()).git.running).toBe(true);
+    const statuses = (await Promise.all([first, second])).map((response) => response.status).sort();
+    expect(statuses).toEqual([200, 409]);
+    expect((await getGit()).git.running).toBe(false);
+  }, 20_000);
+
+  it("clears the command again", async () => {
+    const cleared = await readGit(await post("/api/git/config", { commitCommand: "" }));
+    expect(cleared.git.commitCommand).toBe("");
+    expect((await post("/api/git/commit", { repo: repoRoot })).status).toBe(400);
   });
 });

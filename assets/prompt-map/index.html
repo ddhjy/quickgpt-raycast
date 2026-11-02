@@ -25,6 +25,8 @@
     --danger-bg: oklch(0.95 0.03 25);
     --focus: oklch(0.62 0.17 255);
     --ok: oklch(0.62 0.16 150);
+    --warn: oklch(0.68 0.16 60);
+    --info: oklch(0.6 0.15 250);
     --on-ink: oklch(0.985 0.003 250);
     --shadow-pop: 0 8px 24px oklch(0 0 0 / 0.12), 0 1px 2px oklch(0 0 0 / 0.08);
     --ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
@@ -56,6 +58,8 @@
       --danger: oklch(0.72 0.17 25);
       --danger-bg: oklch(0.30 0.05 25);
       --ok: oklch(0.72 0.16 150);
+      --warn: oklch(0.78 0.15 70);
+      --info: oklch(0.72 0.13 250);
       --on-ink: oklch(0.17 0.008 260);
       --shadow-pop: 0 8px 24px oklch(0 0 0 / 0.45), 0 1px 2px oklch(0 0 0 / 0.4);
     }
@@ -340,6 +344,67 @@
   #toast .toast-act:hover { background: oklch(from var(--on-ink) l c h / 0.15); }
   #toast .toast-act:empty { display: none; }
 
+  /* ---------- Git ---------- */
+  .git-ind {
+    display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 99px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); font: 500 11px var(--mono); cursor: pointer; white-space: nowrap; max-width: 360px; flex: none;
+    transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  }
+  .git-ind:hover, .git-ind[aria-expanded="true"] { background: var(--hover); color: var(--ink); border-color: var(--border); }
+  .git-ind .ic { width: 12px; height: 12px; }
+  .git-ind .git-ind-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); display: none; }
+  .git-ind.dirty .git-ind-dot { display: inline-block; }
+  .git-ind.busy .ic { animation: spin 0.9s linear infinite; }
+  .git-ind span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .gs {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 3px;
+    font: 700 9.5px/1 var(--mono); color: #fff; flex: none; letter-spacing: 0;
+  }
+  .gs[hidden] { display: none; }
+  .gs-M, .gs-T { background: var(--warn); }
+  .gs-A, .gs-U { background: var(--ok); }
+  .gs-D, .gs-X { background: var(--danger); }
+  .gs-R, .gs-C { background: var(--info); }
+  .card-head .gs { margin-left: -2px; }
+  .pill.gs-pill { gap: 5px; padding-left: 4px; }
+  .git-pop { width: 460px; max-height: min(72vh, 680px); overflow: auto; }
+  .git-pop .git-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .git-pop .git-top h3 { margin: 0; }
+  .git-pop .git-top .btn { width: 24px; height: 24px; }
+  .git-pop .p-note { margin: 6px 0 0; }
+  .git-pop code { font: 11px var(--mono); background: var(--surface-2); padding: 0 4px; border-radius: 3px; }
+  .git-repo { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+  .git-repo + .git-repo { margin-top: 8px; }
+  .git-repo-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .git-repo-name { font-weight: 650; font-size: 13px; color: var(--ink); flex: 1; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .git-repo .pill { background: var(--surface); gap: 4px; }
+  .git-repo .pill .ic { width: 11px; height: 11px; }
+  .git-repo .pill.ahead { color: var(--ok); }
+  .git-repo .pill.behind { color: var(--warn); }
+  .git-last { font: 11px var(--mono); color: var(--muted); margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .git-files { list-style: none; margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto; }
+  .git-files li { display: flex; align-items: center; gap: 7px; padding: 3px 6px; border-radius: 4px; font: 12px var(--mono); color: var(--ink-2); }
+  .git-files li.lib { cursor: pointer; color: var(--ink); }
+  .git-files li.lib:hover { background: var(--hover); }
+  .git-files .gf-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .git-files .gf-from { color: var(--muted); max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .git-files .gf-stage { font-size: 10px; color: var(--muted); flex: none; }
+  .git-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; min-height: 28px; }
+  .git-actions .git-commit { margin-left: auto; }
+  .git-actions .p-note { margin: 0; }
+  .git-clean { color: var(--ok); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .git-cmd-row { display: flex; gap: 6px; }
+  .git-cmd-row .input { flex: 1; min-width: 0; height: 30px; padding: 0 10px; font: 12px var(--mono); }
+  .git-out-head { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 11.5px; color: var(--muted); gap: 8px; }
+  .git-out-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .git-out-head .btn { width: 22px; height: 22px; }
+  .git-out {
+    margin: 6px 0 0; padding: 8px 10px; max-height: 200px; overflow: auto; background: var(--surface-2); border-radius: var(--r-md);
+    font: 11px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; color: var(--ink-2);
+  }
+  .git-out.fail { color: var(--danger); background: var(--danger-bg); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   @media (max-width: 1100px) {
     .top { grid-template-columns: auto minmax(200px, 1fr) auto; gap: 10px; }
     .brand-meta { display: none; }
@@ -373,6 +438,11 @@
   <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></symbol>
   <symbol id="i-x" viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></symbol>
   <symbol id="i-undo" viewBox="0 0 16 16"><path d="M6 3.5 3 6.5l3 3"/><path d="M3 6.5h6.5a3.25 3.25 0 0 1 0 6.5H8"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.6"/><circle cx="4.5" cy="12.5" r="1.6"/><circle cx="11.5" cy="5" r="1.6"/><path d="M4.5 5.1v5.8M11.5 6.6c0 3-7 1.6-7 4.3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13.2 2.8v3h-3"/></symbol>
+  <symbol id="i-commit" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.6"/><path d="M2.5 8h2.9M10.6 8h2.9"/></symbol>
+  <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 13V3.5M4.5 7 8 3.5 11.5 7"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M8 3v9.5M4.5 9 8 12.5 11.5 9"/></symbol>
 </svg>
 
 <header class="top">
@@ -452,9 +522,30 @@
 <footer class="status">
   <span id="status-mode"><i class="dot"></i>只读</span>
   <span class="mono" id="status-source"></span>
+  <button class="git-ind" id="git-btn" popovertarget="git-pop" title="Git 状态与提交" aria-expanded="false" hidden>
+    <svg class="ic"><use href="#i-branch"/></svg><span id="git-ind-text"></span><i class="git-ind-dot"></i>
+  </button>
   <span class="status-hint" id="status-hint"></span>
   <button class="btn zoom-btn map-only" id="mm-zoom" title="适应窗口">100%</button>
 </footer>
+
+<div id="git-pop" popover class="pop git-pop" aria-label="Git">
+  <div class="git-top">
+    <h3>Git</h3>
+    <button class="btn icon-btn" id="git-refresh" title="刷新状态"><svg class="ic"><use href="#i-refresh"/></svg></button>
+  </div>
+  <div id="git-repos"></div>
+  <h3 style="margin-top:14px">提交命令</h3>
+  <div class="git-cmd-row">
+    <input id="git-cmd" class="input" placeholder='git add -A && git commit -m "update prompts" && git push' spellcheck="false" autocomplete="off" aria-label="提交命令">
+    <button class="btn" id="git-cmd-save">保存</button>
+  </div>
+  <p class="p-note" id="git-cmd-note">保存后每个仓库会出现「提交」按钮，一键在仓库根目录执行这条命令。命令通过登录 shell 运行，不能有交互（commit 请带上 -m）。</p>
+  <div id="git-out-wrap" hidden>
+    <div class="git-out-head"><span id="git-out-title"></span><button class="btn icon-btn" id="git-out-close" title="关闭输出"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <pre class="git-out" id="git-out"></pre>
+  </div>
+</div>
 <div id="drag-ghost" aria-hidden="true"></div>
 <div id="toast"><span id="toast-text"></span><button class="toast-act" id="toast-act"></button></div>
 
@@ -596,6 +687,7 @@
           `<i class="bdot"></i><span class="ico">${iconHtml(root.icon, true)}</span>` +
           `<span class="ttl" title="${esc(root.title)}">${esc(root.title)}</span>` +
           `<span class="file" title="${esc(file.path)}">${esc(file.name)}</span>` +
+          `<b class="gs" data-gfile="${esc(file.path)}" hidden></b>` +
           `<span class="cnt">${root.descendants}</span>`;
         card.appendChild(head);
         if (root.children.length) {
@@ -622,6 +714,9 @@
     mapDirty = true;
     renderEmptyPanel();
     applySearch({ fit: false });
+    applyGitBadges();
+    // Every reload follows a write, so the git status is stale too.
+    scheduleGit(150);
     if (view === "map") renderMap();
     if (opts.lockKey && byKey.has(opts.lockKey)) {
       const uid = byKey.get(opts.lockKey).uid;
@@ -704,6 +799,8 @@
     const meta = [`<span class="pill">${esc(node.fileName)}.hjson${node.line ? ":" + node.line : ""}</span>`, `<span class="pill">id ${esc(node.id)}</span>`];
     if (node.actions.length) meta.push(`<span class="pill">actions ${esc(node.actions.join(", "))}</span>`);
     if (isFolder) meta.push(`<span class="pill">${node.descendants} 条子项</span>`);
+    const gitChange = gitChangeFor(node.file);
+    if (gitChange) meta.push(`<span class="pill gs-pill" title="Git 工作区状态">${gsBadge(gitChange)}${esc(gsLabel(gitChange))}</span>`);
     html += `<div class="p-meta">${meta.join("")}</div>`;
 
     if (node.prefix.length) html += `<section class="p-sec"><div class="p-label">前缀</div>${kvRows(node.prefix)}</section>`;
@@ -1650,6 +1747,255 @@
   window.addEventListener("beforeunload", (e) => {
     if (editing && isDirty()) { e.preventDefault(); e.returnValue = ""; }
   });
+
+  /* ---------- Git ---------- */
+  const gitBtn = $("git-btn"), gitIndText = $("git-ind-text"), gitPop = $("git-pop"), gitRepos = $("git-repos"), gitCmd = $("git-cmd");
+  const GS = {
+    modified: ["M", "已修改"], added: ["A", "已新增"], deleted: ["D", "已删除"], renamed: ["R", "已重命名"], copied: ["C", "已复制"],
+    typechange: ["T", "类型变更"], untracked: ["U", "未跟踪"], conflicted: ["X", "有冲突"],
+  };
+  const GIT_POLL_MS = 30000;
+  let GIT = null, gitBusy = false, gitLoading = false, gitManual = false, gitTimer = 0, gitLastRun = null, gitSignature = "";
+  let gitFileIndex = new Map(), gitDirIndex = [];
+  const gitEnabled = () => Boolean(DATA && DATA.editable && TOKEN);
+
+  async function apiGet(path) {
+    const res = await fetch(path, { headers: { "X-Prompt-Map-Token": TOKEN } });
+    const body = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+    if (!res.ok || !body.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  }
+  function gsCode(change) { return (GS[change.kind] || ["?"])[0]; }
+  function gsLabel(change) {
+    const label = (GS[change.kind] || [null, change.kind])[1];
+    if (change.kind === "untracked" || change.kind === "conflicted") return label;
+    return change.staged && !change.unstaged ? `${label} · 已暂存` : label;
+  }
+  function gsBadge(change) { return `<b class="gs gs-${gsCode(change)}" title="${esc(gsLabel(change))}">${gsCode(change)}</b>`; }
+  function indexGit() {
+    gitFileIndex = new Map();
+    gitDirIndex = [];
+    if (!GIT) return;
+    for (const repo of GIT.repos) for (const change of repo.changes) {
+      gitFileIndex.set(change.absPath, change);
+      // An untracked directory stands for every file inside it.
+      if (change.kind === "untracked" && change.path.endsWith("/")) gitDirIndex.push(change);
+    }
+  }
+  /** The git change covering a library file, if any. */
+  function gitChangeFor(file) {
+    if (!GIT || !file) return null;
+    const direct = gitFileIndex.get(file);
+    if (direct) return direct;
+    return gitDirIndex.find((change) => file.startsWith(change.absPath)) || null;
+  }
+  function relTime(seconds) {
+    const diff = Math.max(0, Date.now() / 1000 - seconds);
+    if (diff < 60) return "刚刚";
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+    if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} 天前`;
+    return new Date(seconds * 1000).toLocaleDateString();
+  }
+  function applyGitBadges() {
+    board.querySelectorAll(".card-head .gs").forEach((el) => {
+      const change = gitChangeFor(el.dataset.gfile);
+      if (!change) { el.hidden = true; return; }
+      el.hidden = false;
+      el.textContent = gsCode(change);
+      el.className = `gs gs-${gsCode(change)}`;
+      el.title = `Git：${gsLabel(change)}`;
+    });
+  }
+  function renderGitIndicator() {
+    if (!gitEnabled() || !GIT || (!GIT.repos.length && !GIT.error)) { gitBtn.hidden = true; return; }
+    gitBtn.hidden = false;
+    const total = GIT.repos.reduce((sum, repo) => sum + repo.changes.length, 0);
+    let text;
+    if (!GIT.repos.length) text = "Git 不可用";
+    else if (GIT.repos.length === 1) {
+      const repo = GIT.repos[0];
+      text = repo.head || (repo.detached ? "HEAD 分离" : "无提交");
+      if (repo.ahead) text += ` ↑${repo.ahead}`;
+      if (repo.behind) text += ` ↓${repo.behind}`;
+      text += total ? ` · ${total} 处未提交` : " · 干净";
+    } else text = `${GIT.repos.length} 个仓库${total ? ` · ${total} 处未提交` : " · 干净"}`;
+    const running = gitBusy || Boolean(GIT.running);
+    if (running) text = "提交中…";
+    gitIndText.textContent = text;
+    gitBtn.title = GIT.repos.length ? GIT.repos.map((repo) => `${repo.name}: ${shortHome(repo.root)}`).join("\n") : GIT.error || "Git";
+    gitBtn.classList.toggle("dirty", total > 0 && !running);
+    // Background polls stay silent; only commits and manual refreshes spin the icon.
+    gitBtn.classList.toggle("busy", gitBusy || (gitLoading && gitManual));
+  }
+  function repoHtml(repo) {
+    const pills = [`<span class="pill" title="当前分支">${ICON("branch")}${esc(repo.head || (repo.detached ? "HEAD 分离" : "尚无提交"))}</span>`];
+    if (repo.upstream) {
+      if (repo.ahead) pills.push(`<span class="pill ahead" title="领先 ${esc(repo.upstream)} ${repo.ahead} 个提交">${ICON("up")}${repo.ahead}</span>`);
+      if (repo.behind) pills.push(`<span class="pill behind" title="落后 ${esc(repo.upstream)} ${repo.behind} 个提交">${ICON("down")}${repo.behind}</span>`);
+      if (!repo.ahead && !repo.behind) pills.push(`<span class="pill" title="与 ${esc(repo.upstream)} 一致">已同步</span>`);
+    } else if (!repo.initial) pills.push(`<span class="pill" title="当前分支没有设置上游">无上游</span>`);
+    let html = `<section class="git-repo" data-repo="${esc(repo.root)}">`;
+    html += `<div class="git-repo-head"><span class="git-repo-name" title="${esc(repo.root)}">${esc(repo.name)}</span>${pills.join("")}</div>`;
+    if (repo.error) html += `<p class="p-note">${esc(repo.error)}</p>`;
+    if (repo.lastCommit) {
+      html += `<div class="git-last" title="${esc(repo.lastCommit.author)} · ${esc(new Date(repo.lastCommit.timestamp * 1000).toLocaleString())}">最近提交 ${relTime(repo.lastCommit.timestamp)} · ${esc(repo.lastCommit.shortHash)} ${esc(repo.lastCommit.subject)}</div>`;
+    }
+    if (repo.changes.length) {
+      html += `<ul class="git-files">${repo.changes.map((change) => {
+        const lib = Boolean(libraryFileFor(change));
+        return `<li class="${lib ? "lib" : ""}" data-file="${esc(change.absPath)}" title="${esc(change.path)}${lib ? "（点击定位）" : ""}">${gsBadge(change)}` +
+          `<span class="gf-path">${esc(change.path)}</span>${change.from ? `<span class="gf-from" title="${esc(change.from)}">← ${esc(change.from)}</span>` : ""}` +
+          `${change.staged && !change.unstaged ? `<span class="gf-stage">已暂存</span>` : ""}</li>`;
+      }).join("")}</ul>`;
+    }
+    html += `<div class="git-actions">`;
+    html += repo.changes.length
+      ? `<span class="p-note">${repo.changes.length} 处未提交的修改</span>`
+      : `<span class="git-clean">${ICON("check")}工作区干净${repo.ahead ? "，有未推送的提交" : ""}</span>`;
+    if (GIT.commitCommand) {
+      const running = gitBusy || Boolean(GIT.running);
+      html += `<button class="btn btn-primary git-commit" data-repo="${esc(repo.root)}"${running ? " disabled" : ""}>${ICON("commit")}${running ? "运行中…" : "提交"}</button>`;
+    }
+    html += `</div></section>`;
+    return html;
+  }
+  /** The library file a git change refers to (directly or through an untracked directory). */
+  function libraryFileFor(change) {
+    if (!DATA) return null;
+    const direct = DATA.files.find((file) => file.path === change.absPath);
+    if (direct) return direct;
+    if (change.kind === "untracked" && change.path.endsWith("/")) return DATA.files.find((file) => file.path.startsWith(change.absPath)) || null;
+    return null;
+  }
+  function renderGitOutput() {
+    const wrap = $("git-out-wrap");
+    if (!gitLastRun) { wrap.hidden = true; return; }
+    const run = gitLastRun;
+    const ok = run.exitCode === 0 && !run.timedOut;
+    wrap.hidden = false;
+    const state = ok ? "已执行" : run.timedOut ? "超时，已终止" : `退出码 ${run.exitCode === null ? (run.signal || "?") : run.exitCode}`;
+    $("git-out-title").textContent = `${state} · ${(run.durationMs / 1000).toFixed(1)}s · ${shortHome(run.cwd)}`;
+    $("git-out-title").title = run.command;
+    const out = $("git-out");
+    out.textContent = [run.stdout, run.stderr].map((s) => (s || "").trim()).filter(Boolean).join("\n") || "（没有输出）";
+    out.classList.toggle("fail", !ok);
+  }
+  function renderGitPopover() {
+    if (!GIT) gitRepos.innerHTML = `<p class="p-note">正在读取 Git 状态…</p>`;
+    else if (!GIT.repos.length) gitRepos.innerHTML = `<p class="p-note">${esc(GIT.error || "提示词目录不在 Git 仓库里。用 git init 初始化后，这里会显示状态并可以一键提交。")}</p>`;
+    else {
+      gitRepos.innerHTML = GIT.repos.map(repoHtml).join("");
+      if (GIT.error) gitRepos.innerHTML += `<p class="p-note">${esc(GIT.error)}</p>`;
+      if (GIT.unmanaged.length) gitRepos.innerHTML += `<p class="p-note">未纳入 Git：${GIT.unmanaged.map((dir) => esc(shortHome(dir))).join("、")}</p>`;
+    }
+    if (GIT && document.activeElement !== gitCmd) gitCmd.value = GIT.commitCommand || "";
+    const note = $("git-cmd-note");
+    note.innerHTML = GIT && GIT.commitCommand
+      ? `点击仓库里的「提交」按钮，会在仓库根目录用 <code>${esc(GIT.shell || "shell")} -lc</code> 执行这条命令，输出显示在下方。命令不能有交互（commit 请带上 -m）。`
+      : `保存后每个仓库会出现「提交」按钮，一键在仓库根目录执行这条命令。命令通过登录 shell 运行，不能有交互（commit 请带上 -m）。`;
+    renderGitOutput();
+  }
+  function refreshGitViews() {
+    indexGit();
+    renderGitIndicator();
+    applyGitBadges();
+    if (gitPop.matches(":popover-open")) renderGitPopover();
+  }
+  async function loadGit(opts = {}) {
+    if (!gitEnabled() || gitLoading) return;
+    gitLoading = true;
+    gitManual = Boolean(opts.manual);
+    renderGitIndicator();
+    try {
+      const res = await apiGet("/api/git");
+      GIT = res.git;
+    } catch (error) {
+      GIT = { repos: (GIT && GIT.repos) || [], unmanaged: [], commitCommand: (GIT && GIT.commitCommand) || "", error: error.message };
+      if (opts.manual) toast(`读取 Git 状态失败：${error.message}`, { error: true });
+    }
+    gitLoading = false;
+    gitManual = false;
+    const signature = JSON.stringify(GIT.repos.map((repo) => [repo.root, repo.head, repo.ahead, repo.behind, repo.changes.map((c) => [c.path, c.index, c.worktree])]));
+    const changed = signature !== gitSignature;
+    gitSignature = signature;
+    refreshGitViews();
+    // The detail panel shows the file's git state, so redraw it when that state changed.
+    if (changed && panel.dataset.uid && !editing && selected.size <= 1 && byUid.has(Number(panel.dataset.uid))) show(Number(panel.dataset.uid));
+  }
+  function scheduleGit(delay) {
+    if (!gitEnabled()) return;
+    clearTimeout(gitTimer);
+    gitTimer = setTimeout(() => loadGit(), delay || 0);
+  }
+  async function saveGitCommand() {
+    const value = gitCmd.value.trim();
+    const saveBtn = $("git-cmd-save");
+    saveBtn.disabled = true;
+    try {
+      const res = await api("/api/git/config", { commitCommand: value });
+      GIT = res.git;
+      refreshGitViews();
+      toast(value ? "已保存提交命令" : "已清除提交命令");
+    } catch (error) {
+      toast(`保存失败：${error.message}`, { error: true });
+    }
+    saveBtn.disabled = false;
+  }
+  async function runCommit(repoRoot) {
+    if (gitBusy || !GIT || !GIT.commitCommand) return;
+    const repo = GIT.repos.find((r) => r.root === repoRoot);
+    gitBusy = true;
+    gitLastRun = null;
+    refreshGitViews();
+    try {
+      const res = await api("/api/git/commit", { repo: repoRoot });
+      GIT = res.git;
+      gitLastRun = res.result;
+      const ok = res.result.exitCode === 0 && !res.result.timedOut;
+      toast(
+        ok ? `已在 ${repo ? repo.name : "仓库"} 执行提交命令` : res.result.timedOut ? "提交命令超时，已终止" : `提交命令失败（退出码 ${res.result.exitCode}）`,
+        { error: !ok },
+      );
+    } catch (error) {
+      toast(`提交失败：${error.message}`, { error: true });
+    }
+    gitBusy = false;
+    gitSignature = "";
+    refreshGitViews();
+    if (panel.dataset.uid && !editing && selected.size <= 1 && byUid.has(Number(panel.dataset.uid))) show(Number(panel.dataset.uid));
+  }
+  function focusFile(absPath) {
+    const change = gitFileIndex.get(absPath);
+    const file = change ? libraryFileFor(change) : DATA.files.find((f) => f.path === absPath);
+    if (!file || !file.roots.length) return;
+    gitPop.hidePopover();
+    focusNode(file.roots[0].uid);
+  }
+  gitPop.addEventListener("toggle", (e) => {
+    const open = e.newState === "open";
+    gitBtn.setAttribute("aria-expanded", String(open));
+    if (!open) return;
+    const r = gitBtn.getBoundingClientRect();
+    gitPop.style.top = "auto";
+    gitPop.style.bottom = `${window.innerHeight - r.top + 8}px`;
+    gitPop.style.left = `${Math.max(8, Math.min(window.innerWidth - 476, r.left))}px`;
+    renderGitPopover();
+    loadGit();
+  });
+  gitPop.addEventListener("click", (e) => {
+    const commit = e.target.closest(".git-commit");
+    if (commit && !commit.disabled) { runCommit(commit.dataset.repo); return; }
+    const li = e.target.closest(".git-files li.lib");
+    if (li) focusFile(li.dataset.file);
+  });
+  $("git-refresh").addEventListener("click", () => loadGit({ manual: true }));
+  $("git-cmd-save").addEventListener("click", saveGitCommand);
+  gitCmd.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveGitCommand(); } });
+  $("git-out-close").addEventListener("click", () => { gitLastRun = null; renderGitOutput(); });
+  setInterval(() => { if (!document.hidden) loadGit(); }, GIT_POLL_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleGit(200); });
+  window.addEventListener("focus", () => scheduleGit(200));
 
   /* ---------- Boot ---------- */
   loadModel(JSON.parse($("prompt-map-data").textContent));

@@ -61,6 +61,8 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 - Edit titles and content, add subprompts and delete prompts in place. Edits rewrite only the changed span of the `.hjson` file, so comments and formatting are preserved
 - Drag prompts in the outline to reorder them or move them into another folder or file; ⌘-click and Shift-click select several prompts to move or delete together, ⌥↑/⌥↓ nudges within a folder, and ⌘Z undoes the last move or delete
 - Editing runs through a small local server (127.0.0.1 only, token protected) that QuickGPT starts on demand with Raycast's Node runtime; it exits after 30 minutes of inactivity. Every write is backed up under the extension's support folder (`prompt-map/backups`)
+- Libraries kept in Git show their status in place: the footer shows the branch, ahead/behind counts and the number of uncommitted changes, cards and the detail panel carry M/A/D/R/U badges, and the Git panel lists every change with the last commit
+- Bind your own commit command in the Git panel (for example `git add -A && git commit -m "update prompts" && git push`); afterwards each repository gets a **提交** button that runs it non-interactively in the repository root and shows the output. The command is stored in the extension's support folder (`prompt-map/git.json`)
 - The bundled starter library is read-only; create your own library to edit
 
 ## Configuration
