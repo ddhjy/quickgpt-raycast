@@ -51,7 +51,6 @@ describe("DefaultActionPreferenceStore", () => {
     await store.hydrate();
 
     expect(store.getDefaultActionPreference()).toBe("script_Raycast Claude");
-    expect(store.isHydrated()).toBe(true);
   });
 
   it("keeps cache writes available synchronously and persists them", async () => {
@@ -87,6 +86,28 @@ describe("DefaultActionPreferenceStore", () => {
 
     await store.saveDefaultActionPreference("paste");
     await hydration;
+
+    expect(store.getDefaultActionPreference()).toBe("paste");
+    await expect(storage.getItem("lastSelectedAction")).resolves.toBe("paste");
+  });
+
+  it("prefers the more recent action when recent executions tie", async () => {
+    const store = new DefaultActionPreferenceStore(new MemoryCache(), new MemoryStorage());
+
+    for (const action of ["script_A", "script_B", "script_B", "script_A"]) {
+      await store.saveLastExecutedAction(action);
+    }
+
+    expect(store.getLastExecutedAction()).toBe("script_A");
+  });
+
+  it("backfills LocalStorage from values that only exist in the cache", async () => {
+    const cache = new MemoryCache();
+    cache.set("lastSelectedAction", "paste");
+    const storage = new MemoryStorage();
+    const store = new DefaultActionPreferenceStore(cache, storage);
+
+    await store.hydrate();
 
     expect(store.getDefaultActionPreference()).toBe("paste");
     await expect(storage.getItem("lastSelectedAction")).resolves.toBe("paste");

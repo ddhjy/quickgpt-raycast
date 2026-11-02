@@ -349,7 +349,3 @@ export function DirectoryManager({ type, onRefreshNeeded }: DirectoryManagerProp
     </List>
   );
 }
-
-export function TemporaryDirectoryManager({ onRefreshNeeded }: { onRefreshNeeded: () => void }) {
-  return <DirectoryManager type="temporary" onRefreshNeeded={onRefreshNeeded} />;
-}

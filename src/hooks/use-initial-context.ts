@@ -5,7 +5,6 @@ import { expandPath } from "../utils/path-alias-utils";
 import { FINDER_SELECTION_MARKER } from "../utils/placeholder-formatter";
 import { capturedFinderItemsPromise, capturedSelectedTextPromise, type FinderItems } from "../utils/captured-selection";
 import * as fs from "fs";
-import { startupElapsedMs, startupLog, startupNowMs } from "../utils/startup-profiler";
 
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
@@ -97,29 +96,18 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       void capturedSelectedTextPromise.then((lateSelectedText) => {
         if (cancelled || !lateSelectedText.trim()) return;
 
-        const lateStarted = startupNowMs();
         const processedLateSelection = processSelectedText(lateSelectedText);
         if (cancelled) return;
 
         setSelectionText(processedLateSelection);
-        startupLog("Initial context selected text late update", {
-          durationMs: startupElapsedMs(lateStarted),
-          selectionLength: processedLateSelection.length,
-        });
       });
     };
 
     const fetchData = async () => {
-      const started = startupNowMs();
-      const frontmostStarted = startupNowMs();
       const fetchedFrontmostApp = await fetchFrontmostApp();
       if (cancelled) return;
 
       setCurrentApp(fetchedFrontmostApp);
-      startupLog("Initial context frontmost app fetched", {
-        durationMs: startupElapsedMs(frontmostStarted),
-        frontmostApp: fetchedFrontmostApp,
-      });
 
       const browserNames = [
         "Arc",
@@ -138,32 +126,21 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       ];
       if (browserNames.some((browser) => fetchedFrontmostApp.includes(browser))) {
         void (async () => {
-          const browserStarted = startupNowMs();
           const fetchedBrowserContent = await fetchBrowserContent();
           if (cancelled) return;
 
           setBrowserContent(fetchedBrowserContent);
-          startupLog("Initial context browser fetched", {
-            durationMs: startupElapsedMs(browserStarted),
-            contentLength: fetchedBrowserContent.length,
-          });
         })();
       }
 
       void (async () => {
-        const appsStarted = startupNowMs();
         const fetchedAllApps = await fetchAllApps();
         if (cancelled) return;
 
         setAllApp(fetchedAllApps);
-        startupLog("Initial context all apps fetched", {
-          durationMs: startupElapsedMs(appsStarted),
-          appCount: fetchedAllApps ? fetchedAllApps.split(", ").length : 0,
-        });
       })();
 
       if (initialSelectionText && initialSelectionText.trim()) {
-        const selectionStarted = startupNowMs();
         const rawInitial = initialSelectionText.trim();
         const processed = processSelectedText(rawInitial);
 
@@ -193,17 +170,9 @@ export function useInitialContext(initialSelectionText?: string, target?: string
         if (cancelled) return;
         setSelectionText(processed);
         setDiff(initialDiff);
-        startupLog("Initial context ready", {
-          durationMs: startupElapsedMs(started),
-          selectionMs: startupElapsedMs(selectionStarted),
-          selectionLength: processed.length,
-          diffLength: initialDiff.length,
-          source: "launch-argument",
-        });
         return;
       }
 
-      const selectionStarted = startupNowMs();
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {
@@ -235,13 +204,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       if (cancelled) return;
       setSelectionText(fetchedSelectedText);
       setDiff(fetchedDiff);
-      startupLog("Initial context ready", {
-        durationMs: startupElapsedMs(started),
-        selectionMs: startupElapsedMs(selectionStarted),
-        selectionLength: fetchedSelectedText.length,
-        diffLength: fetchedDiff.length,
-        source: "captured-selection",
-      });
     };
 
     void fetchData();

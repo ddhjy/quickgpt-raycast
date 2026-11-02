@@ -1,12 +1,11 @@
 import "./utils/captured-selection";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LaunchProps, showToast, Toast } from "@raycast/api";
 import pinsManager from "./managers/pins-manager";
 import promptManager from "./managers/prompt-manager";
 import { getQuickPrompt } from "./utils/prompt-formatting-utils";
-import { PromptList } from "./components/prompt-list";
+import { PromptList, type PromptContext } from "./components/prompt-list";
 import { useInitialContext } from "./hooks/use-initial-context";
-import { startupLog } from "./utils/startup-profiler";
 
 interface ExtendedArguments extends Arguments.PromptLab {
   initialSelectionText?: string;
@@ -20,8 +19,6 @@ interface ExtendedArguments extends Arguments.PromptLab {
 export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArguments }>) {
   const [promptVersion, setPromptVersion] = useState(0);
   const [isRefreshingPrompts, setIsRefreshingPrompts] = useState(() => !promptManager.hasPrompts());
-  const hasStartedPromptRefreshRef = useRef(false);
-  const hasLoggedFirstRenderRef = useRef(false);
   const { initialSelectionText, selection, target, actions, filePath } = props.arguments;
 
   const allowedActions = useMemo(() => actions?.split(",").filter(Boolean), [actions]);
@@ -38,23 +35,8 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   const initialSelection = (typeof selection === "string" && selection) || initialSelectionText;
 
   const { selectionText, currentApp, allApp, browserContent, diff } = useInitialContext(initialSelection, target);
-  const promptLoadState = useMemo(() => promptManager.getLoadState(), [promptVersion]);
-
-  if (!hasLoggedFirstRenderRef.current) {
-    hasLoggedFirstRenderRef.current = true;
-    startupLog("PromptLab first render", {
-      promptCount: promptLoadState.promptCount,
-      cacheHydrated: promptLoadState.hasHydratedFromCache,
-      isLoading: isRefreshingPrompts && promptLoadState.promptCount === 0,
-    });
-  }
 
   useEffect(() => {
-    startupLog("PromptLab mounted", {
-      cachedPromptCount: promptManager.getPromptCount(),
-      cacheHydrated: promptManager.getLoadState().hasHydratedFromCache,
-    });
-
     const unsubscribe = promptManager.subscribe((promptsChanged) => {
       if (promptsChanged) {
         setPromptVersion((version) => version + 1);
@@ -62,26 +44,21 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
       setIsRefreshingPrompts(false);
     });
 
-    if (!hasStartedPromptRefreshRef.current) {
-      hasStartedPromptRefreshRef.current = true;
-      setIsRefreshingPrompts(!promptManager.hasPrompts());
-      void promptManager.refreshPrompts("prompt-lab-startup").catch((error) =>
-        showToast({
-          style: Toast.Style.Failure,
-          title: "Couldn't refresh prompts",
-          message: String(error),
-        }),
-      );
-    }
+    // The cached library is already on screen; re-read the files in the background.
+    void promptManager.refreshPrompts().catch((error) =>
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Couldn't refresh prompts",
+        message: String(error),
+      }),
+    );
 
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   const [quickPrompt, cleanedSelectionText] = useMemo(
     () => getQuickPrompt(selectionText, target, filePath),
-    [filePath, selectionText, target],
+    [filePath, selectionText, target, promptVersion],
   );
 
   const effectiveSelectionText = quickPrompt ? cleanedSelectionText : selectionText;
@@ -109,18 +86,19 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
     });
   }, [pinnedIdentifiersKey, promptVersion, quickPrompt]);
 
+  // Launch arguments come last so a deeplink can override any captured value.
+  const context = useMemo<PromptContext>(
+    () => ({ selection: effectiveSelectionText, currentApp, allApp, browserContent, diff, ...placeholderArgs }),
+    [allApp, browserContent, currentApp, diff, effectiveSelectionText, placeholderArgs],
+  );
+
   return (
     <PromptList
       searchMode={!quickPrompt}
-      isLoading={isRefreshingPrompts && promptLoadState.promptCount === 0}
+      isLoading={isRefreshingPrompts && !promptManager.hasPrompts()}
       prompts={uniquePrompts}
-      selectionText={effectiveSelectionText}
-      currentApp={currentApp}
-      allApp={allApp}
-      browserContent={browserContent}
+      context={context}
       allowedActions={allowedActions}
-      diff={diff}
-      placeholderArgs={placeholderArgs}
     />
   );
 }

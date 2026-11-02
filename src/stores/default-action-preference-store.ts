@@ -4,93 +4,62 @@ import { createNamespacedCache } from "../utils/extension-cache";
 interface CacheAdapter {
   get(key: string): string | undefined;
   set(key: string, value: string): void;
-  remove(key: string): unknown;
 }
 
 interface StorageAdapter {
   getItem<T extends string | number | boolean>(key: string): Promise<T | undefined>;
   setItem(key: string, value: string | number | boolean): Promise<void>;
-  removeItem(key: string): Promise<void>;
 }
 
+const SELECTED_ACTION_KEY = "lastSelectedAction";
+const HISTORY_KEY = "actionExecutionHistory";
+const HISTORY_SIZE = 20;
+const LAST_USED_LOOKBACK = 5;
+
+/**
+ * Remembers the preferred action and the recently executed script actions.
+ *
+ * The cache answers synchronously during render; LocalStorage is the durable
+ * copy that `hydrate` restores into the cache after launch.
+ */
 export class DefaultActionPreferenceStore {
   private hydrationPromise?: Promise<void>;
-  private hydrated = false;
-  private revision = 0;
+  private writeCount = 0;
 
   constructor(
     private cache: CacheAdapter,
     private storage: StorageAdapter = LocalStorage,
-    private key = "lastSelectedAction",
-    private lastExecutedKey = "lastExecutedAction",
-    private historyKey = "actionExecutionHistory",
-    private historySize = 20,
   ) {}
 
-  async hydrate(): Promise<void> {
-    if (!this.hydrationPromise) {
-      const startedRevision = this.revision;
-      this.hydrationPromise = this.hydrateFromStorage(startedRevision).finally(() => {
-        this.hydrated = true;
-      });
-    }
-
+  hydrate(): Promise<void> {
+    this.hydrationPromise ??= this.hydrateFromStorage();
     return this.hydrationPromise;
   }
 
-  isHydrated(): boolean {
-    return this.hydrated;
+  getDefaultActionPreference(): string | undefined {
+    return this.cache.get(SELECTED_ACTION_KEY);
   }
 
   async saveDefaultActionPreference(action: string): Promise<void> {
-    this.revision += 1;
-    this.cache.set(this.key, action);
-    await this.persistValue(this.key, action);
-  }
-
-  getDefaultActionPreference(): string | undefined {
-    return this.cache.get(this.key);
+    await this.write(SELECTED_ACTION_KEY, action);
   }
 
   async saveLastExecutedAction(action: string): Promise<void> {
-    if (action !== "lastUsed") {
-      this.revision += 1;
-      let history = this.getExecutionHistory();
-      history.unshift(action);
+    const history = [action, ...this.getExecutionHistory()].slice(0, HISTORY_SIZE);
+    await this.write(HISTORY_KEY, JSON.stringify(history));
+  }
 
-      if (history.length > this.historySize) {
-        history = history.slice(0, this.historySize);
-      }
-
-      const serializedHistory = JSON.stringify(history);
-      this.cache.set(this.historyKey, serializedHistory);
-      this.cache.set(this.lastExecutedKey, action);
-      await Promise.all([
-        this.persistValue(this.historyKey, serializedHistory),
-        this.persistValue(this.lastExecutedKey, action),
-      ]);
+  /** The most frequent action among the latest executions, so one stray run does not flip "Last Used". */
+  getLastExecutedAction(): string | undefined {
+    const frequencies = new Map<string, number>();
+    for (const action of this.getExecutionHistory().slice(0, LAST_USED_LOOKBACK)) {
+      frequencies.set(action, (frequencies.get(action) || 0) + 1);
     }
-  }
 
-  private getExecutionHistory(): string[] {
-    const historyJson = this.cache.get(this.historyKey);
-    return parseExecutionHistory(historyJson) || [];
-  }
-
-  getMostFrequentlyUsedAction(lookbackCount: number = 5): string | undefined {
-    const history = this.getExecutionHistory();
-    if (history.length === 0) return undefined;
-
-    const recentHistory = history.slice(0, Math.min(lookbackCount, history.length));
-    const frequencyMap = new Map<string, number>();
-    recentHistory.forEach((action) => {
-      frequencyMap.set(action, (frequencyMap.get(action) || 0) + 1);
-    });
-
+    // On a tie the more recently executed action wins: the map keeps insertion order.
     let mostFrequentAction: string | undefined;
     let maxFrequency = 0;
-
-    frequencyMap.forEach((frequency, action) => {
+    frequencies.forEach((frequency, action) => {
       if (frequency > maxFrequency) {
         maxFrequency = frequency;
         mostFrequentAction = action;
@@ -100,101 +69,53 @@ export class DefaultActionPreferenceStore {
     return mostFrequentAction;
   }
 
-  getLastExecutedAction(): string | undefined {
-    return this.getMostFrequentlyUsedAction(5) || this.cache.get(this.lastExecutedKey);
-  }
-
-  getExecutionHistoryPublic(): string[] {
-    return this.getExecutionHistory();
-  }
-
-  async clearExecutionHistory(): Promise<void> {
-    this.revision += 1;
-    this.cache.remove(this.historyKey);
-    this.cache.remove(this.lastExecutedKey);
-    await Promise.all([this.removePersistedValue(this.historyKey), this.removePersistedValue(this.lastExecutedKey)]);
-  }
-
-  private async hydrateFromStorage(startedRevision: number): Promise<void> {
-    const [storedDefaultAction, storedLastExecutedAction, storedHistoryJson] = await Promise.all([
-      this.readStoredString(this.key),
-      this.readStoredString(this.lastExecutedKey),
-      this.readStoredString(this.historyKey),
-    ]);
-
-    if (startedRevision !== this.revision) {
-      return;
-    }
-
-    const cachedDefaultAction = this.cache.get(this.key);
-    const defaultAction = storedDefaultAction ?? cachedDefaultAction;
-    if (defaultAction !== undefined) {
-      this.cache.set(this.key, defaultAction);
-      if (storedDefaultAction === undefined) {
-        void this.persistValue(this.key, defaultAction);
-      }
-    }
-
-    const cachedLastExecutedAction = this.cache.get(this.lastExecutedKey);
-    const lastExecutedAction = storedLastExecutedAction ?? cachedLastExecutedAction;
-    if (lastExecutedAction !== undefined) {
-      this.cache.set(this.lastExecutedKey, lastExecutedAction);
-      if (storedLastExecutedAction === undefined) {
-        void this.persistValue(this.lastExecutedKey, lastExecutedAction);
-      }
-    }
-
-    const cachedHistoryJson = this.cache.get(this.historyKey);
-    const storageHistory = parseExecutionHistory(storedHistoryJson);
-    const cacheHistory = parseExecutionHistory(cachedHistoryJson);
-    const history = storageHistory ?? cacheHistory;
-    if (history) {
-      const serializedHistory = JSON.stringify(history.slice(0, this.historySize));
-      this.cache.set(this.historyKey, serializedHistory);
-      if (storedHistoryJson === undefined) {
-        void this.persistValue(this.historyKey, serializedHistory);
-      }
-    }
-  }
-
-  private async readStoredString(key: string): Promise<string | undefined> {
+  private getExecutionHistory(): string[] {
     try {
-      const value = await this.storage.getItem<string>(key);
-      return typeof value === "string" ? value : undefined;
-    } catch (error) {
-      console.error(`Failed to read default action preference "${key}":`, error);
-      return undefined;
+      const parsed = JSON.parse(this.cache.get(HISTORY_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((action): action is string => typeof action === "string") : [];
+    } catch {
+      return [];
     }
   }
 
-  private async persistValue(key: string, value: string): Promise<void> {
+  private async write(key: string, value: string): Promise<void> {
+    this.writeCount += 1;
+    this.cache.set(key, value);
     await this.storage.setItem(key, value).catch((error) => {
       console.error(`Failed to persist default action preference "${key}":`, error);
     });
   }
 
-  private async removePersistedValue(key: string): Promise<void> {
-    await this.storage.removeItem(key).catch((error) => {
-      console.error(`Failed to remove default action preference "${key}":`, error);
-    });
-  }
-}
+  private async hydrateFromStorage(): Promise<void> {
+    const keys = [SELECTED_ACTION_KEY, HISTORY_KEY];
+    const writeCountAtStart = this.writeCount;
+    const storedValues = await Promise.all(
+      keys.map((key) =>
+        this.storage.getItem<string>(key).catch((error) => {
+          console.error(`Failed to read default action preference "${key}":`, error);
+          return undefined;
+        }),
+      ),
+    );
 
-function parseExecutionHistory(historyJson: string | undefined): string[] | undefined {
-  if (historyJson === undefined) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(historyJson);
-    if (!Array.isArray(parsed)) {
-      return undefined;
+    // A selection made while LocalStorage was loading is newer than what it returned.
+    if (this.writeCount !== writeCountAtStart) {
+      return;
     }
 
-    return parsed.filter((action): action is string => typeof action === "string");
-  } catch (e) {
-    console.error("Failed to parse action history:", e);
-    return undefined;
+    keys.forEach((key, index) => {
+      const storedValue = storedValues[index];
+      if (typeof storedValue === "string") {
+        this.cache.set(key, storedValue);
+        return;
+      }
+
+      // Values written before LocalStorage persistence existed only live in the cache.
+      const cachedValue = this.cache.get(key);
+      if (cachedValue !== undefined) {
+        void this.storage.setItem(key, cachedValue).catch(() => undefined);
+      }
+    });
   }
 }
 

@@ -62,17 +62,8 @@ class ConfigurationManager {
     return preferences[key];
   }
 
-  getAllPreferences(): Preferences.PromptLab {
-    return getPreferenceValues<Preferences.PromptLab>();
-  }
-
   clearCache(): void {
     this.cache.clear();
-  }
-
-  refreshCache(type: DirectoryPreferenceType): void {
-    const cacheKey = `directories_${type}`;
-    this.cache.delete(cacheKey);
   }
 }
 

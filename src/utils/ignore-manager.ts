@@ -7,6 +7,7 @@ import DEFAULT_IGNORE_RULES from "./default-ignore-rules";
 class IgnoreManager {
   private static instance: IgnoreManager;
   private ignoreCache: Map<string, Ignore> = new Map();
+  private binaryMatcher?: Ignore;
   private readonly defaultIgnoreRules = DEFAULT_IGNORE_RULES;
 
   private constructor() {}
@@ -16,29 +17,6 @@ class IgnoreManager {
       IgnoreManager.instance = new IgnoreManager();
     }
     return IgnoreManager.instance;
-  }
-
-  getIgnoreForDirectory(dirPath: string): Ignore {
-    const cached = this.ignoreCache.get(dirPath);
-    if (cached) {
-      return cached;
-    }
-
-    const ig = ignore();
-    ig.add(this.defaultIgnoreRules);
-
-    const ignoreFiles = this.findIgnoreFiles(dirPath);
-    for (const ignorePath of ignoreFiles) {
-      try {
-        const content = fs.readFileSync(ignorePath, "utf-8");
-        ig.add(content);
-      } catch (error) {
-        console.debug(`Failed to read ignore file at ${ignorePath}:`, error);
-      }
-    }
-
-    this.ignoreCache.set(dirPath, ig);
-    return ig;
   }
 
   private getIgnoreForFile(filePath: string, basePath: string): Ignore {
@@ -106,31 +84,6 @@ class IgnoreManager {
     return dirsToCheck;
   }
 
-  private findIgnoreFiles(dirPath: string): string[] {
-    const ignoreFiles: string[] = [];
-    let currentDir = dirPath;
-
-    const dirsToCheck: string[] = [];
-    while (currentDir && currentDir !== path.dirname(currentDir)) {
-      dirsToCheck.unshift(currentDir);
-      currentDir = path.dirname(currentDir);
-    }
-
-    for (const dir of dirsToCheck) {
-      const quickgptIgnorePath = path.join(dir, ".quickgptignore");
-      if (fs.existsSync(quickgptIgnorePath)) {
-        ignoreFiles.push(quickgptIgnorePath);
-      }
-
-      const gitignorePath = path.join(dir, ".gitignore");
-      if (fs.existsSync(gitignorePath)) {
-        ignoreFiles.push(gitignorePath);
-      }
-    }
-
-    return ignoreFiles;
-  }
-
   shouldIgnore(filePath: string, basePath: string, isDirectory: boolean): boolean {
     const ig = this.getIgnoreForFile(filePath, basePath);
     const relativePath = path.relative(basePath, filePath);
@@ -153,9 +106,8 @@ class IgnoreManager {
       }
     }
 
-    const ig = ignore();
-    ig.add(this.getBinaryFilePatterns());
-    return ig.ignores(fileName);
+    this.binaryMatcher ??= ignore().add(this.getBinaryFilePatterns());
+    return this.binaryMatcher.ignores(fileName);
   }
 
   private getBinaryFilePatterns(): string {
@@ -177,10 +129,6 @@ class IgnoreManager {
     }
 
     return binarySection.join("\n");
-  }
-
-  clearCache(): void {
-    this.ignoreCache.clear();
   }
 }
 

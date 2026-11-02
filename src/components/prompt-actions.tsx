@@ -1,5 +1,15 @@
 import React from "react";
-import { Action, ActionPanel, Icon, Clipboard, Toast, closeMainWindow, open, showToast, Navigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Icon,
+  Clipboard,
+  Toast,
+  closeMainWindow,
+  open,
+  showToast,
+  Navigation,
+} from "@raycast/api";
 import { runAppleScript } from "@raycast/utils";
 import fs from "fs";
 import defaultActionPreferenceStore from "../stores/default-action-preference-store";
@@ -26,14 +36,91 @@ import { writeContentToFile } from "../utils/file-clipboard-utils";
 import { buildClaudeNewChatUrl } from "../utils/claude-deeplink";
 import { runAppleScriptDetached, runAppleScriptFile, runAppleScriptFileDetached } from "../utils/applescript-runner";
 
-type ActionWithPossibleProps = React.ReactElement<Action.Props & { shortcut?: string; onAction?: () => void }> &
-  React.ReactNode;
-
 interface ActionItem {
   name: string;
   displayName: string;
   condition: boolean;
-  action: ActionWithPossibleProps;
+  action: React.ReactElement;
+}
+
+function getConfiguredEditor() {
+  const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
+  return { editorApp, editorDisplayName: getEditorDisplayName(editorApp) };
+}
+
+export function getEditActionTitle(): string {
+  return `Edit with ${getConfiguredEditor().editorDisplayName}`;
+}
+
+/** Opens the prompt's source file in the configured editor, at its definition when the editor supports it. */
+export async function editPromptInEditor(prompt: PromptProps): Promise<void> {
+  if (!prompt.filePath) return;
+
+  const { editorApp, editorDisplayName } = getConfiguredEditor();
+  try {
+    const { openedAtLine } = await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
+    if (!openedAtLine) {
+      // No line jump possible: copy the title so the prompt can be
+      // searched manually in the editor.
+      await Clipboard.copy(prompt.title);
+    }
+    await closeMainWindow();
+
+    await showToast({
+      title: openedAtLine ? "Opened at prompt definition" : "Opened — title copied",
+      style: Toast.Style.Success,
+    });
+  } catch (error) {
+    console.error("Failed to open editor:", error);
+    await showToast({
+      title: `Couldn't open ${editorDisplayName}`,
+      message: String(error),
+      style: Toast.Style.Failure,
+    });
+  }
+}
+
+/** Unlists a temporary directory, restoring it when the prompt reload fails. */
+export function createRemoveTempDirAction(
+  tempDirSourcePath: string,
+  navigation: Navigation,
+  onRefreshNeeded?: () => void,
+): React.ReactElement {
+  return (
+    <Action
+      key={`remove-temp-dir-${tempDirSourcePath}`}
+      title="Remove Temp Dir"
+      icon={Icon.Eject}
+      style={Action.Style.Destructive}
+      onAction={async () => {
+        const removedDirectory = getActiveTemporaryDirectories().find(
+          (directory) => directory.path === tempDirSourcePath,
+        );
+        let reloaded = false;
+        removeTemporaryDirectory(tempDirSourcePath);
+        try {
+          await promptManager.reloadPrompts();
+          reloaded = true;
+          onRefreshNeeded?.();
+          await showToast(
+            Toast.Style.Success,
+            "Directory removed",
+            `${path.basename(tempDirSourcePath)} prompts are no longer available`,
+          );
+          navigation.pop();
+        } catch (error) {
+          if (removedDirectory && !reloaded) {
+            restoreTemporaryDirectories([removedDirectory]);
+          }
+          await showToast({
+            style: Toast.Style.Failure,
+            title: "Couldn't refresh prompts",
+            message: String(error),
+          });
+        }
+      }}
+    />
+  );
 }
 
 export function generatePromptActions(
@@ -55,12 +142,9 @@ export function generatePromptActions(
   const promptDefinedActions = actions || [];
   const finalActions = Array.from(new Set([...promptDefinedActions, ...configuredActions]));
 
-  const wrapActionHandler = (
-    originalHandler: (() => Promise<void | boolean>) | undefined | (() => void | boolean),
-    actionName?: string,
-  ) => {
+  const wrapActionHandler = (originalHandler: () => void | boolean | Promise<void | boolean>, actionName: string) => {
     return async () => {
-      if (actionName && actionName !== "lastUsed" && actionName.startsWith("script_")) {
+      if (actionName.startsWith("script_")) {
         await defaultActionPreferenceStore.saveLastExecutedAction(actionName);
       }
 
@@ -76,13 +160,9 @@ export function generatePromptActions(
         }
       }
 
-      if (originalHandler && actionName) {
-        await runPromptActionWithTracking(prompt, actionName, originalHandler, (usedPrompt, usedAction, usedAt) =>
-          promptUsageStore.recordUsage(usedPrompt, usedAction, usedAt),
-        );
-      } else if (originalHandler) {
-        await Promise.resolve(originalHandler());
-      }
+      await runPromptActionWithTracking(prompt, actionName, originalHandler, (usedPrompt, usedAction, usedAt) =>
+        promptUsageStore.recordUsage(usedPrompt, usedAction, usedAt),
+      );
     };
   };
 
@@ -125,25 +205,18 @@ export function generatePromptActions(
             await Clipboard.copy(finalContent);
             const args = scriptName.endsWith("ChatGPT") ? [finalContent] : [];
             const isCompiledScript = path.extname(scriptPath).toLowerCase() === ".scpt";
+            const runDetached = scriptName === "Notion Chat";
 
-            if (scriptName === "Notion Chat" && isCompiledScript) {
-              await runAppleScriptFileDetached(scriptPath, args);
-              await closeMainWindow({ clearRootSearch: true });
-            } else if (scriptName === "Notion Chat") {
-              const scriptContent = fs.readFileSync(scriptPath, "utf8");
-              await runAppleScriptDetached(scriptContent, args);
-              await closeMainWindow({ clearRootSearch: true });
-            } else if (isCompiledScript) {
-              await runAppleScriptFile(scriptPath, args);
-              if (!scriptName.includes("Raycast")) {
-                await closeMainWindow({ clearRootSearch: true });
-              }
+            if (isCompiledScript) {
+              await (runDetached ? runAppleScriptFileDetached : runAppleScriptFile)(scriptPath, args);
             } else {
               const scriptContent = fs.readFileSync(scriptPath, "utf8");
-              await runAppleScript(scriptContent, args);
-              if (!scriptName.includes("Raycast")) {
-                await closeMainWindow({ clearRootSearch: true });
-              }
+              await (runDetached ? runAppleScriptDetached : runAppleScript)(scriptContent, args);
+            }
+
+            // Scripts that drive Raycast itself need its window to stay open.
+            if (runDetached || !scriptName.includes("Raycast")) {
+              await closeMainWindow({ clearRootSearch: true });
             }
           } catch (error) {
             console.error(`Failed to execute script ${scriptName}:`, error);
@@ -297,48 +370,19 @@ export function generatePromptActions(
       name: "editWithEditor",
       displayName: "Edit with Editor",
       condition: !!prompt.filePath,
-      action: (() => {
-        const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
-        const editorDisplayName = getEditorDisplayName(editorApp);
-
-        return (
-          <Action
-            title={`Edit with ${editorDisplayName}`}
-            shortcut={{ modifiers: ["cmd"], key: "e" }}
-            icon={Icon.Pencil}
-            onAction={wrapActionHandler(async () => {
-              if (!prompt.filePath) return;
-
-              try {
-                const { openedAtLine } = await openPromptFileWithEditor(editorApp, prompt.filePath, prompt.lineNumber);
-                if (!openedAtLine) {
-                  // No line jump possible: copy the title so the prompt can be
-                  // searched manually in the editor.
-                  await Clipboard.copy(prompt.title);
-                }
-                await closeMainWindow();
-
-                await showToast({
-                  title: openedAtLine ? "Opened at prompt definition" : "Opened — title copied",
-                  style: Toast.Style.Success,
-                });
-              } catch (error) {
-                console.error("Failed to open editor:", error);
-                await showToast({
-                  title: `Couldn't open ${editorDisplayName}`,
-                  message: String(error),
-                  style: Toast.Style.Failure,
-                });
-              }
-            }, "editWithEditor")}
-          />
-        );
-      })(),
+      action: (
+        <Action
+          title={getEditActionTitle()}
+          shortcut={{ modifiers: ["cmd"], key: "e" }}
+          icon={Icon.Pencil}
+          onAction={wrapActionHandler(() => editPromptInEditor(prompt), "editWithEditor")}
+        />
+      ),
     },
     {
       name: "pin",
       displayName: "Pin",
-      condition: prompt.identifier !== "manage-temporary-directory" && !!onPinToggle,
+      condition: !!onPinToggle,
       action: (
         <Action
           title={prompt.pinned ? "Unpin" : "Pin"}
@@ -357,64 +401,26 @@ export function generatePromptActions(
   const allActionItems: ActionItem[] = [...scriptActions, ...baseActionItems];
 
   if (prompt.isTemporary && prompt.temporaryDirSource) {
-    const tempDirSourcePath = prompt.temporaryDirSource;
     allActionItems.push({
-      name: `remove_temp_dir_source_${path.basename(tempDirSourcePath)}`,
+      name: `remove_temp_dir_source_${path.basename(prompt.temporaryDirSource)}`,
       displayName: "Remove Temp Dir",
       condition: true,
-      action: (
-        <Action
-          title="Remove Temp Dir"
-          icon={Icon.Eject}
-          style={Action.Style.Destructive}
-          onAction={async () => {
-            const previousDirectories = getActiveTemporaryDirectories();
-            const removedDirectory = previousDirectories.find((directory) => directory.path === tempDirSourcePath);
-            let refreshCompleted = false;
-            removeTemporaryDirectory(tempDirSourcePath);
-            try {
-              await promptManager.reloadPrompts();
-              refreshCompleted = true;
-              if (onRefreshNeeded) {
-                onRefreshNeeded();
-              }
-              await showToast(
-                Toast.Style.Success,
-                "Directory removed",
-                `${path.basename(tempDirSourcePath)} prompts are no longer available`,
-              );
-              navigation.pop();
-            } catch (error) {
-              if (removedDirectory && !refreshCompleted) {
-                restoreTemporaryDirectories([removedDirectory]);
-              }
-              await showToast({
-                style: Toast.Style.Failure,
-                title: "Couldn't refresh prompts",
-                message: String(error),
-              });
-            }
-          }}
-        />
-      ),
+      action: createRemoveTempDirAction(prompt.temporaryDirSource, navigation, onRefreshNeeded),
     });
   }
 
   const eligibleActions = allActionItems.filter((item) => item.condition);
+  const normalizeName = (name: string) => name.toLowerCase().replace(/^script_/, "");
 
   eligibleActions.sort((a, b) => {
-    const getNameForSort = (name: string) => name.toLowerCase().replace(/^script_/, "");
-    const nameA = getNameForSort(a.name);
-    const nameB = getNameForSort(b.name);
-
     const isScriptA = a.name.startsWith("script_");
     const isScriptB = b.name.startsWith("script_");
 
     if (isScriptA && !isScriptB) return -1;
     if (!isScriptA && isScriptB) return 1;
 
-    const indexA = finalActions.findIndex((name) => name.toLowerCase() === nameA);
-    const indexB = finalActions.findIndex((name) => name.toLowerCase() === nameB);
+    const indexA = finalActions.findIndex((name) => name.toLowerCase() === normalizeName(a.name));
+    const indexB = finalActions.findIndex((name) => name.toLowerCase() === normalizeName(b.name));
 
     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
     if (indexA !== -1) return -1;
@@ -422,153 +428,59 @@ export function generatePromptActions(
     return a.displayName.localeCompare(b.displayName);
   });
 
+  const findAction = (name: string) => eligibleActions.find((item) => normalizeName(item.name) === name.toLowerCase());
+
   const defaultActionPreference = defaultActionPreferenceStore.getDefaultActionPreference();
-  let defaultActionItem: ActionItem | undefined;
+  const preferredActionName =
+    defaultActionPreference === "lastUsed"
+      ? defaultActionPreferenceStore.getLastExecutedAction()
+      : defaultActionPreference;
+  const defaultActionItem = preferredActionName
+    ? findAction(preferredActionName.replace(/^(script_|call\s+)/, ""))
+    : undefined;
 
-  if (defaultActionPreference === "lastUsed") {
-    const lastExecutedAction = defaultActionPreferenceStore.getLastExecutedAction();
-    if (lastExecutedAction) {
-      const preferenceBaseName = lastExecutedAction.replace(/^(script_|call\s+)/, "");
-      defaultActionItem = eligibleActions.find(
-        (item) => item.name.toLowerCase().replace(/^script_/, "") === preferenceBaseName.toLowerCase(),
-      );
-    }
-  } else if (defaultActionPreference) {
-    const preferenceBaseName = defaultActionPreference.replace(/^(script_|call\s+)/, "");
-    defaultActionItem = eligibleActions.find(
-      (item) => item.name.toLowerCase().replace(/^script_/, "") === preferenceBaseName.toLowerCase(),
-    );
-  }
-
-  const resultActions: React.ReactElement[] = [];
-  const actionNames = new Set<string>();
-
-  const pinnedActionsGroup: ActionItem[] = [];
-  const scriptActionsGroup: ActionItem[] = [];
-  const baseActionsGroup: ActionItem[] = [];
-  const otherActionsGroup: ActionItem[] = [];
-
-  const addPinnedAction = (actionName: string): void => {
-    const matchingAction = eligibleActions.find((item) => {
-      const itemName = item.name.toLowerCase().replace(/^script_/, "");
-      return itemName === actionName.toLowerCase();
-    });
-
-    if (matchingAction && !actionNames.has(matchingAction.name)) {
-      pinnedActionsGroup.push(matchingAction);
-      actionNames.add(matchingAction.name);
+  const pinnedGroup: ActionItem[] = [];
+  const pinnedNames = new Set<string>();
+  const pinAction = (item: ActionItem | undefined) => {
+    if (item && !pinnedNames.has(item.name)) {
+      pinnedGroup.push(item);
+      pinnedNames.add(item.name);
     }
   };
 
-  // Prompt-defined actions take precedence over the user's global Preferred action.
-  promptDefinedActions.forEach(addPinnedAction);
+  // Prompt-defined actions take precedence over the user's global Preferred action,
+  // and global Actions fill in the remaining pinned actions after it.
+  promptDefinedActions.forEach((name) => pinAction(findAction(name)));
+  pinAction(defaultActionItem);
+  configuredActions.forEach((name) => pinAction(findAction(name)));
 
-  if (defaultActionItem && !actionNames.has(defaultActionItem.name)) {
-    pinnedActionsGroup.push(defaultActionItem);
-    actionNames.add(defaultActionItem.name);
-  }
+  const baseActionNames = new Set(baseActionItems.map((item) => item.name));
+  const remainingActions = eligibleActions.filter((item) => !pinnedNames.has(item.name));
+  const scriptGroup = remainingActions.filter((item) => item.name.startsWith("script_"));
+  const baseGroup = remainingActions.filter((item) => baseActionNames.has(item.name));
+  const otherGroup = remainingActions.filter(
+    (item) => !item.name.startsWith("script_") && !baseActionNames.has(item.name),
+  );
 
-  // Global Actions fill in the remaining pinned actions after Preferred action.
-  configuredActions.forEach(addPinnedAction);
-
-  eligibleActions.forEach((item) => {
-    if (!actionNames.has(item.name)) {
-      if (item.name.startsWith("script_")) {
-        scriptActionsGroup.push(item);
-      } else if (
-        [
-          "copyToClipboard",
-          "copyAsFile",
-          "copyOriginalPrompt",
-          "paste",
-          "openInClaude",
-          "sharePrompt",
-          "editWithEditor",
-          "pin",
-        ].includes(item.name)
-      ) {
-        baseActionsGroup.push(item);
-      } else {
-        otherActionsGroup.push(item);
-      }
-      actionNames.add(item.name);
+  // A group is shown without a section header when the header would only add noise.
+  const renderGroup = (key: string, title: string, items: ActionItem[], flat: boolean): React.ReactElement[] => {
+    const elements = items.map((item) => React.cloneElement(item.action, { key: item.name }));
+    if (elements.length === 0 || flat) {
+      return elements;
     }
-  });
+    return [
+      <ActionPanel.Section key={key} title={title}>
+        {elements as any /* eslint-disable-line @typescript-eslint/no-explicit-any */}
+      </ActionPanel.Section>,
+    ];
+  };
 
-  if (pinnedActionsGroup.length > 0) {
-    if (pinnedActionsGroup.length === 1) {
-      resultActions.push(React.cloneElement(pinnedActionsGroup[0].action, { key: pinnedActionsGroup[0].name }));
-    } else {
-      resultActions.push(
-        <ActionPanel.Section key="pinned-actions" title="Pinned Actions">
-          {
-            pinnedActionsGroup.map((item) =>
-              React.cloneElement(item.action, { key: item.name }),
-            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
-          }
-        </ActionPanel.Section>,
-      );
-    }
-  }
+  const hasLeadingGroups = pinnedGroup.length > 0 || scriptGroup.length > 0;
 
-  if (scriptActionsGroup.length > 0) {
-    if (scriptActionsGroup.length === 1) {
-      resultActions.push(React.cloneElement(scriptActionsGroup[0].action, { key: scriptActionsGroup[0].name }));
-    } else {
-      resultActions.push(
-        <ActionPanel.Section key="script-actions" title="Script Actions">
-          {
-            scriptActionsGroup.map((item) =>
-              React.cloneElement(item.action, { key: item.name }),
-            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
-          }
-        </ActionPanel.Section>,
-      );
-    }
-  }
-
-  if (baseActionsGroup.length > 0) {
-    if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length <= 2) {
-      baseActionsGroup.forEach((item) => {
-        resultActions.push(React.cloneElement(item.action, { key: item.name }));
-      });
-    } else {
-      resultActions.push(
-        <ActionPanel.Section key="base-actions" title="Basic Actions">
-          {
-            baseActionsGroup.map((item) =>
-              React.cloneElement(item.action, { key: item.name }),
-            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
-          }
-        </ActionPanel.Section>,
-      );
-    }
-  }
-
-  if (otherActionsGroup.length > 0) {
-    if (pinnedActionsGroup.length === 0 && scriptActionsGroup.length === 0 && baseActionsGroup.length === 0) {
-      otherActionsGroup.forEach((item) => {
-        resultActions.push(React.cloneElement(item.action, { key: item.name }));
-      });
-    } else {
-      resultActions.push(
-        <ActionPanel.Section key="other-actions" title="Other Actions">
-          {
-            otherActionsGroup.map((item) =>
-              React.cloneElement(item.action, { key: item.name }),
-            ) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */
-          }
-        </ActionPanel.Section>,
-      );
-    }
-  }
-
-  if (resultActions.length === 0) {
-    const copyAction = baseActionItems.find((a) => a.name === "copyToClipboard");
-    if (copyAction) {
-      resultActions.push(React.cloneElement(copyAction.action, { key: copyAction.name }));
-    }
-  }
-
-  return resultActions;
+  return [
+    ...renderGroup("pinned-actions", "Pinned Actions", pinnedGroup, pinnedGroup.length === 1),
+    ...renderGroup("script-actions", "Script Actions", scriptGroup, scriptGroup.length === 1),
+    ...renderGroup("base-actions", "Basic Actions", baseGroup, !hasLeadingGroups && baseGroup.length <= 2),
+    ...renderGroup("other-actions", "Other Actions", otherGroup, !hasLeadingGroups && baseGroup.length === 0),
+  ];
 }

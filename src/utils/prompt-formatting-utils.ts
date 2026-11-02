@@ -1,11 +1,6 @@
 import { Icon, List } from "@raycast/api";
 import type { PromptProps } from "../managers/prompt-manager";
-import {
-  SpecificReplacements,
-  placeholderFormatter,
-  resolvePlaceholders,
-  getPropertyByPath,
-} from "./placeholder-formatter";
+import { SpecificReplacements, placeholderFormatter, resolvePlaceholders } from "./placeholder-formatter";
 import promptManager from "../managers/prompt-manager";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
@@ -22,34 +17,20 @@ const placeholderIcons: { [key: string]: Icon } = {
   diff: Icon.CodeBlock,
 };
 
-export function generatePlaceholders(keysList: string | undefined, position: "prefix" | "suffix"): string {
-  let activeKeys: string[] = [];
-  const providedKeysTrimmed = keysList?.trim();
+/**
+ * Wraps content with the `{{key}}` placeholders named by the prompt's
+ * comma-separated `prefix` and `suffix` properties, one per line.
+ */
+function wrapWithPrefixAndSuffix(prompt: PromptProps): string {
+  const toPlaceholders = (keysList: string | undefined) =>
+    Array.from(new Set((keysList ?? "").split(",").map((key) => key.trim())))
+      .filter((key) => key.length > 0)
+      .map((key) => `{{${key}}}`)
+      .join("\n");
 
-  if (providedKeysTrimmed && providedKeysTrimmed.length > 0) {
-    activeKeys = providedKeysTrimmed
-      .split(",")
-      .map((key) => key.trim())
-      .filter((key) => key.length > 0);
-
-    activeKeys = Array.from(new Set(activeKeys));
-  }
-
-  const placeholderString = activeKeys.map((key) => `{{${key}}}`).join("\n");
-
-  if (position === "prefix") {
-    return placeholderString + (placeholderString.length > 0 ? "\n" : "");
-  } else {
-    return (placeholderString.length > 0 ? "\n" : "") + placeholderString;
-  }
-}
-
-export function generatePrefixPlaceholders(prefix: string | undefined): string {
-  return generatePlaceholders(prefix, "prefix");
-}
-
-export function generateSuffixPlaceholders(suffix: string | undefined): string {
-  return generatePlaceholders(suffix, "suffix");
+  const prefix = toPlaceholders(prompt.prefix);
+  const suffix = toPlaceholders(prompt.suffix);
+  return (prefix ? `${prefix}\n` : "") + (prompt.content || "") + (suffix ? `\n${suffix}` : "");
 }
 
 export function getQuickPrompt(
@@ -98,13 +79,7 @@ export function buildFormattedPromptContent(
   replacements: SpecificReplacements,
   relativeRootDir?: string,
 ): string {
-  const currentContent = prompt.content || "";
-
-  const prefixPlaceholderString = generatePrefixPlaceholders(prompt.prefix);
-
-  const suffixPlaceholderString = generateSuffixPlaceholders(prompt.suffix);
-
-  const contentWithPlaceholders = prefixPlaceholderString + currentContent + suffixPlaceholderString;
+  const contentWithPlaceholders = wrapWithPrefixAndSuffix(prompt);
 
   const mergedReplacements = {
     ...prompt,
@@ -113,11 +88,9 @@ export function buildFormattedPromptContent(
     prompts: replacements.prompts || getIndentedPromptsWithContent(),
   };
 
-  const formattedContent = placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
+  return placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
     resolveFile: true,
   });
-
-  return formattedContent;
 }
 
 export function getPlaceholderIcons(
@@ -153,13 +126,7 @@ export function getIndentedPromptTitles(): string {
 
     let contentSummary = "";
     if (prompt.content) {
-      let processedContent = prompt.content;
-
-      const prefixPlaceholders = generatePrefixPlaceholders(prompt.prefix);
-      const suffixPlaceholders = generateSuffixPlaceholders(prompt.suffix);
-      processedContent = prefixPlaceholders + processedContent + suffixPlaceholders;
-
-      const cleanContent = processedContent
+      const cleanContent = wrapWithPrefixAndSuffix(prompt)
         .replace(/{{.*?}}\n/g, "")
         .replace(/\n/g, " ")
         .trim();
@@ -217,25 +184,4 @@ export function getIndentedPromptsWithContent(): string {
   });
 
   return result.join("\n");
-}
-
-export function findOptionPlaceholders(prompt: PromptProps): string[] {
-  const optionKeys: string[] = [];
-  if (!prompt.content) return optionKeys;
-
-  const regex = /{{option:([^}]+)}}/g;
-  let match;
-
-  while ((match = regex.exec(prompt.content)) !== null) {
-    const propertyName = match[1].trim();
-    const propValue = getPropertyByPath(prompt, propertyName);
-    if (
-      (Array.isArray(propValue) && propValue.length > 0) ||
-      (propValue && typeof propValue === "object" && !Array.isArray(propValue) && Object.keys(propValue).length > 0)
-    ) {
-      optionKeys.push(propertyName);
-    }
-  }
-
-  return Array.from(new Set(optionKeys));
 }

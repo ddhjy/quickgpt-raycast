@@ -29,12 +29,8 @@ export function getPathAliases(): Record<string, string> {
 
 export function expandPath(inputPath: string): string {
   let path = preprocessPath(inputPath);
-  path = replacePath(path, getPathAliases(), true).replace(/\/+/g, "/");
+  path = expandAliases(path, getPathAliases());
   return path;
-}
-
-export function compressPath(inputPath: string): string {
-  return replacePath(inputPath, getPathAliases());
 }
 
 export function preprocessPath(path: string): string {
@@ -54,44 +50,38 @@ function removeMarkdownSyntax(path: string): string {
   return path.replace(/(\*\*|__)(.*?)\1/g, "$2");
 }
 
-function replacePath(inputPath: string, pathMap: Record<string, string>, reverse = false): string {
-  const pathsData = Object.entries(pathMap)
-    .map(([key, value]) => ({
-      path: reverse ? key.replace(/\/+$/, "") : value.replace(/\/+$/, ""),
-      replacement: reverse ? value.replace(/\/+$/, "") : key,
-    }))
-    .sort((a, b) => b.path.length - a.path.length);
+/**
+ * Replaces every alias occurrence with its directory, longest alias first so
+ * `work.notes` is not shadowed by `work`. A `.` after an alias acts as a path
+ * separator (`work.notes` -> `<work dir>/notes`).
+ */
+function expandAliases(inputPath: string, aliases: Record<string, string>): string {
+  const entries = Object.entries(aliases)
+    .map(([alias, directory]) => ({ alias: alias.replace(/\/+$/, ""), directory: directory.replace(/\/+$/, "") }))
+    .sort((a, b) => b.alias.length - a.alias.length);
 
-  if (reverse) {
-    return performReverseReplacement(inputPath, pathsData);
-  } else {
-    return performForwardReplacement(inputPath, pathsData);
-  }
-}
-
-function performReverseReplacement(inputPath: string, pathsData: Array<{ path: string; replacement: string }>): string {
   let result = inputPath;
   let hasReplacement = true;
 
   while (hasReplacement) {
     hasReplacement = false;
 
-    for (const { path, replacement } of pathsData) {
-      const index = result.indexOf(path);
+    for (const { alias, directory } of entries) {
+      const index = result.indexOf(alias);
       if (index !== -1) {
         const before = result.slice(0, index);
-        let after = result.slice(index + path.length);
+        let after = result.slice(index + alias.length);
 
         if (after.startsWith(".")) {
           after = after.slice(1);
         }
 
-        let finalReplacement = replacement;
+        let replacement = directory;
         if (after && !after.startsWith("/") && !replacement.endsWith("/")) {
-          finalReplacement += "/";
+          replacement += "/";
         }
 
-        result = before + finalReplacement + after;
+        result = before + replacement + after;
         hasReplacement = true;
         break;
       }
@@ -99,19 +89,4 @@ function performReverseReplacement(inputPath: string, pathsData: Array<{ path: s
   }
 
   return result.replace(/\/+/g, "/");
-}
-
-function performForwardReplacement(inputPath: string, pathsData: Array<{ path: string; replacement: string }>): string {
-  const normalized = inputPath.replace(/\/+$/, "");
-
-  for (const { path, replacement } of pathsData) {
-    const index = normalized.indexOf(path);
-    if (index !== -1) {
-      const before = normalized.slice(0, index);
-      const after = normalized.slice(index + path.length);
-      return before + replacement + after;
-    }
-  }
-
-  return inputPath;
 }

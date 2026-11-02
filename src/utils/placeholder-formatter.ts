@@ -83,50 +83,44 @@ export function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<st
 }
 
 function safeResolveAbsolute(given: string, root?: string): string | Error {
-  const expanded = expandPath(given);
-  console.log(`Attempting to resolve path: "${given}" (expanded: "${expanded}"), root: "${root || "not set"}"`);
-
-  const trimmed = expanded.trim();
+  const trimmed = expandPath(given).trim();
   if (path.isAbsolute(trimmed)) {
-    console.log(`Processing absolute path: "${trimmed}"`);
     return trimmed;
   }
 
   if (!root) {
-    const error = `Root directory not configured for relative path: ${trimmed}`;
-    console.error(error);
-    return new Error(error);
+    return new Error(`Root directory not configured for relative path: ${trimmed}`);
   }
 
   const resolved = path.resolve(root, trimmed);
-  console.log(`Resolved relative path: "${trimmed}" => "${resolved}"`);
-
   const normalizedRoot = path.resolve(root);
   if (resolved !== normalizedRoot && !resolved.startsWith(normalizedRoot + path.sep)) {
-    const error = `Path traversal detected for: ${trimmed}`;
-    console.error(error);
-    return new Error(error);
+    return new Error(`Path traversal detected for: ${trimmed}`);
   }
 
   return resolved;
 }
 
-function resolveFilePlaceholderSync(body: string, root?: string): string {
+/**
+ * Reads the file or directory a `{{file:...}}` / `{{content:...}}` placeholder
+ * points at. `file` labels the result with its path; `content` returns the
+ * bare text.
+ */
+function resolvePathPlaceholderSync(directive: "file" | "content", body: string, root?: string): string {
   const absOrErr = safeResolveAbsolute(body, root);
   if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
+
+  const withHeader = directive === "file";
 
   try {
     const stats = fs.statSync(absOrErr);
     if (stats.isFile()) {
-      let fileContent = fs.readFileSync(absOrErr, "utf-8");
-      fileContent = fileContent.replace(/{{/g, "\\{\\{");
-      return `File: ${body.trim()}\n${fileContent}\n\n`;
+      const fileContent = fs.readFileSync(absOrErr, "utf-8").replace(/{{/g, "\\{\\{");
+      return withHeader ? `File: ${body.trim()}\n${fileContent}\n\n` : fileContent;
     }
     if (stats.isDirectory()) {
-      const header = `Directory: ${body.trim()}${path.sep}\n`;
-      const content = readDirectoryContentsSync(absOrErr, "");
-      const escapedContent = content.replace(/{{/g, "\\{\\{");
-      return `${header}${escapedContent}`;
+      const content = readDirectoryContentsSync(absOrErr, "").replace(/{{/g, "\\{\\{");
+      return withHeader ? `Directory: ${body.trim()}${path.sep}\n${content}` : content;
     }
     return `[Unsupported path type: ${body}]`;
   } catch (e) {
@@ -137,29 +131,23 @@ function resolveFilePlaceholderSync(body: string, root?: string): string {
   }
 }
 
-function resolveContentPlaceholderSync(body: string, root?: string): string {
-  const absOrErr = safeResolveAbsolute(body, root);
-  if (absOrErr instanceof Error) return `[Error: ${absOrErr.message}]`;
-
-  try {
-    const stats = fs.statSync(absOrErr);
-    if (stats.isFile()) {
-      let fileContent = fs.readFileSync(absOrErr, "utf-8");
-      fileContent = fileContent.replace(/{{/g, "\\{\\{");
-      return fileContent;
-    }
-    if (stats.isDirectory()) {
-      const content = readDirectoryContentsSync(absOrErr, "");
-      const escapedContent = content.replace(/{{/g, "\\{\\{");
-      return escapedContent;
-    }
-    return `[Unsupported path type: ${body}]`;
-  } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") return `[Path not found: ${body}]`;
-    if (code === "EACCES") return `[Permission denied: ${body}]`;
-    return `[Error accessing path: ${body}]`;
+/**
+ * Value of an `{{option:key}}` placeholder: the chosen value when the options
+ * form supplied one, otherwise the first entry of the prompt's option list.
+ */
+function resolveOptionValue(incoming: Record<string, unknown>, key: string): string | undefined {
+  const optionValue = getPropertyByPath(incoming, key);
+  if (optionValue === undefined) {
+    return undefined;
   }
+  if (Array.isArray(optionValue)) {
+    return String(optionValue[0]);
+  }
+  if (optionValue && typeof optionValue === "object") {
+    const firstKey = Object.keys(optionValue)[0];
+    return String((optionValue as Record<string, unknown>)[firstKey]);
+  }
+  return String(optionValue);
 }
 
 export function getPropertyByPath(obj: unknown, path: string): unknown {
@@ -216,7 +204,7 @@ export function placeholderFormatter(
         return match;
       }
 
-      const result = processPlaceholder(directive, body, incoming, map, root, options);
+      const result = processPlaceholder(body, incoming, map, root, options);
       if (result !== match) {
         changedInIteration = true;
       }
@@ -243,7 +231,7 @@ export function placeholderFormatter(
 
     if (directive === undefined && isRecursivePlaceholder(directive, trimmedBody)) {
       if (trimmedBody.includes("|")) {
-        const result = processPlaceholder(directive, trimmedBody, incoming, map, root, options);
+        const result = processPlaceholder(trimmedBody, incoming, map, root, options);
         if (result !== match) {
           return result;
         }
@@ -251,36 +239,18 @@ export function placeholderFormatter(
       return match;
     }
 
-    if (directive === "file") {
+    if (directive === "file" || directive === "content") {
       if (!options.resolveFile) {
-        return `{{file:${trimmedBody}}}`;
+        return `{{${directive}:${trimmedBody}}}`;
       }
-      return resolveFilePlaceholderSync(trimmedBody, root);
-    }
-
-    if (directive === "content") {
-      if (!options.resolveFile) {
-        return `{{content:${trimmedBody}}}`;
-      }
-      return resolveContentPlaceholderSync(trimmedBody, root);
+      return resolvePathPlaceholderSync(directive, trimmedBody, root);
     }
 
     if (directive === "option") {
-      const optionValue = getPropertyByPath(incoming, trimmedBody);
-      if (optionValue !== undefined) {
-        if (Array.isArray(optionValue)) {
-          return String(optionValue[0]);
-        }
-        if (optionValue && typeof optionValue === "object") {
-          const firstKey = Object.keys(optionValue)[0];
-          return String((optionValue as Record<string, unknown>)[firstKey]);
-        }
-        return String(optionValue);
-      }
-      return `{{option:${trimmedBody}}}`;
+      return resolveOptionValue(incoming, trimmedBody) ?? `{{option:${trimmedBody}}}`;
     }
 
-    const resolvedValue = processPlaceholder(directive, trimmedBody, incoming, map, root, options);
+    const resolvedValue = processPlaceholder(trimmedBody, incoming, map, root, options);
 
     if (resolvedValue.includes(FINDER_SELECTION_MARKER)) {
       const processLine = (line: string): string => {
@@ -291,7 +261,7 @@ export function placeholderFormatter(
         const filePathMatch = actualValue.match(/^{{file:([^}]+)}}$/);
         if (filePathMatch && filePathMatch[1]) {
           if (options.resolveFile) {
-            return resolveFilePlaceholderSync(filePathMatch[1], root);
+            return resolvePathPlaceholderSync("file", filePathMatch[1], root);
           }
           return actualValue;
         }
@@ -350,8 +320,12 @@ export function resolvePlaceholders(
   return usedStandardKeys;
 }
 
+/**
+ * Resolves a placeholder without a directive: a prompt property, a standard
+ * placeholder, or a `a|b|c` fallback chain whose parts may carry directives.
+ * Returns the placeholder unchanged when nothing resolves.
+ */
 function processPlaceholder(
-  directive: string | undefined,
   body: string,
   incoming: SpecificReplacements & Record<string, unknown>,
   map: Map<PlaceholderKey, string>,
@@ -373,28 +347,7 @@ function processPlaceholder(
     return String(providedValue);
   }
 
-  if (directive === "option") {
-    const optionValue = getPropertyByPath(incoming, content);
-    if (optionValue !== undefined) {
-      if (Array.isArray(optionValue)) {
-        return String(optionValue[0]);
-      }
-      if (optionValue && typeof optionValue === "object") {
-        const firstKey = Object.keys(optionValue)[0];
-        return String((optionValue as Record<string, unknown>)[firstKey]);
-      }
-      return String(optionValue);
-    }
-    return `{{option:${content}}}`;
-  }
-
-  if (directive === "file") {
-    return `[Path not found: ${content}]`;
-  }
-
-  const parts = content.includes("|") ? content.split("|") : [content];
-
-  for (const part of parts) {
+  for (const part of content.split("|")) {
     const trimmedPart = part.trim();
 
     const directiveMatch = trimmedPart.match(/^(option|file|content):(.+)$/);
@@ -403,26 +356,14 @@ function processPlaceholder(
       const [, partDirective, partBody] = directiveMatch;
 
       if (partDirective === "option") {
-        const optionValue = getPropertyByPath(incoming, partBody);
+        const optionValue = resolveOptionValue(incoming, partBody);
         if (optionValue !== undefined) {
-          if (Array.isArray(optionValue)) {
-            return String(optionValue[0]);
-          }
-          if (optionValue && typeof optionValue === "object") {
-            const firstKey = Object.keys(optionValue)[0];
-            return String((optionValue as Record<string, unknown>)[firstKey]);
-          }
-          return String(optionValue);
+          return optionValue;
         }
-      } else if (partDirective === "file" && options.resolveFile) {
-        const fileContent = resolveFilePlaceholderSync(partBody, root);
-        if (!fileContent.startsWith("[")) {
-          return fileContent;
-        }
-      } else if (partDirective === "content" && options.resolveFile) {
-        const contentResult = resolveContentPlaceholderSync(partBody, root);
-        if (!contentResult.startsWith("[")) {
-          return contentResult;
+      } else if (options.resolveFile) {
+        const pathResult = resolvePathPlaceholderSync(partDirective as "file" | "content", partBody, root);
+        if (!pathResult.startsWith("[")) {
+          return pathResult;
         }
       }
     } else {

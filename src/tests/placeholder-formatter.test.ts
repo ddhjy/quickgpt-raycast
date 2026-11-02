@@ -326,3 +326,68 @@ describe("resolvePlaceholders", () => {
     expect(usedPlaceholders.has("icon" as never)).toBe(false);
   });
 });
+
+describe("placeholderFormatter file and content placeholders", () => {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const fs = require("fs") as typeof import("fs");
+  const os = require("os") as typeof import("os");
+  const path = require("path") as typeof import("path");
+  /* eslint-enable @typescript-eslint/no-require-imports */
+
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "quickgpt-placeholders-"));
+    fs.writeFileSync(path.join(root, "note.md"), "hello {{input}}");
+    fs.mkdirSync(path.join(root, "docs"));
+    fs.writeFileSync(path.join(root, "docs", "a.md"), "alpha");
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("leaves path placeholders untouched until files are resolved", () => {
+    expect(placeholderFormatter("{{file:note.md}} {{content:note.md}}", {}, root)).toBe(
+      "{{file:note.md}} {{content:note.md}}",
+    );
+  });
+
+  it("labels {{file:}} with its path and returns {{content:}} bare, without expanding placeholders inside", () => {
+    const replacements = { input: "typed" };
+    const options = { resolveFile: true };
+
+    expect(placeholderFormatter("{{file:note.md}}", replacements, root, options)).toBe(
+      "File: note.md\nhello {{input}}\n\n",
+    );
+    expect(placeholderFormatter("{{content:note.md}}", replacements, root, options)).toBe("hello {{input}}");
+  });
+
+  it("expands directories for both directives", () => {
+    const options = { resolveFile: true };
+
+    expect(placeholderFormatter("{{file:docs}}", {}, root, options)).toBe(
+      `Directory: docs${path.sep}\nFile: a.md\nalpha\n\n`,
+    );
+    expect(placeholderFormatter("{{content:docs}}", {}, root, options)).toBe("File: a.md\nalpha\n\n");
+  });
+
+  it("reports missing paths and paths escaping the root", () => {
+    const options = { resolveFile: true };
+
+    expect(placeholderFormatter("{{file:missing.md}}", {}, root, options)).toBe("[Path not found: missing.md]");
+    expect(placeholderFormatter("{{content:../outside.md}}", {}, root, options)).toBe(
+      "[Error: Path traversal detected for: ../outside.md]",
+    );
+  });
+
+  it("falls through a chain to a file part and to an option part", () => {
+    const options = { resolveFile: true };
+
+    expect(placeholderFormatter("{{selection|content:note.md}}", {}, root, options)).toBe("hello {{input}}");
+    expect(
+      placeholderFormatter("{{selection|content:missing.md|option:tone}}", { tone: ["calm", "bold"] }, root, options),
+    ).toBe("calm");
+    expect(placeholderFormatter("{{option:tone}}", { tone: { Calm: "calm", Bold: "bold" } }, root)).toBe("calm");
+  });
+});
