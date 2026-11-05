@@ -34,6 +34,8 @@ import configurationManager from "../managers/configuration-manager";
 import { runPromptActionWithTracking } from "../utils/prompt-usage-utils";
 import { writeContentToFile } from "../utils/file-clipboard-utils";
 import { buildClaudeNewChatUrl } from "../utils/claude-deeplink";
+import { showPromptMap } from "../utils/prompt-map-launcher";
+import { promptMapNodeKey } from "../utils/prompt-map-model";
 import { runAppleScriptDetached, runAppleScriptFile, runAppleScriptFileDetached } from "../utils/applescript-runner";
 
 interface ActionItem {
@@ -376,6 +378,23 @@ export function generatePromptActions(
           shortcut={{ modifiers: ["cmd"], key: "e" }}
           icon={Icon.Pencil}
           onAction={wrapActionHandler(() => editPromptInEditor(prompt), "editWithEditor")}
+        />
+      ),
+    },
+    {
+      name: "openInPromptMap",
+      displayName: "Open in Prompt Map",
+      // Settings prompts are not part of the library Prompt Map shows.
+      condition: !!prompt.filePath && !promptManager.isSystemPromptFile(prompt.filePath),
+      action: (
+        <Action
+          title="Open in Prompt Map"
+          icon={Icon.Network}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "m" }}
+          onAction={wrapActionHandler(async () => {
+            if (!prompt.filePath) return;
+            await showPromptMap(promptMapNodeKey(prompt.filePath, prompt.sourceIndexPath ?? []));
+          }, "openInPromptMap")}
         />
       ),
     },

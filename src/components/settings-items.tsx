@@ -3,7 +3,7 @@ import { Action, Icon, Toast, closeMainWindow, openExtensionPreferences, showToa
 import configurationManager from "../managers/configuration-manager";
 import { getActiveTemporaryDirectories } from "../stores/temporary-directory-store";
 import { createPromptLibrary } from "../utils/prompt-library-onboarding";
-import { openPromptMap } from "../utils/prompt-map-launcher";
+import { showPromptMap } from "../utils/prompt-map-launcher";
 import { PromptStats } from "./prompt-stats";
 import { DirectoryManager } from "./temporary-directory-manager";
 
@@ -39,23 +39,6 @@ async function createLibrary() {
       title: "Couldn't create prompt library",
       message: String(error),
     });
-  }
-}
-
-async function showPromptMap() {
-  const toast = await showToast({ style: Toast.Style.Animated, title: "Opening Prompt Map…" });
-  try {
-    const result = await openPromptMap();
-    toast.style = Toast.Style.Success;
-    toast.title = result.mode === "server" ? "Prompt Map opened" : "Prompt Map opened (read-only)";
-    if (result.mode === "static") {
-      toast.message = "The local server couldn't start, so editing is unavailable.";
-    }
-    await closeMainWindow();
-  } catch (error) {
-    toast.style = Toast.Style.Failure;
-    toast.title = "Couldn't open Prompt Map";
-    toast.message = String(error);
   }
 }
 
@@ -112,7 +95,10 @@ export function resolveSettingsItem(identifier: string, onRefreshNeeded: () => v
         action: <Action.Push title="Open" icon={Icon.BarChart} target={<PromptStats />} />,
       };
     case "prompt-map":
-      return { icon: Icon.Network, action: <Action title="Open" icon={Icon.Network} onAction={showPromptMap} /> };
+      return {
+        icon: Icon.Network,
+        action: <Action title="Open" icon={Icon.Network} onAction={() => showPromptMap()} />,
+      };
     default:
       return undefined;
   }

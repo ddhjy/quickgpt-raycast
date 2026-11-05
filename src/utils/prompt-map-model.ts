@@ -172,6 +172,11 @@ export function isInsideAny(filePath: string, roots: readonly string[]): boolean
   });
 }
 
+/** Stable key of a prompt in the Prompt Map model, also used to focus it from a URL. */
+export function promptMapNodeKey(filePath: string, indexPath: readonly number[]): string {
+  return `${filePath}#${indexPath.join(".")}`;
+}
+
 function toNode(prompt: PromptProps, depth: number, readonly: boolean): PromptMapNode {
   const children = (prompt.subprompts || []).map((sub) => toNode(sub, depth + 1, readonly));
   const filePath = prompt.filePath ?? "";
@@ -188,7 +193,7 @@ function toNode(prompt: PromptProps, depth: number, readonly: boolean): PromptMa
 
   return {
     id: prompt.identifier,
-    key: `${filePath}#${indexPath.join(".")}`,
+    key: promptMapNodeKey(filePath, indexPath),
     indexPath,
     title: prompt.title,
     icon: prompt.icon || "",

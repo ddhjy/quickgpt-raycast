@@ -7,6 +7,7 @@
 - Drag and drop to reorder or move prompts across folders and files, multi-select to move or delete several at once, and undo with ⌘Z
 - Show the Git status of prompt libraries in Prompt Map: branch and ahead/behind in the footer, change badges on cards and in the detail panel, and a Git panel listing every uncommitted file
 - Bind a commit command in the Git panel and run it with one click; output and exit status are shown in the panel
+- Add an Open in Prompt Map action (⌘⇧M) that opens Prompt Map with the prompt selected
 
 ## [Initial Release] - {PR_MERGE_DATE}
 

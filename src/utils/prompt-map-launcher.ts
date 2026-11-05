@@ -12,7 +12,8 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { environment, open } from "@raycast/api";
+import { pathToFileURL } from "url";
+import { closeMainWindow, environment, open, showToast, Toast } from "@raycast/api";
 import configurationManager from "../managers/configuration-manager";
 import promptManager from "../managers/prompt-manager";
 import { getActiveTemporaryDirectories } from "../stores/temporary-directory-store";
@@ -219,19 +220,59 @@ export function writeStaticPromptMap(paths: PromptMapPaths = getPromptMapPaths()
   return target;
 }
 
+/** Query parameter carrying the key of the prompt the page should select on load. */
+export const FOCUS_PARAM = "focus";
+
+/** Adds the focus parameter to a Prompt Map URL; returns the URL unchanged without a key. */
+export function withFocusParam(url: string, focusKey?: string): string {
+  if (!focusKey) return url;
+  const target = new URL(url);
+  target.searchParams.set(FOCUS_PARAM, focusKey);
+  return target.toString();
+}
+
+export interface OpenPromptMapOptions {
+  paths?: PromptMapPaths;
+  /** Prompt Map node key (see `promptMapNodeKey`) to select once the page loads. */
+  focusKey?: string;
+}
+
 /**
  * Opens Prompt Map in the browser, preferring the editable server and falling
  * back to a static snapshot when the server cannot be started.
  */
-export async function openPromptMap(paths: PromptMapPaths = getPromptMapPaths()): Promise<OpenPromptMapResult> {
+export async function openPromptMap(options: OpenPromptMapOptions = {}): Promise<OpenPromptMapResult> {
+  const { paths = getPromptMapPaths(), focusKey } = options;
   try {
-    const url = await ensurePromptMapServer(paths);
+    const url = withFocusParam(await ensurePromptMapServer(paths), focusKey);
     await open(url);
     return { mode: "server", url };
   } catch (error) {
     console.warn("Prompt Map server unavailable, opening a static snapshot instead:", error);
     const file = writeStaticPromptMap(paths);
-    await open(file);
-    return { mode: "static", url: file };
+    const url = withFocusParam(pathToFileURL(file).toString(), focusKey);
+    await open(url);
+    return { mode: "static", url };
+  }
+}
+
+/**
+ * Opens Prompt Map with progress feedback in a toast, then closes Raycast.
+ * With a focus key the page selects that prompt once it loads.
+ */
+export async function showPromptMap(focusKey?: string): Promise<void> {
+  const toast = await showToast({ style: Toast.Style.Animated, title: "Opening Prompt Map…" });
+  try {
+    const result = await openPromptMap({ focusKey });
+    toast.style = Toast.Style.Success;
+    toast.title = result.mode === "server" ? "Prompt Map opened" : "Prompt Map opened (read-only)";
+    if (result.mode === "static") {
+      toast.message = "The local server couldn't start, so editing is unavailable.";
+    }
+    await closeMainWindow();
+  } catch (error) {
+    toast.style = Toast.Style.Failure;
+    toast.title = "Couldn't open Prompt Map";
+    toast.message = String(error);
   }
 }

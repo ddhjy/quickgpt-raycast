@@ -2000,6 +2000,19 @@
   /* ---------- Boot ---------- */
   loadModel(JSON.parse($("prompt-map-data").textContent));
   setView(pref("view") === "map" ? "map" : "outline");
+  // "Open in Prompt Map" from Raycast passes the prompt to select as ?focus=<node key>.
+  const focusKey = new URLSearchParams(location.search).get("focus");
+  if (focusKey) {
+    const target = byKey.get(focusKey);
+    if (target) { revealInOutline(target.uid); focusNode(target.uid); }
+    else toast("没有在 Prompt Map 中找到这条提示词", { error: true });
+    // Drop the parameter so a reload does not jump back to it.
+    try {
+      const clean = new URL(location.href);
+      clean.searchParams.delete("focus");
+      history.replaceState(null, "", clean);
+    } catch (_) { /* file:// pages may refuse replaceState */ }
+  }
   if (DATA.editable && TOKEN) {
     // Keeps the local server alive while the page is open.
     setInterval(() => fetch("/api/ping", { headers: { "X-Prompt-Map-Token": TOKEN } }).catch(() => undefined), 120000);

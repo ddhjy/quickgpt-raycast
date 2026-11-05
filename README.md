@@ -51,12 +51,13 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 
 ### Actions
 
-- Built-in: Copy, Copy as File, Paste, Open in Claude, Edit, Pin, Share
+- Built-in: Copy, Copy as File, Paste, Open in Claude, Open in Prompt Map, Edit, Pin, Share
 - Custom AppleScript actions from configured script directories
 
 ### Prompt Map
 
 - **Settings → Prompt Map** opens the whole library in your browser: an outline of grouped cards and a mind map, with a detail panel for every prompt
+- **Open in Prompt Map** (⌘⇧M) on any prompt opens Prompt Map with that prompt revealed and selected
 - Search matches titles, content, paths and Pinyin initials; the outline is fully keyboard driven (arrows, Enter, E to edit)
 - Edit titles and content, add subprompts and delete prompts in place. Edits rewrite only the changed span of the `.hjson` file, so comments and formatting are preserved
 - Drag prompts in the outline to reorder them or move them into another folder or file; ⌘-click and Shift-click select several prompts to move or delete together, ⌥↑/⌥↓ nudges within a folder, and ⌘Z undoes the last move or delete

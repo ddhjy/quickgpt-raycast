@@ -244,8 +244,12 @@ class PromptManager {
    * prompts that only exist for the Raycast UI.
    */
   public getLibrarySourcePaths(): string[] {
-    const systemPromptsPath = path.join(__dirname, "assets/system_prompts.hjson");
-    return this.getPromptFilePaths().filter((promptPath) => promptPath !== systemPromptsPath);
+    return this.getPromptFilePaths().filter((promptPath) => !this.isSystemPromptFile(promptPath));
+  }
+
+  /** True for the bundled settings prompts, which Prompt Map does not show. */
+  public isSystemPromptFile(filePath: string): boolean {
+    return filePath === path.join(__dirname, "assets/system_prompts.hjson");
   }
 
   public getRootPrompts(): PromptProps[] {
