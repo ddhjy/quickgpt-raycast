@@ -124,23 +124,8 @@
   .search-count { font: 500 11.5px var(--mono); color: var(--ink-2); white-space: nowrap; }
   .search-count:empty, .search:focus-within kbd { display: none; }
   .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-  .seg { display: inline-flex; padding: 2px; border-radius: var(--r-md); background: oklch(from var(--border) l c h / 0.6); gap: 2px; }
-  .seg button {
-    display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
-    color: var(--ink-2); font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
-  }
-  .seg button:hover { color: var(--ink); }
-  .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px oklch(0 0 0 / 0.08); }
   .tool-group { display: flex; align-items: center; gap: 2px; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--border-strong); }
-  .tool-group select {
-    height: 28px; padding: 0 24px 0 8px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--ink-2);
-    font-size: 12.5px; cursor: pointer; appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%23888' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m4 6 4 4 4-4'/></svg>");
-    background-repeat: no-repeat; background-position: right 6px center;
-  }
-  .tool-group select:hover { background-color: var(--hover); color: var(--ink); }
-  body.view-map .outline-only { display: none !important; }
-  body.view-outline .map-only { display: none !important; }
+  .tool-group:first-child { padding-left: 0; margin-left: 0; border-left: 0; }
 
   /* ---------- Help popover ---------- */
   [popover] { margin: 0; padding: 0; border: 0; background: transparent; }
@@ -160,7 +145,6 @@
   .main { flex: 1; display: flex; min-height: 0; }
   .board-wrap { flex: 1; overflow: auto; padding: 14px 16px 40px; outline: none; }
   .board-wrap:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
-  body.view-map .board-wrap { display: none; }
   .board { columns: 300px; column-gap: 14px; }
   aside {
     width: clamp(320px, 32vw, 520px); flex: none; border-left: 1px solid var(--border); background: var(--surface); overflow: auto;
@@ -175,7 +159,6 @@
   .status .mono { font: 11px var(--mono); overflow: hidden; text-overflow: ellipsis; }
   .status-hint { margin-left: auto; display: flex; align-items: center; gap: 10px; overflow: hidden; }
   .status-hint span { display: inline-flex; align-items: center; gap: 4px; }
-  .status .zoom-btn { height: 20px; padding: 0 6px; font: 500 11px var(--mono); }
   .empty { padding: 48px 16px; text-align: center; color: var(--muted); font-size: 13px; }
   .empty b { color: var(--ink-2); font-weight: 500; }
 
@@ -250,36 +233,6 @@
   .sel-list .sel-x:hover { background: oklch(from var(--muted) l c h / 0.15); color: var(--ink); }
   .p-edit-actions .p-note { flex-basis: 100%; margin: 4px 0 0; }
   .children.collapsed { display: none; }
-
-  /* ---------- Mind map ---------- */
-  .map-wrap { flex: 1; position: relative; overflow: hidden; display: none; cursor: grab; background: var(--bg); }
-  body.view-map .map-wrap { display: block; }
-  .map-wrap.dragging { cursor: grabbing; }
-  #map { width: 100%; height: 100%; display: block; user-select: none; }
-  #map-root { transition: transform var(--t-slow) var(--ease); transform-origin: 0 0; }
-  .map-wrap.no-anim #map-root { transition: none; }
-  .mm-links path { fill: none; stroke-width: 1.5; opacity: .5; }
-  .mm-node rect { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; transition: fill var(--t-fast) var(--ease); }
-  .mm-node.d0 rect { stroke: var(--c); stroke-width: 1.5; }
-  .mm-node.d2 rect { fill: transparent; stroke: transparent; }
-  .mm-block { fill: var(--c); fill-opacity: .07; stroke: var(--c); stroke-opacity: .3; stroke-width: 1; }
-  .mm-node.in-block rect { fill: var(--surface); stroke: var(--border); }
-  .mm-node:hover rect { fill: var(--hover); }
-  .mm-node.active rect { fill: var(--sel); }
-  .mm-node.match rect { fill: var(--match); stroke: var(--c); }
-  .mm-node.locked rect { stroke: var(--ink); stroke-width: 1.75; fill: var(--sel); }
-  .mm-node.selected rect { fill: var(--sel); stroke: var(--focus); stroke-width: 1.5; }
-  .mm-node text { font: 12.5px var(--ui); fill: var(--ink); dominant-baseline: central; pointer-events: none; }
-  .mm-node.d0 text { font-weight: 600; }
-  .mm-badge circle { fill: var(--surface); stroke: var(--c); stroke-width: 1.2; cursor: pointer; transition: fill var(--t-fast) var(--ease); }
-  .mm-badge:hover circle { fill: var(--hover); }
-  .mm-badge text { font: 600 9px var(--ui); fill: var(--c); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-  .mm-badge.closed circle { fill: var(--c); }
-  .mm-badge.closed text { fill: #fff; }
-  .mm-root rect { fill: var(--ink); }
-  .mm-root text { font: 700 14px var(--ui); fill: var(--on-ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-  .map-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
-  .map-wrap.is-empty .map-empty { display: flex; }
 
   /* ---------- Detail panel ---------- */
   .p-empty { color: var(--muted); font-size: 13px; padding: 56px 8px; text-align: center; line-height: 2; }
@@ -415,16 +368,11 @@
   }
 </style>
 </head>
-<body class="view-outline">
+<body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></symbol>
-  <symbol id="i-list" viewBox="0 0 16 16"><path d="M3 4h3M8 4h5M5 8h3M10 8h3M5 12h3M10 12h3"/></symbol>
-  <symbol id="i-map" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.5"/><circle cx="12.5" cy="4" r="1.5"/><circle cx="12.5" cy="12" r="1.5"/><path d="M5 8h3.5M8.5 8 11 5M8.5 8l2.5 3"/></symbol>
   <symbol id="i-expand" viewBox="0 0 16 16"><path d="m4 4.5 4 3 4-3M4 9.5l4 3 4-3"/></symbol>
   <symbol id="i-collapse" viewBox="0 0 16 16"><path d="m4 7.5 4-3 4 3M4 12.5l4-3 4 3"/></symbol>
-  <symbol id="i-fit" viewBox="0 0 16 16"><path d="M3 6.5V3h3.5M9.5 3H13v3.5M13 9.5V13H9.5M6.5 13H3V9.5"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></symbol>
-  <symbol id="i-minus" viewBox="0 0 16 16"><path d="M3.5 8h9"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.2 6.3a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.3"/><circle cx="8" cy="11.6" r=".6" fill="currentColor"/></symbol>
   <symbol id="i-dense" viewBox="0 0 16 16"><path d="M3 4h10M3 6.5h10M3 9h10M3 11.5h10"/></symbol>
   <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.5 8z"/></symbol>
@@ -454,24 +402,10 @@
     <kbd>/</kbd>
   </label>
   <div class="top-right">
-    <div class="seg" id="view-seg" role="tablist" aria-label="视图">
-      <button role="tab" data-view="outline" aria-selected="true"><svg class="ic"><use href="#i-list"/></svg>大纲</button>
-      <button role="tab" data-view="map" aria-selected="false"><svg class="ic"><use href="#i-map"/></svg>导图</button>
-    </div>
-    <div class="tool-group outline-only">
+    <div class="tool-group">
       <button class="btn icon-btn" id="expand" title="全部展开"><svg class="ic"><use href="#i-expand"/></svg></button>
       <button class="btn icon-btn" id="collapse" title="全部折叠"><svg class="ic"><use href="#i-collapse"/></svg></button>
       <button class="btn icon-btn" id="dense" title="紧凑行距" aria-pressed="false"><svg class="ic"><use href="#i-dense"/></svg></button>
-    </div>
-    <div class="tool-group map-only">
-      <select id="mm-level" title="展开层级" aria-label="展开层级">
-        <option value="1">1 层</option>
-        <option value="2">2 层</option>
-        <option value="99" selected>全部</option>
-      </select>
-      <button class="btn icon-btn" id="mm-fit" title="适应窗口 (0)"><svg class="ic"><use href="#i-fit"/></svg></button>
-      <button class="btn icon-btn" id="mm-out" title="缩小"><svg class="ic"><use href="#i-minus"/></svg></button>
-      <button class="btn icon-btn" id="mm-in" title="放大"><svg class="ic"><use href="#i-plus"/></svg></button>
     </div>
     <div class="tool-group">
       <button class="btn icon-btn" id="help-btn" popovertarget="help" title="快捷键与设置"><svg class="ic"><use href="#i-help"/></svg></button>
@@ -495,7 +429,6 @@
     <span><kbd>⌘</kbd><kbd>Z</kbd></span><span>撤销上一次移动或删除</span>
     <span><kbd>⌘</kbd><kbd>S</kbd></span><span>保存</span>
     <span><kbd>Esc</kbd></span><span>取消选择、清空搜索或退出编辑</span>
-    <span><kbd>0</kbd></span><span>导图适应窗口</span>
   </div>
   <h3>设置</h3>
   <div class="row"><span>「在编辑器打开」使用</span>
@@ -512,10 +445,6 @@
 
 <div class="main">
   <div class="board-wrap" id="board-wrap" tabindex="0" aria-label="提示词大纲"><div class="board" id="board"></div><div class="empty" id="board-empty" hidden></div></div>
-  <div class="map-wrap" id="map-wrap">
-    <svg id="map" xmlns="http://www.w3.org/2000/svg"><g id="map-root"></g></svg>
-    <div class="map-empty empty" id="map-empty"></div>
-  </div>
   <aside id="panel" aria-live="polite"></aside>
 </div>
 
@@ -526,7 +455,6 @@
     <svg class="ic"><use href="#i-branch"/></svg><span id="git-ind-text"></span><i class="git-ind-dot"></i>
   </button>
   <span class="status-hint" id="status-hint"></span>
-  <button class="btn zoom-btn map-only" id="mm-zoom" title="适应窗口">100%</button>
 </footer>
 
 <div id="git-pop" popover class="pop git-pop" aria-label="Git">
@@ -555,7 +483,6 @@
   const $ = (id) => document.getElementById(id);
   const TOKEN = new URLSearchParams(location.search).get("t") || "";
   const board = $("board"), boardWrap = $("board-wrap"), boardEmpty = $("board-empty"), panel = $("panel"), q = $("q"), countEl = $("count");
-  const mapWrap = $("map-wrap"), mapSvg = $("map"), mapRoot = $("map-root"), mapEmpty = $("map-empty"), mapZoomEl = $("mm-zoom");
   const toastEl = $("toast"), toastText = $("toast-text"), toastAct = $("toast-act");
 
   /* ---------- Utilities ---------- */
@@ -606,14 +533,9 @@
   let nodes = [], byUid = new Map(), byKey = new Map(), parentOf = new Map(), wrapByUid = new Map(), cards = [];
   let uidCounter = 0;
   let lockedUid = null, activeUid = null;
-  let view = "outline";
-  let mm = { k: 1, tx: 0, ty: 0 };
-  let mapDirty = true, mapFitted = false;
   let editing = null;
   let selected = new Set(), rangeEnd = null, lastUndo = null, dragState = null;
   const outlineCollapsed = new Set();
-  const mapCollapsed = new Set();
-  let VROOT;
 
   /* ---------- Model loading ---------- */
   function indexNode(node, parent, fileName, color) {
@@ -710,26 +632,21 @@
     $("help-source").textContent = "提示词目录 " + DATA.sourceDirs.map(shortHome).join(", ");
     $("help-backup").textContent = DATA.editable ? "每次保存前先备份到扩展 Support 目录的 prompt-map/backups 下" : "静态快照不能编辑；从 Raycast 打开可编辑版本。";
 
-    prepareMap();
-    mapDirty = true;
     renderEmptyPanel();
     applySearch({ fit: false });
     applyGitBadges();
     // Every reload follows a write, so the git status is stale too.
     scheduleGit(150);
-    if (view === "map") renderMap();
     if (opts.lockKey && byKey.has(opts.lockKey)) {
       const uid = byKey.get(opts.lockKey).uid;
       lock(uid);
-      if (view === "map") { expandAncestors(uid); renderMap(); centerOn(uid); }
       if (opts.edit) showEditor(uid, opts.selectTitle);
     }
     const picked = (opts.selectKeys || []).map((key) => byKey.get(key)).filter(Boolean).map((n) => n.uid);
     if (picked.length) {
-      picked.forEach((uid) => { revealInOutline(uid); expandAncestors(uid); });
+      picked.forEach(revealInOutline);
       if (picked.length === 1) lock(picked[0]); else selectMany(picked, picked[0]);
-      if (view === "map") renderMap();
-      else outlineRowFor(picked[0]).scrollIntoView({ block: "nearest" });
+      outlineRowFor(picked[0]).scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -745,7 +662,7 @@
     return wrapByUid.get(uid).firstElementChild;
   }
   function elsFor(uid) {
-    return [outlineRowFor(uid), mapRoot.querySelector(`.mm-node[data-uid="${uid}"]`)].filter(Boolean);
+    return [outlineRowFor(uid)].filter(Boolean);
   }
 
   /* ---------- Detail panel (view mode) ---------- */
@@ -943,13 +860,7 @@
   function focusNode(uid) {
     if (editing && !closeEditor()) return;
     lock(uid);
-    if (view === "map") {
-      expandAncestors(uid);
-      renderMap();
-      centerOn(uid, 1);
-    } else {
-      outlineRowFor(uid).scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    outlineRowFor(uid).scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
   /* ---------- Outline keyboard navigation ---------- */
@@ -1110,7 +1021,6 @@
     if (editing && !closeEditor()) return;
     try {
       const res = await api("/api/edit", { op: "add", file: node.file, indexPath: node.indexPath, title: "新提示词", content: "" });
-      mapCollapsed.delete(node.ck);
       outlineCollapsed.delete(node.ck);
       loadModel(res.model, { lockKey: res.focusKey, edit: true, selectTitle: true });
       toast("已新建，改好标题后保存");
@@ -1380,286 +1290,10 @@
   /* ---------- Status bar ---------- */
   function updateStatusHint() {
     const hint = $("status-hint");
-    hint.innerHTML = view === "map"
-      ? `<span>滚轮平移</span><span><kbd>⌘</kbd>+滚轮缩放</span><span>拖拽画布</span><span>双击节点放大</span><span>点圆点折叠</span>`
-      : DATA && DATA.editable
+    hint.innerHTML = DATA && DATA.editable
         ? `<span>点击固定</span><span><kbd>⌘</kbd>/<kbd>⇧</kbd> 点击多选</span><span>拖拽调整位置</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span><span><kbd>E</kbd> 编辑</span>`
         : `<span>悬停预览</span><span>点击固定</span><span><kbd>↑</kbd><kbd>↓</kbd> 移动</span>`;
   }
-
-  /* ---------- Mind map: layout ---------- */
-  const MM = { h: 26, vGap: 5, hGap: 48, padX: 10, maxTitle: 30 };
-  const UI_FONT = getComputedStyle(document.documentElement).getPropertyValue("--ui").trim() || "sans-serif";
-  const FONT = `12.5px ${UI_FONT}`;
-  const FONT_BOLD = `600 ${FONT}`;
-  const FONT_ROOT = `700 14px ${UI_FONT}`;
-  const measure = document.createElement("canvas").getContext("2d");
-  function textW(text, font) { measure.font = font; return measure.measureText(text).width; }
-  function shortTitle(t) { return t.length > MM.maxTitle ? t.slice(0, MM.maxTitle - 1) + "…" : t; }
-
-  function prepareMap() {
-    VROOT = { uid: -1, title: "Prompt Library", depth: -1, children: [], hidden: false, mm: { collapsed: false } };
-    for (const file of DATA.files) for (const root of file.roots) VROOT.children.push(root);
-    for (const n of nodes) {
-      const label = (n.ownIcon && EMOJI.test(n.ownIcon) ? n.ownIcon + " " : "") + shortTitle(n.title);
-      n.mm = { collapsed: mapCollapsed.has(n.ck), label, w: Math.ceil(textW(label, n.depth === 0 ? FONT_BOLD : FONT)) + MM.padX * 2, h: MM.h };
-    }
-    VROOT.mm.w = Math.ceil(textW(VROOT.title, FONT_ROOT)) + 30;
-    VROOT.mm.h = 34;
-  }
-  function visibleKids(n) { return n.mm.collapsed ? [] : n.children.filter((c) => !c.hidden); }
-  const BLK = { minRun: 4, pad: 6, gapX: 8, gapY: 4 };
-  function blockCols(count) { return count <= 10 ? 2 : count <= 24 ? 3 : 4; }
-  function makeBlock(leaves, color) {
-    const cols = blockCols(leaves.length);
-    const rows = Math.ceil(leaves.length / cols);
-    const colW = new Array(cols).fill(0);
-    leaves.forEach((leaf, i) => { const c = Math.floor(i / rows); colW[c] = Math.max(colW[c], leaf.mm.w); });
-    const colX = [];
-    let x = BLK.pad;
-    for (let c = 0; c < cols; c++) { colX.push(x); x += colW[c] + BLK.gapX; }
-    const w = x - BLK.gapX + BLK.pad;
-    const h = BLK.pad * 2 + rows * MM.h + (rows - 1) * BLK.gapY;
-    const block = { type: "block", leaves, cols, rows, colX, w, h, sh: h, color };
-    leaves.forEach((leaf) => { leaf.mm.block = block; leaf.mm.slots = []; leaf.mm.sh = leaf.mm.h; });
-    return block;
-  }
-  function measureSubtree(n) {
-    const kids = visibleKids(n);
-    const slots = [];
-    let run = [];
-    const flush = () => {
-      if (run.length >= BLK.minRun) slots.push(makeBlock(run, n.color));
-      else for (const k of run) slots.push({ type: "node", node: k, sh: measureSubtree(k) });
-      run = [];
-    };
-    for (const k of kids) {
-      k.mm.block = null;
-      if (k.children.filter((c) => !c.hidden).length === 0) run.push(k);
-      else { flush(); slots.push({ type: "node", node: k, sh: measureSubtree(k) }); }
-    }
-    flush();
-    n.mm.slots = slots;
-    if (!slots.length) { n.mm.sh = n.mm.h; n.mm.kidsH = 0; return n.mm.sh; }
-    let sum = 0;
-    for (const slot of slots) sum += slot.sh;
-    sum += MM.vGap * (slots.length - 1);
-    n.mm.kidsH = sum;
-    n.mm.sh = Math.max(n.mm.h, sum);
-    return n.mm.sh;
-  }
-  function placeSubtree(n, innerX, yTop, side) {
-    n.mm.side = side;
-    n.mm.y = yTop + (n.mm.sh - n.mm.h) / 2;
-    n.mm.x = side === "R" ? innerX : innerX - n.mm.w;
-    const slots = n.mm.slots || [];
-    if (!slots.length) return;
-    let cy = yTop + (n.mm.sh - n.mm.kidsH) / 2;
-    const childInnerX = side === "R" ? n.mm.x + n.mm.w + MM.hGap : n.mm.x - MM.hGap;
-    for (const slot of slots) {
-      if (slot.type === "node") placeSubtree(slot.node, childInnerX, cy, side);
-      else {
-        slot.side = side;
-        slot.x = side === "R" ? childInnerX : childInnerX - slot.w;
-        slot.y = cy;
-        slot.leaves.forEach((leaf, i) => {
-          const c = Math.floor(i / slot.rows), r = i % slot.rows;
-          leaf.mm.side = side;
-          leaf.mm.x = slot.x + slot.colX[c];
-          leaf.mm.y = slot.y + BLK.pad + r * (MM.h + BLK.gapY);
-        });
-      }
-      cy += slot.sh + MM.vGap;
-    }
-  }
-  function layoutMap() {
-    const roots = visibleKids(VROOT);
-    roots.forEach(measureSubtree);
-    const total = roots.reduce((s, r) => s + r.mm.sh, 0);
-    const right = [], left = [];
-    let acc = 0;
-    for (const r of roots) { if (acc < total / 2) { right.push(r); acc += r.mm.sh; } else left.push(r); }
-    const stack = (list, side) => {
-      const H = list.reduce((s, r) => s + r.mm.sh, 0) + MM.vGap * Math.max(0, list.length - 1);
-      let y = -H / 2;
-      const innerX = side === "R" ? VROOT.mm.w / 2 + MM.hGap : -VROOT.mm.w / 2 - MM.hGap;
-      for (const r of list) { placeSubtree(r, innerX, y, side); y += r.mm.sh + MM.vGap; }
-    };
-    stack(right, "R");
-    stack(left, "L");
-    VROOT.mm.x = -VROOT.mm.w / 2;
-    VROOT.mm.y = -VROOT.mm.h / 2;
-    return { right, left };
-  }
-
-  /* ---------- Mind map: render ---------- */
-  function renderMap() {
-    const { right, left } = layoutMap();
-    const links = [], blocks = [], groups = [];
-    const drawLink = (p, c) => {
-      const isR = c.mm.side === "R";
-      const x1 = isR ? p.mm.x + p.mm.w : p.mm.x, y1 = p.mm.y + p.mm.h / 2;
-      const x2 = isR ? c.mm.x : c.mm.x + c.mm.w, y2 = c.mm.y + c.mm.h / 2;
-      const mx = (x1 + x2) / 2;
-      links.push(`<path d="M${x1} ${y1} C${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" stroke="${c.color}"/>`);
-    };
-    const drawNode = (n) => {
-      const isFolder = n.children.length > 0;
-      const cls = ["mm-node", `d${Math.min(n.depth, 2)}`];
-      if (isFolder) cls.push("folder");
-      if (n.mm.block) cls.push("in-block");
-      if (n.match) cls.push("match");
-      if (n.uid === activeUid) cls.push("active");
-      if (n.uid === lockedUid) cls.push("locked");
-      if (selected.size > 1 && selected.has(n.uid)) cls.push("selected");
-      let g = `<g class="${cls.join(" ")}" data-uid="${n.uid}" transform="translate(${n.mm.x},${n.mm.y})" style="--c:${n.color}">` +
-        `<rect width="${n.mm.w}" height="${n.mm.h}" rx="6"/><text x="${MM.padX}" y="${n.mm.h / 2}">${esc(n.mm.label)}</text>`;
-      const shownKids = n.children.filter((c) => !c.hidden).length;
-      if (isFolder && shownKids > 0) {
-        const bx = n.mm.side === "R" ? n.mm.w + 11 : -11;
-        g += `<g class="mm-badge${n.mm.collapsed ? " closed" : ""}" transform="translate(${bx},${n.mm.h / 2})"><circle r="7.5"/><text>${n.mm.collapsed ? shownKids : "−"}</text></g>`;
-      }
-      g += `</g>`;
-      groups.push(g);
-      for (const slot of n.mm.slots || []) {
-        if (slot.type === "node") { drawLink(n, slot.node); drawNode(slot.node); continue; }
-        const isR = slot.side === "R";
-        const x1 = isR ? n.mm.x + n.mm.w : n.mm.x, y1 = n.mm.y + n.mm.h / 2;
-        const x2 = isR ? slot.x : slot.x + slot.w, y2 = slot.y + slot.h / 2;
-        const mx = (x1 + x2) / 2;
-        links.push(`<path d="M${x1} ${y1} C${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" stroke="${slot.color}"/>`);
-        blocks.push(`<rect class="mm-block" x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" rx="9" style="--c:${slot.color}"/>`);
-        for (const leaf of slot.leaves) drawNode(leaf);
-      }
-    };
-    for (const r of [...right, ...left]) { drawLink(VROOT, r); drawNode(r); }
-    const rootG = `<g class="mm-root" transform="translate(${VROOT.mm.x},${VROOT.mm.y})"><rect width="${VROOT.mm.w}" height="${VROOT.mm.h}" rx="17"/><text x="${VROOT.mm.w / 2}" y="${VROOT.mm.h / 2}">${esc(VROOT.title)}</text></g>`;
-    mapRoot.innerHTML = `<g class="mm-links">${links.join("")}</g>${blocks.join("")}${groups.join("")}${rootG}`;
-    mapWrap.classList.toggle("is-empty", right.length + left.length === 0);
-    mapDirty = false;
-  }
-  function applyTransform(animate) {
-    mapWrap.classList.toggle("no-anim", !animate);
-    mapRoot.style.transform = `translate(${mm.tx}px, ${mm.ty}px) scale(${mm.k})`;
-    mapZoomEl.textContent = `${Math.round(mm.k * 100)}%`;
-  }
-  function mapBounds() {
-    const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-    const visit = (n) => {
-      b.minX = Math.min(b.minX, n.mm.x - 20); b.maxX = Math.max(b.maxX, n.mm.x + n.mm.w + 20);
-      b.minY = Math.min(b.minY, n.mm.y); b.maxY = Math.max(b.maxY, n.mm.y + n.mm.h);
-      visibleKids(n).forEach(visit);
-    };
-    visit(VROOT);
-    return b;
-  }
-  function fitMap(animate = true) {
-    const b = mapBounds();
-    const W = mapWrap.clientWidth, H = mapWrap.clientHeight;
-    const k = Math.min((W - 40) / (b.maxX - b.minX), (H - 40) / (b.maxY - b.minY), 1.25);
-    mm = { k, tx: W / 2 - k * (b.minX + b.maxX) / 2, ty: H / 2 - k * (b.minY + b.maxY) / 2 };
-    applyTransform(animate);
-  }
-  function centerOn(uid, minK) {
-    const n = byUid.get(uid);
-    if (!n || n.mm.x === undefined) return;
-    const k = minK && mm.k < minK ? minK : mm.k;
-    const W = mapWrap.clientWidth, H = mapWrap.clientHeight;
-    mm = { k, tx: W / 2 - k * (n.mm.x + n.mm.w / 2), ty: H / 2 - k * (n.mm.y + n.mm.h / 2) };
-    applyTransform(true);
-  }
-  function zoomAt(factor, px, py, animate) {
-    const nk = Math.min(3, Math.max(0.08, mm.k * factor));
-    mm = { k: nk, tx: px - (px - mm.tx) * (nk / mm.k), ty: py - (py - mm.ty) * (nk / mm.k) };
-    applyTransform(animate);
-  }
-  function expandAncestors(uid) {
-    let p = parentOf.get(uid);
-    while (p) { p.mm.collapsed = false; mapCollapsed.delete(p.ck); p = parentOf.get(p.uid); }
-  }
-  function setMapLevel(level) {
-    mapCollapsed.clear();
-    for (const n of nodes) if (n.children.length) { n.mm.collapsed = n.depth >= level - 1; if (n.mm.collapsed) mapCollapsed.add(n.ck); }
-    renderMap();
-    fitMap();
-  }
-
-  /* ---------- Mind map: interaction ---------- */
-  mapWrap.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    const r = mapWrap.getBoundingClientRect();
-    if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top, false);
-    else { mm.tx -= e.deltaX; mm.ty -= e.deltaY; applyTransform(false); }
-  }, { passive: false });
-  let drag = null, suppressClick = false;
-  mapWrap.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return;
-    suppressClick = false;
-    drag = { x: e.clientX, y: e.clientY, tx: mm.tx, ty: mm.ty, moved: false };
-  });
-  window.addEventListener("mousemove", (e) => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
-    drag.moved = true;
-    mapWrap.classList.add("dragging");
-    mm.tx = drag.tx + dx; mm.ty = drag.ty + dy;
-    applyTransform(false);
-  });
-  window.addEventListener("mouseup", () => {
-    if (drag && drag.moved) suppressClick = true;
-    drag = null;
-    mapWrap.classList.remove("dragging");
-  });
-  mapSvg.addEventListener("click", (e) => {
-    if (suppressClick) { suppressClick = false; return; }
-    const badge = e.target.closest(".mm-badge");
-    if (badge) {
-      const n = byUid.get(Number(badge.closest(".mm-node").dataset.uid));
-      n.mm.collapsed = !n.mm.collapsed;
-      n.mm.collapsed ? mapCollapsed.add(n.ck) : mapCollapsed.delete(n.ck);
-      renderMap();
-      return;
-    }
-    const g = e.target.closest(".mm-node");
-    if (!g) return;
-    clickSelect(Number(g.dataset.uid), e);
-  });
-  mapSvg.addEventListener("dblclick", (e) => {
-    const g = e.target.closest(".mm-node");
-    if (g) centerOn(Number(g.dataset.uid), 1);
-  });
-  mapSvg.addEventListener("mouseover", (e) => {
-    const g = e.target.closest(".mm-node");
-    if (!g || lockedUid !== null) return;
-    const uid = Number(g.dataset.uid);
-    if (uid !== activeUid) show(uid);
-  });
-  $("mm-fit").addEventListener("click", () => fitMap());
-  mapZoomEl.addEventListener("click", () => fitMap());
-  $("mm-in").addEventListener("click", () => zoomAt(1.25, mapWrap.clientWidth / 2, mapWrap.clientHeight / 2, true));
-  $("mm-out").addEventListener("click", () => zoomAt(0.8, mapWrap.clientWidth / 2, mapWrap.clientHeight / 2, true));
-  $("mm-level").addEventListener("change", (e) => setMapLevel(Number(e.target.value)));
-
-  /* ---------- View switching ---------- */
-  const seg = $("view-seg");
-  function setView(v) {
-    view = v;
-    document.body.classList.toggle("view-map", v === "map");
-    document.body.classList.toggle("view-outline", v === "outline");
-    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === v)));
-    pref("view", v);
-    updateStatusHint();
-    if (v === "map") {
-      if (mapDirty) renderMap();
-      if (!mapFitted) { fitMap(false); mapFitted = true; }
-      if (lockedUid !== null) { expandAncestors(lockedUid); renderMap(); centerOn(lockedUid, 1); }
-    }
-  }
-  seg.addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-view]");
-    if (b) setView(b.dataset.view);
-  });
 
   /* ---------- Search ---------- */
   function applySearch(opts = { fit: true }) {
@@ -1679,7 +1313,6 @@
     }
     for (const node of nodes) {
       node.hidden = terms.length > 0 && !visible.has(node.uid);
-      if (node.match) expandAncestors(node.uid);
       const el = node.parent === null ? null : wrapByUid.get(node.uid);
       if (el) el.classList.toggle("hidden", node.hidden);
       const ttl = outlineRowFor(node.uid).querySelector(".ttl");
@@ -1691,9 +1324,6 @@
     const emptyHtml = terms.length && matches === 0 ? `没有匹配 <b>${esc(raw)}</b> 的提示词<br>搜索会匹配标题、正文、路径和拼音首字母` : "";
     boardEmpty.innerHTML = emptyHtml;
     boardEmpty.hidden = !emptyHtml;
-    mapEmpty.innerHTML = emptyHtml;
-    mapDirty = true;
-    if (view === "map") { renderMap(); if (opts.fit) fitMap(); }
   }
   let searchTimer;
   q.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => applySearch({ fit: true }), 40); });
@@ -1714,7 +1344,7 @@
         return;
       }
       if (arrow && e.altKey && !e.metaKey && !e.ctrlKey && DATA.editable) { e.preventDefault(); nudge(arrow); return; }
-      if (arrow && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && view === "outline") { e.preventDefault(); extendByKeyboard(arrow); return; }
+      if (arrow && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey ) { e.preventDefault(); extendByKeyboard(arrow); return; }
       if ((e.key === "Backspace" || e.key === "Delete") && !e.altKey && !e.ctrlKey && DATA.editable && currentSelection().length) {
         e.preventDefault();
         deleteNodes(currentSelection());
@@ -1735,14 +1365,14 @@
         e.preventDefault();
         q.blur();
         boardWrap.focus({ preventScroll: true });
-        if (view === "outline") { const rows = visibleRows(); if (rows.length) selectByKeyboard(rows[0]); }
+        const rows = visibleRows();
+        if (rows.length) selectByKeyboard(rows[0]);
       }
       return;
     }
-    if (e.key === "0" && view === "map") { fitMap(); return; }
     if ((e.key === "e" || e.key === "E") && DATA.editable && lockedUid !== null && selected.size <= 1 && !byUid.get(lockedUid).readonly) { e.preventDefault(); showEditor(lockedUid); return; }
     if (e.key === "Enter" && activeUid !== null) { e.preventDefault(); if (lockedUid === activeUid) unlock(); else lock(activeUid); return; }
-    if (view === "outline" && outlineKey(e)) e.preventDefault();
+    if (outlineKey(e)) e.preventDefault();
   });
   window.addEventListener("beforeunload", (e) => {
     if (editing && isDirty()) { e.preventDefault(); e.returnValue = ""; }
@@ -1999,7 +1629,7 @@
 
   /* ---------- Boot ---------- */
   loadModel(JSON.parse($("prompt-map-data").textContent));
-  setView(pref("view") === "map" ? "map" : "outline");
+  updateStatusHint();
   // "Open in Prompt Map" from Raycast passes the prompt to select as ?focus=<node key>.
   const focusKey = new URLSearchParams(location.search).get("focus");
   if (focusKey) {
