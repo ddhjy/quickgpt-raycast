@@ -6,6 +6,7 @@ const byter: Application = {
   path: "/Applications/Byter.app",
   bundleId: "com.todesktop.230313mzl4w4u92.byter",
 };
+const wechat: Application = { name: "WeChat", path: "/Applications/WeChat.app", bundleId: "com.tencent.xinWeChat" };
 const mockExecFile = jest.fn();
 
 jest.mock("@raycast/api", () => ({
@@ -46,12 +47,7 @@ it.each([new Error("No selected text"), "  "])("recovers the Electron selection 
   mockExecFile.mockImplementation((_file, _args, _options, callback) => callback(null, { stdout: transcript + "\n" }));
 
   const selection = await launch(missing);
-  expect(mockExecFile.mock.calls[0][1]).toEqual([
-    "-l",
-    "JavaScript",
-    "/assets/read-electron-selection.jxa",
-    byter.bundleId,
-  ]);
+  expect(mockExecFile.mock.calls[0][1]).toEqual(["-l", "JavaScript", "/assets/read-web-selection.jxa", byter.bundleId]);
   expect(resolvePlaceholders("{{i|s|c}}", { selection })).toEqual(new Set(["selection"]));
   expect(placeholderFormatter("{{i|s|c}}", { selection, clipboard: "older copy" })).toBe(transcript);
 });
@@ -67,4 +63,19 @@ it("skips the Electron reader for other applications", async () => {
   const finder = { name: "Finder", path: "/System/Library/CoreServices/Finder.app", bundleId: "com.apple.finder" };
   await expect(launch("", finder)).resolves.toBe("");
   expect(mockExecFile).not.toHaveBeenCalled();
+});
+
+it("reads a WeChat article once per launch even without an Electron framework", async () => {
+  const article = "选中的文章段落";
+  mockExecFile.mockImplementation((_file, _args, _options, callback) => callback(null, { stdout: article + "\n" }));
+  await expect(launch("", wechat)).resolves.toBe(article);
+  const { getCapturedSelectedText } = await import("../utils/captured-selection");
+  await expect(getCapturedSelectedText(wechat)).resolves.toBe(article);
+  expect(mockExecFile).toHaveBeenCalledTimes(1);
+  expect(mockExecFile.mock.calls[0][1]).toEqual([
+    "-l",
+    "JavaScript",
+    "/assets/read-web-selection.jxa",
+    wechat.bundleId,
+  ]);
 });

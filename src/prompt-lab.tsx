@@ -34,7 +34,10 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
 
   const initialSelection = (typeof selection === "string" && selection) || initialSelectionText;
 
-  const { selectionText, currentApp, allApp, browserContent, diff } = useInitialContext(initialSelection, target);
+  const { selectionText, selectionPending, currentApp, allApp, browserContent, diff } = useInitialContext(
+    initialSelection,
+    target,
+  );
 
   useEffect(() => {
     const unsubscribe = promptManager.subscribe((promptsChanged) => {
@@ -95,8 +98,8 @@ export default function PromptLab(props: LaunchProps<{ arguments: ExtendedArgume
   return (
     <PromptList
       searchMode={!quickPrompt}
-      isLoading={isRefreshingPrompts && !promptManager.hasPrompts()}
-      prompts={uniquePrompts}
+      isLoading={selectionPending || (isRefreshingPrompts && !promptManager.hasPrompts())}
+      prompts={selectionPending ? [] : uniquePrompts}
       context={context}
       allowedActions={allowedActions}
     />

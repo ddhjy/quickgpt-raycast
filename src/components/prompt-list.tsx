@@ -225,6 +225,7 @@ export function PromptList({
   }, [initialPrompts, searchIndex, searchText, refreshKey]);
 
   useEffect(() => {
+    if (isLoading) return;
     const pushList = (prompts: PromptProps[], nextSearchMode: boolean) =>
       push(
         <PromptList
@@ -252,6 +253,7 @@ export function PromptList({
       pushList(initialPrompts, !searchMode);
     }
   }, [
+    isLoading,
     searchMode,
     searchText,
     push,

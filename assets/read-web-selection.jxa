@@ -1,0 +1,177 @@
+ObjC.import("AppKit");
+ObjC.import("ApplicationServices");
+
+function attribute(element, name) {
+  const value = Ref();
+  return $.AXUIElementCopyAttributeValue(element, $(name), value) === 0 ? ObjC.castRefToObject(value[0]) : null;
+}
+
+function selectedText(webArea) {
+  const text = ObjC.unwrap(attribute(webArea, "AXSelectedText"));
+  if (text) return text;
+
+  const range = attribute(webArea, "AXSelectedTextMarkerRange");
+  if (!range) return "";
+  const value = Ref();
+  if ($.AXUIElementCopyParameterizedAttributeValue(webArea, $("AXStringForTextMarkerRange"), range, value) === 0) {
+    return ObjC.unwrap(ObjC.castRefToObject(value[0]));
+  }
+  return "";
+}
+
+function windowWebArea(window) {
+  const queue = [window];
+  let webArea = null;
+  for (let index = 0; index < queue.length; index++) {
+    const node = queue[index];
+    if (ObjC.unwrap(attribute(node, "AXRole")) === "AXWebArea") {
+      // With no focused element, multiple web views would be ambiguous.
+      if (webArea) return null;
+      webArea = node;
+      continue;
+    }
+    const children = attribute(node, "AXChildren");
+    if (!children) continue;
+    const count = Number(children.count);
+    if (queue.length + count > 128) return null;
+    for (let i = 0; i < count; i++) queue.push(children.objectAtIndex(i));
+  }
+  return webArea;
+}
+
+function webSelection(app, window) {
+  let node = attribute(app, "AXFocusedUIElement");
+  for (let depth = 0; node && depth < 64; depth++) {
+    if (ObjC.unwrap(attribute(node, "AXRole")) === "AXWebArea") return selectedText(node);
+    node = attribute(node, "AXParent");
+  }
+
+  // An inactive Electron app can retain its document selection even when it
+  // no longer reports a focused UI element.
+  const webArea = window && windowWebArea(window);
+  return webArea ? selectedText(webArea) : "";
+}
+
+function copyMenuItem(app) {
+  const bar = attribute(app, "AXMenuBar");
+  const menus = bar && attribute(bar, "AXChildren");
+  for (let i = 0; menus && i < Number(menus.count); i++) {
+    const submenu = attribute(menus.objectAtIndex(i), "AXChildren");
+    if (!submenu || !Number(submenu.count)) continue;
+    const items = attribute(submenu.objectAtIndex(0), "AXChildren");
+    for (let j = 0; items && j < Number(items.count); j++) {
+      const item = items.objectAtIndex(j);
+      if (ObjC.unwrap(attribute(item, "AXIdentifier")) === "copy:" && ObjC.unwrap(attribute(item, "AXEnabled"))) {
+        return item;
+      }
+    }
+  }
+  return null;
+}
+
+function snapshotItems(board) {
+  // Objects returned by pasteboardItems become invalid when ownership changes.
+  const saved = $.NSMutableArray.alloc.init;
+  const items = board.pasteboardItems;
+  if (items.isNil()) return Number(board.types.count) ? null : saved;
+  for (let i = 0; i < Number(items.count); i++) {
+    const source = items.objectAtIndex(i);
+    const item = $.NSPasteboardItem.alloc.init;
+    const types = source.types;
+    // File promises and expiring secrets need their original pasteboard owner.
+    if (
+      ObjC.deepUnwrap(types).some(
+        (type) =>
+          type === "Apple files promise pasteboard type" ||
+          type.startsWith("com.apple.pasteboard.promised-file") ||
+          type === "org.nspasteboard.ConcealedType",
+      )
+    )
+      return null;
+    for (let j = 0; j < Number(types.count); j++) {
+      const type = types.objectAtIndex(j);
+      const data = source.dataForType(type);
+      if (data.isNil() || !item.setDataForType(data, type)) return null;
+    }
+    saved.addObject(item);
+  }
+  return saved;
+}
+
+function isArticleURL(value) {
+  if (!value) return false;
+  const url = $.NSURL.URLWithString($(value));
+  return (
+    !url.isNil() && ["http", "https"].includes(ObjC.unwrap(url.scheme)) && ObjC.unwrap(url.host) === "mp.weixin.qq.com"
+  );
+}
+
+function readCopiedArticle(board, copy, sourceIsFrontmost) {
+  const before = Number(board.changeCount);
+  const saved = snapshotItems(board);
+  if (!saved || Number(board.changeCount) !== before || !copy()) return "";
+
+  const deadline = Date.now() + 1500;
+  let ownedVersion;
+  try {
+    while (Date.now() < deadline) {
+      const version = Number(board.changeCount);
+      if (version > before + 1) return "";
+      if (version !== before) {
+        // Chromium publishes the URL and text after taking ownership.
+        const url = ObjC.unwrap(board.stringForType($("org.chromium.source-url")));
+        if (url) {
+          const writer = ObjC.unwrap(board.stringForType($("org.nspasteboard.source")));
+          if (writer && writer !== "com.tencent.xinWeChat" && writer !== "com.tencent.flue.WeChatAppEx") return "";
+          const article = isArticleURL(url);
+          // WeChat can open ordinary websites in this same window. Undo its
+          // Copy in that case as well, without treating the page as an article.
+          if (!article && !sourceIsFrontmost()) return "";
+          ownedVersion = version;
+          if (!article) return "";
+          const text = ObjC.unwrap(board.stringForType($.NSPasteboardTypeString));
+          if (typeof text === "string" && Number(board.changeCount) === version) return text;
+        }
+      }
+      $.NSThread.sleepForTimeInterval(0.01);
+    }
+    return "";
+  } finally {
+    if (Number(board.changeCount) === ownedVersion) {
+      const cleared = Number(board.clearContents);
+      if (Number(saved.count) && Number(board.changeCount) === cleared) board.writeObjects(saved);
+    }
+  }
+}
+
+function run([bundleId]) {
+  if (!$.AXIsProcessTrusted()) return "";
+  const apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier($(bundleId));
+  if (Number(apps.count) !== 1) return "";
+  const isWeChat = bundleId === "com.tencent.xinWeChat";
+  if (isWeChat) $.AXUIElementSetMessagingTimeout($.AXUIElementCreateSystemWide(), 0.5);
+  const source = apps.firstObject;
+  const app = $.AXUIElementCreateApplication(source.processIdentifier);
+  const window = attribute(app, "AXFocusedWindow");
+  const text = webSelection(app, window);
+  if (text.trim() || !isWeChat || !window) return text;
+
+  // WeChat's standalone article reader exposes a window shell without a web area.
+  const title = ObjC.unwrap(attribute(window, "AXTitle")) || "";
+  const appName = ObjC.unwrap(source.localizedName);
+  const documentURL = ObjC.unwrap(attribute(window, "AXDocument"));
+  if (documentURL ? !isArticleURL(documentURL) : !title.startsWith(appName + " (")) return "";
+  const item = copyMenuItem(app);
+  if (!item) return "";
+  return readCopiedArticle(
+    $.NSPasteboard.generalPasteboard,
+    () => {
+      const focused = attribute(app, "AXFocusedWindow");
+      return focused && $.CFEqual(focused, window) && $.AXUIElementPerformAction(item, $("AXPress")) === 0;
+    },
+    () => {
+      const front = ObjC.unwrap($.NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier);
+      return front === bundleId || front === "com.raycast.macos";
+    },
+  );
+}

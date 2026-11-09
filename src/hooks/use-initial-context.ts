@@ -7,11 +7,13 @@ import {
   capturedFinderItemsPromise,
   getCapturedSelectedText,
   sourceApplicationPromise,
+  WECHAT_BUNDLE_ID,
 } from "../utils/captured-selection";
 import * as fs from "fs";
 
 export function useInitialContext(initialSelectionText?: string, target?: string) {
   const [selectionText, setSelectionText] = useState(initialSelectionText ?? "");
+  const [selectionPending, setSelectionPending] = useState(!initialSelectionText?.trim());
   const [currentApp, setCurrentApp] = useState("");
   const [allApp, setAllApp] = useState("");
   const [browserContent, setBrowserContent] = useState("");
@@ -97,6 +99,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
       const fetchedFrontmostApp = sourceApplication?.name ?? "";
       setCurrentApp(fetchedFrontmostApp);
+      setSelectionPending(sourceApplication?.bundleId === WECHAT_BUNDLE_ID && !initialSelectionText?.trim());
 
       const browserNames = [
         "Arc",
@@ -189,6 +192,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       if (cancelled) return;
       setSelectionText(fetchedSelectedText);
       setDiff(fetchedDiff);
+      setSelectionPending(false);
     };
 
     void fetchData();
@@ -200,6 +204,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
   return {
     selectionText,
+    selectionPending,
     currentApp,
     allApp,
     browserContent,
