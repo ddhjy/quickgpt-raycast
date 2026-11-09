@@ -1,0 +1,59 @@
+ObjC.import("AppKit");
+ObjC.import("ApplicationServices");
+
+function attribute(element, name) {
+  const value = Ref();
+  return $.AXUIElementCopyAttributeValue(element, $(name), value) === 0 ? ObjC.castRefToObject(value[0]) : null;
+}
+
+function selectedText(webArea) {
+  const text = ObjC.unwrap(attribute(webArea, "AXSelectedText"));
+  if (text) return text;
+
+  const range = attribute(webArea, "AXSelectedTextMarkerRange");
+  if (!range) return "";
+  const value = Ref();
+  if ($.AXUIElementCopyParameterizedAttributeValue(webArea, $("AXStringForTextMarkerRange"), range, value) === 0) {
+    return ObjC.unwrap(ObjC.castRefToObject(value[0]));
+  }
+  return "";
+}
+
+function windowWebArea(window) {
+  const queue = [window];
+  let webArea = null;
+  for (let index = 0; index < queue.length; index++) {
+    const node = queue[index];
+    if (ObjC.unwrap(attribute(node, "AXRole")) === "AXWebArea") {
+      // With no focused element, multiple web views would be ambiguous.
+      if (webArea) return null;
+      webArea = node;
+      continue;
+    }
+    const children = attribute(node, "AXChildren");
+    if (!children) continue;
+    const count = Number(children.count);
+    if (queue.length + count > 128) return null;
+    for (let i = 0; i < count; i++) queue.push(children.objectAtIndex(i));
+  }
+  return webArea;
+}
+
+function run([bundleId]) {
+  if (!$.AXIsProcessTrusted()) return "";
+  const apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier($(bundleId));
+  if (Number(apps.count) !== 1) return "";
+  const app = $.AXUIElementCreateApplication(apps.firstObject.processIdentifier);
+
+  let node = attribute(app, "AXFocusedUIElement");
+  for (let depth = 0; node && depth < 64; depth++) {
+    if (ObjC.unwrap(attribute(node, "AXRole")) === "AXWebArea") return selectedText(node);
+    node = attribute(node, "AXParent");
+  }
+
+  // An inactive Electron app can retain its document selection even when it
+  // no longer reports a focused UI element.
+  const window = attribute(app, "AXFocusedWindow");
+  const webArea = window && windowWebArea(window);
+  return webArea ? selectedText(webArea) : "";
+}

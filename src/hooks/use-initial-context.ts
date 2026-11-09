@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
-import { getFrontmostApplication, BrowserExtension, getApplications } from "@raycast/api";
+import { BrowserExtension, getApplications } from "@raycast/api";
 import { getGitDiff } from "../utils/git-utils";
 import { expandPath } from "../utils/path-alias-utils";
 import { FINDER_SELECTION_MARKER } from "../utils/placeholder-formatter";
-import { capturedFinderItemsPromise, capturedSelectedTextPromise, type FinderItems } from "../utils/captured-selection";
+import {
+  capturedFinderItemsPromise,
+  getCapturedSelectedText,
+  sourceApplicationPromise,
+} from "../utils/captured-selection";
 import * as fs from "fs";
 
 export function useInitialContext(initialSelectionText?: string, target?: string) {
@@ -65,11 +69,6 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       return resolvedPaths.map((p) => `${FINDER_SELECTION_MARKER}{{file:${p}}}`).join("\n");
     };
 
-    const fetchFrontmostApp = async (): Promise<string> => {
-      const app = await getFrontmostApplication();
-      return app.name;
-    };
-
     const fetchBrowserContent = async (): Promise<string> => {
       try {
         const content = await BrowserExtension.getContent({ format: "markdown" });
@@ -92,21 +91,11 @@ export function useInitialContext(initialSelectionText?: string, target?: string
 
     let cancelled = false;
 
-    const updateSelectedTextWhenReady = () => {
-      void capturedSelectedTextPromise.then((lateSelectedText) => {
-        if (cancelled || !lateSelectedText.trim()) return;
-
-        const processedLateSelection = processSelectedText(lateSelectedText);
-        if (cancelled) return;
-
-        setSelectionText(processedLateSelection);
-      });
-    };
-
     const fetchData = async () => {
-      const fetchedFrontmostApp = await fetchFrontmostApp();
+      const sourceApplication = await sourceApplicationPromise;
       if (cancelled) return;
 
+      const fetchedFrontmostApp = sourceApplication?.name ?? "";
       setCurrentApp(fetchedFrontmostApp);
 
       const browserNames = [
@@ -176,11 +165,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
       let fetchedSelectedText = "";
       let fetchedDiff = "";
       try {
-        let selectedItems: FinderItems = [];
-
-        if (fetchedFrontmostApp.includes("Finder")) {
-          selectedItems = await capturedFinderItemsPromise;
-        }
+        const selectedItems = fetchedFrontmostApp.includes("Finder") ? await capturedFinderItemsPromise : [];
 
         if (selectedItems.length > 0) {
           let content = "";
@@ -194,7 +179,7 @@ export function useInitialContext(initialSelectionText?: string, target?: string
             fetchedDiff = "";
           }
         } else {
-          updateSelectedTextWhenReady();
+          fetchedSelectedText = processSelectedText(await getCapturedSelectedText(sourceApplication));
         }
       } catch (error) {
         console.info("Failed to use captured selection:", error);
