@@ -198,8 +198,6 @@
   .node .ttl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .node.folder .ttl { font-weight: 600; }
   .node .n { font: 500 10.5px var(--mono); color: var(--muted); flex: none; }
-  .chips { display: flex; gap: 3px; flex: none; }
-  .chip { font: 500 10px/16px var(--mono); background: var(--surface-2); color: var(--ink-2); padding: 0 4px; border-radius: 4px; }
   .children { margin-left: 12px; border-left: 1px solid var(--border); padding-left: 3px; }
 
   /* Selection, drag and drop */
@@ -567,12 +565,11 @@
     row.className = "node" + (isFolder ? " folder" : "");
     row.dataset.uid = node.uid;
     if (DATA.editable && !node.readonly) row.draggable = true;
-    const chips = node.placeholders.slice(0, 4).map((p) => `<span class="chip">${esc(p)}</span>`).join("");
     row.innerHTML =
       `<span class="tw ${isFolder ? "" : "leaf"}${collapsed ? " closed" : ""}" title="${isFolder ? "折叠 / 展开" : ""}">${ICON("chev").replace('class="ic"', 'class="ic" style="transform:rotate(90deg)"')}</span>` +
       `<span class="ico">${iconHtml(node.ownIcon, isFolder)}</span>` +
       `<span class="ttl" title="${esc(node.title)}">${esc(node.title)}</span>` +
-      (isFolder ? `<span class="n">${node.children.length}</span>` : `<span class="chips">${chips}</span>`);
+      (isFolder ? `<span class="n">${node.children.length}</span>` : "");
     const wrap = document.createElement("div");
     wrap.className = "item";
     wrap.appendChild(row);
