@@ -10,6 +10,7 @@ export type SpecificReplacements = {
   currentApp?: string;
   allApp?: string;
   browserContent?: string;
+  screenText?: string;
   now?: string;
   promptTitles?: string;
   prompts?: string;
@@ -26,6 +27,7 @@ const PLACEHOLDERS: Record<PlaceholderKey, PlaceholderInfo> = {
   currentApp: {},
   allApp: {},
   browserContent: {},
+  screenText: {},
   now: { alias: "n" },
   promptTitles: { alias: "pt" },
   prompts: { alias: "ps" },
@@ -40,6 +42,8 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 
 const PH_REG = /{{(?:(file|option|content):)?([^}]+)}}/g;
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
+
+type FormatOptions = { resolveFile?: boolean; screenText?: string | Error; clipboardError?: Error };
 
 export const toPlaceholderKey = (p: string): PlaceholderKey | undefined =>
   (ALIAS_TO_KEY.get(p) ?? (p as PlaceholderKey)) satisfies PlaceholderKey;
@@ -82,7 +86,7 @@ export function buildEffectiveMap(raw: Partial<SpecificReplacements> & Record<st
   return m;
 }
 
-function safeResolveAbsolute(given: string, root?: string): string | Error {
+export function safeResolveAbsolute(given: string, root?: string): string | Error {
   const trimmed = expandPath(given).trim();
   if (path.isAbsolute(trimmed)) {
     return trimmed;
@@ -179,16 +183,13 @@ export function getPropertyByPath(obj: unknown, path: string): unknown {
   return current;
 }
 
-export function placeholderFormatter(
+function expandPromptProperties(
   text: string,
-  incoming: SpecificReplacements & Record<string, unknown> = {},
-  root?: string,
-  options: { resolveFile?: boolean } = { resolveFile: false },
+  incoming: SpecificReplacements & Record<string, unknown>,
+  map: Map<PlaceholderKey, string>,
+  root: string | undefined,
+  options: FormatOptions,
 ): string {
-  if (!text) return text;
-
-  const map = buildEffectiveMap(incoming);
-
   let currentText = text;
   let iteration = 0;
   const MAX_ITERATIONS = 10;
@@ -203,6 +204,8 @@ export function placeholderFormatter(
       if (!isRecursivePlaceholder(directive, body)) {
         return match;
       }
+      // A fallback's selected input is literal data. Only named prompt properties expand recursively.
+      if (body.includes("|") && getPropertyByPath(incoming, body.trim()) === undefined) return match;
 
       const result = processPlaceholder(body, incoming, map, root, options);
       if (result !== match) {
@@ -223,7 +226,21 @@ export function placeholderFormatter(
       `Maximum placeholder recursion depth (${MAX_ITERATIONS}) exceeded, some placeholders may not be fully resolved`,
     );
   }
+  return currentText;
+}
 
+export function placeholderFormatter(
+  text: string,
+  incoming: SpecificReplacements & Record<string, unknown> = {},
+  root?: string,
+  options: FormatOptions = { resolveFile: false },
+): string {
+  if (!text) return text;
+
+  const map = buildEffectiveMap(incoming);
+  if (typeof options.screenText === "string") map.set("screenText", options.screenText);
+  if (options.screenText instanceof Error) map.delete("screenText");
+  let currentText = expandPromptProperties(text, incoming, map, root, options);
   PH_REG.lastIndex = 0;
 
   currentText = currentText.replace(PH_REG, (match, directive, body) => {
@@ -285,32 +302,46 @@ export function placeholderFormatter(
 
 export function resolvePlaceholders(
   text: string,
-  standardReplacements: Partial<SpecificReplacements> = {},
+  standardReplacements: SpecificReplacements & Record<string, unknown> = {},
+  visitPath?: (directive: "file" | "content", path: string, fallback: boolean) => boolean,
 ): Set<PlaceholderKey> {
   const usedStandardKeys = new Set<PlaceholderKey>();
   const map = buildEffectiveMap(standardReplacements);
+  const expanded = expandPromptProperties(text, standardReplacements, map, undefined, { resolveFile: false });
 
-  let m: RegExpExecArray | null;
   PH_REG.lastIndex = 0;
-  while ((m = PH_REG.exec(text))) {
-    const [, directive, rawBody] = m as unknown as [string, string | undefined, string];
-    if (directive === "file") continue;
+  for (const [, directive, rawBody] of expanded.matchAll(PH_REG)) {
+    if (directive === "file" || directive === "content") visitPath?.(directive, rawBody.trim(), false);
+    if (directive) continue;
 
     const body = rawBody.trim();
 
     let chosenStandardKey: PlaceholderKey | undefined;
     for (const part of body.split("|")) {
-      const key = toPlaceholderKey(part.trim());
-      if (!key) continue;
-
-      if (key in PLACEHOLDERS && map.has(key)) {
+      const name = part.trim();
+      const branch = name.match(/^(option|file|content):(.+)$/);
+      if (branch) {
+        const [, type, target] = branch;
+        const available =
+          type === "option"
+            ? resolveOptionValue(standardReplacements, target) !== undefined
+            : visitPath?.(type as "file" | "content", target.trim(), true);
+        if (available) {
+          chosenStandardKey = undefined;
+          break;
+        }
+        continue;
+      }
+      const key = toPlaceholderKey(name);
+      if (!key || !(key in PLACEHOLDERS)) continue;
+      const live = key === "clipboard" || key === "screenText";
+      const pending = live && standardReplacements[key] === undefined;
+      if (map.has(key) || !body.includes("|") || pending) {
         chosenStandardKey = key;
         break;
       }
-      if (key === "clipboard" && !chosenStandardKey) {
-        chosenStandardKey = "clipboard";
-        break;
-      }
+      // Keep the unavailable source's tooltip if no later branch can supply a value.
+      if (live) chosenStandardKey ??= key;
     }
 
     if (chosenStandardKey) {
@@ -330,12 +361,15 @@ function processPlaceholder(
   incoming: SpecificReplacements & Record<string, unknown>,
   map: Map<PlaceholderKey, string>,
   root?: string,
-  options: { resolveFile?: boolean } = { resolveFile: false },
+  options: FormatOptions = { resolveFile: false },
 ): string {
   const content = body.trim();
 
   const providedValue = getPropertyByPath(incoming, content);
-  if (providedValue !== undefined) {
+  const readFailed =
+    (content === "screenText" && options.screenText instanceof Error) ||
+    (toPlaceholderKey(content) === "clipboard" && options.clipboardError);
+  if (providedValue !== undefined && !readFailed) {
     const standardKey = toPlaceholderKey(content);
     if (standardKey && map.has(standardKey)) {
       return map.get(standardKey)!;
@@ -347,7 +381,8 @@ function processPlaceholder(
     return String(providedValue);
   }
 
-  for (const part of content.split("|")) {
+  const parts = content.split("|");
+  for (const part of parts) {
     const trimmedPart = part.trim();
 
     const directiveMatch = trimmedPart.match(/^(option|file|content):(.+)$/);
@@ -377,5 +412,11 @@ function processPlaceholder(
     }
   }
 
+  if (options.screenText instanceof Error && parts.some((part) => part.trim() === "screenText")) {
+    throw options.screenText;
+  }
+  if (options.clipboardError && parts.some((part) => toPlaceholderKey(part.trim()) === "clipboard")) {
+    throw options.clipboardError;
+  }
   return `{{${body}}}`;
 }

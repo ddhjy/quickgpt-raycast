@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useSyncExternalStore } from "react";
 import { List, ActionPanel, Icon, Action, Color, Image, useNavigation } from "@raycast/api";
 import type { PromptProps } from "../managers/prompt-manager";
 import {
@@ -7,7 +7,7 @@ import {
   generatePromptActions,
   getEditActionTitle,
 } from "./prompt-actions";
-import { getPlaceholderIcons } from "../utils/prompt-formatting-utils";
+import { getPlaceholderPreviews, type PromptPreviews } from "../utils/placeholder-previews";
 import { findUsedOptionPlaceholders } from "../utils/option-placeholder-utils";
 import { ScriptInfo } from "../utils/script-utils";
 import { placeholderFormatter } from "../utils/placeholder-formatter";
@@ -19,6 +19,7 @@ import { resolveSettingsItem } from "./settings-items";
 interface PromptListItemProps {
   prompt: PromptProps;
   replacements: PromptContext;
+  previews: PromptPreviews;
   searchMode?: boolean;
   promptSpecificRootDir?: string;
   allowedActions?: string[];
@@ -59,6 +60,7 @@ function withFolderPrefix(title: string, promptPath: string, currentPath: string
 export function PromptListItem({
   prompt,
   replacements,
+  previews,
   searchMode = false,
   promptSpecificRootDir,
   allowedActions,
@@ -83,10 +85,17 @@ export function PromptListItem({
     (searchMode && prompt.path ? withFolderPrefix(formattedTitle, prompt.path, currentPath) : formattedTitle);
   const displayIcon: string | Image.Asset = settingsItem?.icon ?? prompt.icon ?? "🔖";
 
-  const placeholderIcons = useMemo(
-    () => getPlaceholderIcons(prompt.content, replacements),
-    [prompt.content, replacements],
+  const snapshot = useSyncExternalStore(previews.subscribe, previews.snapshot);
+  const { accessories: placeholderIcons, requests } = useMemo(
+    () =>
+      isSettingsItem || prompt.subprompts
+        ? { accessories: [], requests: [] }
+        : getPlaceholderPreviews(prompt, replacements, promptSpecificRootDir, snapshot),
+    [isSettingsItem, prompt, replacements, promptSpecificRootDir, snapshot],
   );
+  useEffect(() => {
+    if (requests.length) void Promise.allSettled(requests.map((request) => previews.load(request)));
+  }, [previews, requests]);
 
   const promptActions = useMemo(() => {
     if (isSettingsItem) {
@@ -96,7 +105,7 @@ export function PromptListItem({
     if (prompt.subprompts) {
       // Typed input belongs to the list it was typed in; everything else carries into the folder.
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { input, clipboard, ...folderContext } = replacements;
+      const { input, ...folderContext } = replacements;
 
       return (
         <>
@@ -107,6 +116,7 @@ export function PromptListItem({
               <PromptList
                 prompts={prompt.subprompts}
                 context={folderContext}
+                previews={previews}
                 allowedActions={allowedActions || prompt.actions}
                 initialScripts={scripts}
                 externalOnRefreshNeeded={onRefreshNeeded}
@@ -142,6 +152,7 @@ export function PromptListItem({
       allowedActions || prompt.actions,
       scripts,
       navigation,
+      previews,
       onRefreshNeeded,
       onPinToggle,
     );
@@ -160,6 +171,7 @@ export function PromptListItem({
                 prompt={prompt}
                 optionKeys={optionKeys}
                 baseReplacements={replacements}
+                previews={previews}
                 promptSpecificRootDir={promptSpecificRootDir}
                 scripts={scripts}
               />
@@ -172,6 +184,7 @@ export function PromptListItem({
   }, [
     prompt,
     replacements,
+    previews,
     promptSpecificRootDir,
     allowedActions,
     scripts,
@@ -190,12 +203,9 @@ export function PromptListItem({
     const tooltip = prompt.subprompts
       ? prompt.subprompts.map((subPrompt, subIndex) => `${subIndex + 1}. ${subPrompt.title}`).join("\n")
       : prompt.content;
-    const contentAccessories: List.Item.Accessory[] =
-      placeholderIcons.length > 0
-        ? placeholderIcons.map((accessory, index) =>
-            index === placeholderIcons.length - 1 ? { ...accessory, tooltip } : accessory,
-          )
-        : [{ icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph, tooltip }];
+    const contentAccessories: List.Item.Accessory[] = placeholderIcons.length
+      ? placeholderIcons
+      : [{ icon: prompt.subprompts ? Icon.Folder : Icon.Paragraph, tooltip }];
 
     return [prompt.pinned ? { tag: { value: "PIN", color: Color.Blue } } : {}, ...contentAccessories];
   };
@@ -204,7 +214,7 @@ export function PromptListItem({
     <List.Item
       key={prompt.identifier || prompt.title}
       icon={displayIcon}
-      title={displayTitle.replace(/\n/g, " ")}
+      title={{ value: displayTitle.replace(/\n/g, " "), tooltip: prompt.content }}
       accessories={getAccessories()}
       actions={
         <ActionPanel>

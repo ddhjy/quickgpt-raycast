@@ -1,0 +1,317 @@
+// Read the exposed portions of windows in WindowServer order, without moving focus or the pointer.
+ObjC.import("AppKit");
+ObjC.import("ApplicationServices");
+
+function attribute(element, name, parameter) {
+  const output = Ref();
+  const status = parameter
+    ? $.AXUIElementCopyParameterizedAttributeValue(element, $(name), parameter, output)
+    : $.AXUIElementCopyAttributeValue(element, $(name), output);
+  return status === 0 ? ObjC.castRefToObject(output[0]) : null;
+}
+
+function hasType(value, type) {
+  return value != null && $.CFGetTypeID(value) === type;
+}
+
+function stringValue(value) {
+  return hasType(value, $.CFStringGetTypeID()) ? ObjC.unwrap(value) : "";
+}
+
+const storage = $.NSMutableData.dataWithLength(32);
+
+function unpack(value, type, encoding) {
+  if (!hasType(value, $.AXValueGetTypeID()) || !$.AXValueGetValue(value, type, storage.mutableBytes)) return null;
+  return $.NSValue.valueWithBytesObjCType(storage.bytes, encoding);
+}
+
+function axRange(start, length) {
+  $.NSValue.valueWithRange($.NSMakeRange(start, length)).getValueSize(storage.mutableBytes, 16);
+  return ObjC.castRefToObject($.AXValueCreate($.kAXValueCFRangeType, storage.bytes));
+}
+
+function rect(x, y, width, height) {
+  return { left: x, top: y, right: x + width, bottom: y + height };
+}
+
+function frame(position, size) {
+  const point = unpack(position, $.kAXValueCGPointType, "{CGPoint=dd}");
+  const extent = unpack(size, $.kAXValueCGSizeType, "{CGSize=dd}");
+  if (!point || !extent) return null;
+  const { x, y } = point.pointValue;
+  const { width, height } = extent.sizeValue;
+  return width > 0 && height > 0 ? rect(x, y, width, height) : null;
+}
+
+function intersect(a, b) {
+  const left = Math.max(a.left, b.left),
+    top = Math.max(a.top, b.top);
+  const right = Math.min(a.right, b.right),
+    bottom = Math.min(a.bottom, b.bottom);
+  return left < right && top < bottom ? { left, top, right, bottom } : null;
+}
+
+// Keep a disjoint set of rectangles, including narrow strips of partly covered windows.
+function subtract(area, cover) {
+  const cut = intersect(area, cover);
+  if (!cut) return [area];
+  return [
+    { ...area, bottom: cut.top },
+    { ...area, top: cut.bottom },
+    { left: area.left, right: cut.left, top: cut.top, bottom: cut.bottom },
+    { left: cut.right, right: area.right, top: cut.top, bottom: cut.bottom },
+  ].filter((r) => r.left < r.right && r.top < r.bottom);
+}
+
+function clipped(areas, bounds) {
+  return areas.map((area) => intersect(area, bounds)).filter(Boolean);
+}
+
+function fullyVisible(bounds, areas) {
+  const area = (r) => (r.right - r.left) * (r.bottom - r.top);
+  return clipped(areas, bounds).reduce((sum, r) => sum + area(r), 0) >= area(bounds) - 0.01;
+}
+
+function currentDisplay() {
+  const point = $.CGEventGetLocation($.CGEventCreate(null));
+  const screens = $.NSScreen.screens;
+  let display = $.CGMainDisplayID();
+  for (let i = 0; i < Number(screens.count); i++) {
+    const id = ObjC.unwrap(screens.objectAtIndex(i).deviceDescription.objectForKey("NSScreenNumber"));
+    if ($.CGRectContainsPoint($.CGDisplayBounds(id), point)) {
+      display = id;
+      break;
+    }
+  }
+  const { origin, size } = $.CGDisplayBounds(display);
+  return rect(origin.x, origin.y, size.width, size.height);
+}
+
+function sameFrame(a, b) {
+  return a && ["left", "top", "right", "bottom"].every((edge) => Math.abs(a[edge] - b[edge]) <= 2);
+}
+
+function windowFor(app, info, bounds, visible) {
+  const windows = attribute(app, "AXWindows");
+  const matches = [];
+  for (let i = 0; windows && i < Number(windows.count); i++) {
+    const win = windows.objectAtIndex(i);
+    if (
+      !ObjC.unwrap(attribute(win, "AXMinimized")) &&
+      sameFrame(frame(attribute(win, "AXPosition"), attribute(win, "AXSize")), bounds)
+    )
+      matches.push(win);
+  }
+  if (matches.length === 1) return matches[0];
+  // Window titles can be unavailable without Screen Recording permission.
+  if (info.kCGWindowName) {
+    const titled = matches.filter((w) => stringValue(attribute(w, "AXTitle")) === info.kCGWindowName);
+    if (titled.length === 1) return titled[0];
+  }
+  // Menus and floating panels may have no AXWindows entry. Hit-test an exposed point
+  // in this app and walk back to the corresponding surface, including same-sized windows.
+  const area = visible[0];
+  const hit = Ref();
+  if ($.AXUIElementCopyElementAtPosition(app, (area.left + area.right) / 2, (area.top + area.bottom) / 2, hit) !== 0)
+    return null;
+  let node = ObjC.castRefToObject(hit[0]);
+  for (let depth = 0; node && depth < 40; depth++) {
+    const role = stringValue(attribute(node, "AXRole"));
+    if (role === "AXApplication") break;
+    if (sameFrame(frame(attribute(node, "AXPosition"), attribute(node, "AXSize")), bounds)) return node;
+    node = attribute(node, "AXParent");
+  }
+  return null;
+}
+
+const textRoles = new Set(["AXStaticText", "AXHeading", "AXLink", "AXCell"]);
+const controlRoles = new Set([
+  "AXButton",
+  "AXRadioButton",
+  "AXCheckBox",
+  "AXPopUpButton",
+  "AXMenuButton",
+  "AXMenuItem",
+  "AXMenuBarItem",
+  "AXTab",
+]);
+const inputRoles = new Set(["AXTextArea", "AXTextField", "AXComboBox"]);
+const clipRoles = new Set(["AXScrollArea", "AXWebArea", "AXList", "AXTable", "AXOutline"]);
+const metadata = $([
+  "AXRole",
+  "AXSubrole",
+  "AXPosition",
+  "AXSize",
+  "AXVisibleChildren",
+  "AXHidden",
+  "AXProtectedContent",
+]);
+
+function windowText(root, areas, deadline, desktopIcons = false) {
+  const entries = [];
+  const seen = $.NSMutableSet.set;
+
+  function checkTime() {
+    if (Date.now() >= deadline) throw new Error("AX_READ_TIMEOUT");
+  }
+
+  function add(text, bounds) {
+    if (text && text.trim()) entries.push({ text, bounds });
+  }
+
+  // A visible character range handles editor scrollback. If another window covers the editor,
+  // use character bounds to keep only exposed runs, without copying the entire document.
+  function readRanges(node, visibleRange, visible, fallbackText) {
+    const start = Number(visibleRange.location),
+      length = Number(visibleRange.length);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) || start < 0 || length <= 0) return;
+    const runs = [];
+    function collect(offset, count) {
+      checkTime();
+      if (!count) return;
+      const parameter = axRange(offset, count);
+      const value = unpack(
+        attribute(node, "AXBoundsForRange", parameter),
+        $.kAXValueCGRectType,
+        "{CGRect={CGPoint=dd}{CGSize=dd}}",
+      );
+      if (!value) return;
+      const { origin, size } = value.rectValue;
+      const bounds = rect(origin.x, origin.y, size.width, size.height);
+      if (!clipped(visible, bounds).length) return;
+      if (fullyVisible(bounds, visible)) {
+        const last = runs[runs.length - 1];
+        if (last && last.end === offset) last.end += count;
+        else runs.push({ start: offset, end: offset + count, bounds });
+      } else if (count > 1) {
+        const half = Math.floor(count / 2);
+        collect(offset, half);
+        collect(offset + half, count - half);
+      }
+    }
+    collect(start, length);
+    for (const run of runs) {
+      const text =
+        fallbackText === undefined
+          ? stringValue(attribute(node, "AXStringForRange", axRange(run.start, run.end - run.start)))
+          : fallbackText.slice(run.start, run.end);
+      add(text, run.bounds);
+    }
+  }
+
+  function visit(node, viewport) {
+    checkTime();
+    if (seen.containsObject(node)) return;
+    seen.addObject(node);
+    const out = Ref();
+    if ($.AXUIElementCopyMultipleAttributeValues(node, metadata, 0, out) !== 0) return;
+    const attrs = ObjC.castRefToObject(out[0]);
+    const role = stringValue(attrs.objectAtIndex(0));
+    if (
+      stringValue(attrs.objectAtIndex(1)) === "AXSecureTextField" ||
+      ObjC.unwrap(attrs.objectAtIndex(5)) === true ||
+      ObjC.unwrap(attrs.objectAtIndex(6)) === true
+    )
+      return;
+    const bounds = frame(attrs.objectAtIndex(2), attrs.objectAtIndex(3));
+    const inApp = bounds && viewport ? intersect(bounds, viewport) : bounds || viewport;
+    if (bounds && !inApp) return;
+    const inside = inApp ? clipped(areas, inApp) : areas;
+    if (!inside.length) return;
+    const before = entries.length;
+    if (bounds && inputRoles.has(role)) {
+      const range = attribute(node, "AXVisibleCharacterRange");
+      const decoded = unpack(range, $.kAXValueCFRangeType, "{_NSRange=QQ}");
+      if (decoded) {
+        if (fullyVisible(inApp, areas)) add(stringValue(attribute(node, "AXStringForRange", range)), inApp);
+        else readRanges(node, decoded.rangeValue, inside);
+      } else {
+        const length = Number(ObjC.unwrap(attribute(node, "AXNumberOfCharacters")));
+        if (length > 0) readRanges(node, { location: 0, length }, inside);
+      }
+      if (entries.length > before) return;
+    }
+    if (bounds && textRoles.has(role)) {
+      const text = stringValue(attribute(node, "AXValue")) || stringValue(attribute(node, "AXTitle"));
+      if (text) {
+        if (fullyVisible(bounds, inside)) add(text, bounds);
+        else readRanges(node, { location: 0, length: text.length }, inside, text);
+      }
+      if (entries.length > before) return;
+    }
+    // A menu bar item also exposes the contents of its closed menu.
+    if (role !== "AXMenuBarItem") {
+      const visibleChildren = attrs.objectAtIndex(4);
+      const children = hasType(visibleChildren, $.CFArrayGetTypeID()) ? visibleChildren : attribute(node, "AXChildren");
+      const childViewport = node === root || clipRoles.has(role) ? inApp : viewport;
+      for (let i = 0; children && i < Number(children.count); i++) visit(children.objectAtIndex(i), childViewport);
+    }
+    if (
+      bounds &&
+      entries.length === before &&
+      (controlRoles.has(role) || (desktopIcons && role === "AXImage")) &&
+      fullyVisible(bounds, inside)
+    ) {
+      add(stringValue(attribute(node, "AXTitle")) || stringValue(attribute(node, "AXValue")), bounds);
+    }
+  }
+
+  visit(root, null);
+  entries.sort((a, b) => a.bounds.top - b.bounds.top || a.bounds.left - b.bounds.left);
+  return entries
+    .filter((entry, i) => {
+      const last = entries[i - 1];
+      return !last || last.text !== entry.text || !sameFrame(last.bounds, entry.bounds);
+    })
+    .map((entry) => entry.text)
+    .join("\n");
+}
+
+function visibleWindows(windows, display, excluded, desktopIconLevel) {
+  let remaining = [display];
+  const result = [];
+  for (const info of windows) {
+    if (!remaining.length) break;
+    if (excluded.has(info.kCGWindowOwnerPID) || info.kCGWindowAlpha <= 0 || info.kCGWindowLayer < desktopIconLevel)
+      continue;
+    const b = info.kCGWindowBounds;
+    const bounds = rect(b.X, b.Y, b.Width, b.Height);
+    const visible = clipped(remaining, bounds);
+    if (!visible.length) continue;
+    result.push({ info, bounds, visible });
+    if (info.kCGWindowAlpha >= 1) remaining = remaining.flatMap((area) => subtract(area, bounds));
+  }
+  return result;
+}
+
+function run() {
+  if (!$.AXIsProcessTrusted()) throw new Error("AX_PERMISSION_REQUIRED");
+  $.AXUIElementSetMessagingTimeout($.AXUIElementCreateSystemWide(), 0.3);
+  const deadline = Date.now() + 8000;
+  const windows = ObjC.deepUnwrap(
+    ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, $.kCGNullWindowID)),
+  );
+  const menuLevel = $.CGWindowLevelForKey($.kCGMainMenuWindowLevelKey);
+  const desktopIconLevel = $.CGWindowLevelForKey($.kCGDesktopIconWindowLevelKey);
+  const raycast = $.NSRunningApplication.runningApplicationsWithBundleIdentifier("com.raycast.macos");
+  const excluded = new Set();
+  for (let i = 0; i < Number(raycast.count); i++) excluded.add(Number(raycast.objectAtIndex(i).processIdentifier));
+  let menuAreas, menuApp;
+  const sections = [];
+  for (const { info, bounds, visible } of visibleWindows(windows, currentDisplay(), excluded, desktopIconLevel)) {
+    if (Date.now() >= deadline) throw new Error("AX_READ_TIMEOUT");
+    if (info.kCGWindowLayer === menuLevel && info.kCGWindowOwnerName === "Window Server") {
+      menuAreas = visible;
+    } else {
+      const app = $.AXUIElementCreateApplication(info.kCGWindowOwnerPID);
+      if (info.kCGWindowLayer === 0 && !menuApp) menuApp = app;
+      const win = windowFor(app, info, bounds, visible);
+      if (win) sections.push(windowText(win, visible, deadline, info.kCGWindowLayer === desktopIconLevel));
+    }
+  }
+  if (menuApp && menuAreas) {
+    const bar = attribute(menuApp, "AXMenuBar");
+    if (bar) sections.unshift(windowText(bar, menuAreas, deadline));
+  }
+  return sections.filter(Boolean).join("\n\n");
+}

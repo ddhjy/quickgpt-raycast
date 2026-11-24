@@ -4,12 +4,14 @@ import { generatePromptActions } from "./prompt-actions";
 import { getPropertyByPath } from "../utils/placeholder-formatter";
 import type { PromptProps } from "../managers/prompt-manager";
 import { ScriptInfo } from "../utils/script-utils";
+import type { PromptPreviews } from "../utils/placeholder-previews";
 import { SpecificReplacements } from "../utils/placeholder-formatter";
 
 interface OptionsFormProps {
   prompt: PromptProps;
   optionKeys?: string[];
-  baseReplacements: Omit<SpecificReplacements, "clipboard">;
+  baseReplacements: SpecificReplacements;
+  previews: PromptPreviews;
   promptSpecificRootDir?: string;
   scripts: ScriptInfo[];
 }
@@ -18,6 +20,7 @@ export function PromptOptionsForm({
   prompt,
   optionKeys = [],
   baseReplacements,
+  previews,
   promptSpecificRootDir,
   scripts,
 }: OptionsFormProps) {
@@ -84,6 +87,7 @@ export function PromptOptionsForm({
               prompt.actions,
               scripts,
               navigation,
+              previews,
               undefined,
               undefined,
             )}

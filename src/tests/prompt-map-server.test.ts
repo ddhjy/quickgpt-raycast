@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import * as hjson from "hjson";
 import {
+  copyTitle,
   GIT_CONFIG_FILE,
   startPromptMapServer,
   TOKEN_HEADER,
@@ -23,6 +24,16 @@ interface ApiResponse {
 }
 
 const readJson = async (response: Response): Promise<ApiResponse> => (await response.json()) as ApiResponse;
+
+describe("copyTitle", () => {
+  it("numbers copies like Finder and counts on from an existing copy", () => {
+    expect(copyTitle("Plan", new Set())).toBe("Plan 副本");
+    expect(copyTitle("Plan", new Set(["Plan 副本"]))).toBe("Plan 副本 2");
+    expect(copyTitle("Plan 副本 2", new Set(["Plan 副本", "Plan 副本 2"]))).toBe("Plan 副本 3");
+    expect(copyTitle("文件副本", new Set())).toBe("文件副本 副本");
+    expect(copyTitle("副本", new Set(["副本"]))).toBe("副本 2");
+  });
+});
 
 const LIBRARY = `[
   { title: Code
@@ -199,6 +210,52 @@ describe("prompt-map server", () => {
     expect(deleted.ok).toBe(true);
     expect(deleted.model.totals.prompts).toBe(2);
     await post("/api/undo", { token: deleted.undoToken });
+  });
+
+  it("duplicates prompts under unused names next to the originals and undoes it", async () => {
+    const before = fs.readFileSync(libraryFile, "utf8");
+    const stale = await post("/api/edit", {
+      op: "duplicate",
+      items: [{ file: libraryFile, indexPath: [0, 0], expect: { title: "Not Plan" } }],
+    });
+    expect(stale.status).toBe(409);
+
+    const first = await readJson(
+      await post("/api/edit", {
+        op: "duplicate",
+        items: [{ file: libraryFile, indexPath: [0, 0], expect: { title: "Plan" } }],
+      }),
+    );
+    expect(first.ok).toBe(true);
+    expect(first.changed).toBe(true);
+    expect(first.focusKeys).toEqual([`${libraryFile}#0.1`]);
+
+    const second = await readJson(
+      await post("/api/edit", {
+        op: "duplicate",
+        items: [
+          { file: libraryFile, indexPath: [0, 0], expect: { title: "Plan" } },
+          { file: libraryFile, indexPath: [0, 1], expect: { title: "Plan 副本" } },
+        ],
+      }),
+    );
+    expect(second.focusKeys).toEqual([`${libraryFile}#0.1`, `${libraryFile}#0.3`]);
+    const parsed = hjson.parse(fs.readFileSync(libraryFile, "utf8")) as {
+      subprompts: { title: string; content?: string }[];
+    }[];
+    expect(parsed[0].subprompts.map((prompt) => prompt.title)).toEqual([
+      "Plan",
+      "Plan 副本 2",
+      "Plan 副本",
+      "Plan 副本 3",
+      "Second",
+      "新提示词",
+    ]);
+    expect(parsed[0].subprompts[1].content).toBe(parsed[0].subprompts[0].content);
+
+    expect((await post("/api/undo", { token: second.undoToken })).status).toBe(200);
+    expect((await post("/api/undo", { token: first.undoToken })).status).toBe(200);
+    expect(fs.readFileSync(libraryFile, "utf8")).toBe(before);
   });
 
   it("rejects moves into a prompt's own subtree", async () => {

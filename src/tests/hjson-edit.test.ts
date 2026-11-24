@@ -5,6 +5,7 @@ import {
   addChild,
   deletePrompt,
   deletePrompts,
+  duplicatePrompts,
   movePrompts,
   needsQuotes,
   promptTree,
@@ -459,6 +460,139 @@ describe("hjson-edit movePrompts", () => {
       }
     },
   );
+});
+
+const IDENTIFIED_LIBRARY = `[
+  { title: Folder
+    identifier: folder-id
+    subprompts: [
+      { identifier: child-id
+        title: Child
+        content: "Child {{i}}"
+      }
+      { title: "Inline", identifier: "inline-id", content: "x" }
+    ]
+  }
+]
+`;
+
+describe("hjson-edit duplicatePrompts", () => {
+  const named = (title: string) => `${title} 副本`;
+
+  it("inserts a renamed copy right after the original and leaves the rest untouched", () => {
+    const { text, copies } = duplicatePrompts(INLINE_LIBRARY, [[1, 2]], named);
+    const subprompts = (hjson.parse(text) as Raw[])[1].subprompts as Raw[];
+    expect(subprompts.map(titleOf)).toEqual([
+      "Quick",
+      "模拟一个实际场景来演示怎么使用吧",
+      "single quoted",
+      "single quoted 副本",
+    ]);
+    expect(subprompts[3]).toEqual({ ...subprompts[2], title: "single quoted 副本" });
+    expect(copies).toEqual([[1, 3]]);
+    const end = resolvePrompt(INLINE_LIBRARY, [1, 2]).obj.end;
+    expect(text.startsWith(INLINE_LIBRARY.slice(0, end))).toBe(true);
+    expect(text.endsWith(INLINE_LIBRARY.slice(end))).toBe(true);
+  });
+
+  it("titles copies of untitled prompts and keeps the array's comma style", () => {
+    const untitled = duplicatePrompts(INLINE_LIBRARY, [[1, 1]], named);
+    expect(((hjson.parse(untitled.text) as Raw[])[1].subprompts as Raw[])[2]).toEqual({
+      title: "模拟一个实际场景来演示怎么使用吧 副本",
+      content: "模拟一个实际场景来演示怎么使用吧",
+    });
+
+    const commas = duplicatePrompts(COMMA_LIBRARY, [[0, 1]], named);
+    expect(commas.text).toContain(
+      '{ title: "A2", content: "two" },\n        { title: "A2 副本", content: "two" },\n        { title: "A3"',
+    );
+  });
+
+  it("drops identifiers from the copy and its subprompts but keeps the original's", () => {
+    const { text, copies } = duplicatePrompts(IDENTIFIED_LIBRARY, [[0]], named);
+    expect(copies).toEqual([[1]]);
+    expect(text).toBe(`[
+  { title: Folder
+    identifier: folder-id
+    subprompts: [
+      { identifier: child-id
+        title: Child
+        content: "Child {{i}}"
+      }
+      { title: "Inline", identifier: "inline-id", content: "x" }
+    ]
+  }
+  { title: Folder 副本
+    subprompts: [
+      {
+        title: Child
+        content: "Child {{i}}"
+      }
+      { title: "Inline", content: "x" }
+    ]
+  }
+]
+`);
+  });
+
+  it("copies several prompts at once and skips ones inside another copied prompt", () => {
+    const { text, copies } = duplicatePrompts(INLINE_LIBRARY, [[1, 2], [1, 0], [1, 0], [2], [2, 0]], named);
+    const parsed = hjson.parse(text) as Raw[];
+    expect(parsed.map(titleOf)).toEqual([
+      "not a prompt",
+      "Ask, then act",
+      "Folder without content",
+      "Folder without content 副本",
+    ]);
+    expect((parsed[1].subprompts as Raw[]).map(titleOf)).toEqual([
+      "Quick",
+      "Quick 副本",
+      "模拟一个实际场景来演示怎么使用吧",
+      "single quoted",
+      "single quoted 副本",
+    ]);
+    expect((parsed[3].subprompts as Raw[]).map(titleOf)).toEqual(["Leaf A"]);
+    expect(copies).toEqual([[1, 4], [1, 1], [3]]);
+  });
+
+  it("refuses to copy a prompt that is the whole file", () => {
+    expect(() => duplicatePrompts(SINGLE_OBJECT, [[0]], named)).toThrow(/整个文件/);
+  });
+
+  it.each(fixtures)("copies every prompt in $name without changing anything else", ({ text }) => {
+    const parsed = hjson.parse(text);
+    const rootIsArray = Array.isArray(parsed) || Array.isArray((parsed as { prompts?: unknown }).prompts);
+    const stripIdentifiers = (item: Raw): Raw => {
+      delete item.identifier;
+      for (const sub of item.subprompts ?? []) {
+        if (sub && typeof sub === "object" && !Array.isArray(sub)) stripIdentifiers(sub as Raw);
+      }
+      return item;
+    };
+    for (const { indexPath, item } of allIndexPaths(text)) {
+      if (indexPath.length === 1 && !rootIsArray) continue;
+      const expected = structuredClone(parsed);
+      const parentPath = indexPath.slice(0, -1);
+      const list = parentPath.length
+        ? (getAt(expected, parentPath).subprompts as unknown[])
+        : Array.isArray(expected)
+          ? expected
+          : (expected as { prompts: unknown[] }).prompts;
+      const title =
+        typeof item.title === "string" && item.title
+          ? item.title
+          : String(item.content ?? "")
+              .trim()
+              .split("\n")[0]
+              .trim();
+      const position = indexPath[indexPath.length - 1] + 1;
+      list.splice(position, 0, { ...stripIdentifiers(structuredClone(item)), title: `${title} 副本` });
+
+      const result = duplicatePrompts(text, [indexPath], named);
+      expect(canonical(hjson.parse(result.text))).toBe(canonical(expected));
+      expect(result.copies).toEqual([[...parentPath, position]]);
+    }
+  });
 });
 
 describe("needsQuotes", () => {

@@ -375,6 +375,7 @@
   <symbol id="i-dense" viewBox="0 0 16 16"><path d="M3 4h10M3 6.5h10M3 9h10M3 11.5h10"/></symbol>
   <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.5 8z"/></symbol>
   <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></symbol>
+  <symbol id="i-dup" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/><path d="M9.5 7.8v3.4M7.8 9.5h3.4"/></symbol>
   <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.7 9.3a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.9.9"/><path d="M9.3 6.7a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.9-.9"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 16 16"><path d="m11.3 2.7 2 2L6 12l-3 1 1-3z"/></symbol>
   <symbol id="i-add" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v5M5.5 8h5"/></symbol>
@@ -423,8 +424,9 @@
     <span><kbd>⇧</kbd>点击</span><span>连续多选（也可 <kbd>⇧</kbd><kbd>↑</kbd><kbd>↓</kbd>）</span>
     <span>拖拽</span><span>放到某条的上方、下方或里面</span>
     <span><kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd></span><span>在同级里上移 / 下移</span>
+    <span><kbd>⌘</kbd><kbd>D</kbd></span><span>为选中的提示词创建副本，放在原条目下方</span>
     <span><kbd>⌫</kbd></span><span>删除选中的提示词</span>
-    <span><kbd>⌘</kbd><kbd>Z</kbd></span><span>撤销上一次移动或删除</span>
+    <span><kbd>⌘</kbd><kbd>Z</kbd></span><span>撤销上一次移动、创建副本或删除</span>
     <span><kbd>⌘</kbd><kbd>S</kbd></span><span>保存</span>
     <span><kbd>Esc</kbd></span><span>取消选择、清空搜索或退出编辑</span>
   </div>
@@ -744,13 +746,16 @@
         html += `<div class="p-edit-actions">`;
         html += `<button class="btn" data-act="edit">${ICON("pencil")}编辑<kbd>E</kbd></button>`;
         html += `<button class="btn" data-act="add">${ICON("add")}新建子提示词</button>`;
-        if (!node.fileRoot) html += `<button class="btn btn-danger" data-act="delete">${ICON("trash")}删除<kbd>⌫</kbd></button>`;
+        if (!node.fileRoot) {
+          html += `<button class="btn" data-act="duplicate" title="在原条目下方创建副本（⌘D）">${ICON("dup")}创建副本</button>`;
+          html += `<button class="btn btn-danger" data-act="delete">${ICON("trash")}删除<kbd>⌫</kbd></button>`;
+        }
         html += node.fileRoot
           ? `<p class="p-note">这是 ${esc(node.fileName)}.hjson 的根分组，可以把别的提示词拖进来。</p>`
           : `<p class="p-note">拖动可调整位置，<kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd> 同级上下移动，<kbd>⌘</kbd> 点击其他条目可多选。</p>`;
         html += `</div>`;
       } else {
-        html += `<div class="p-edit-actions"><p class="p-note">点击这条提示词固定后，可以编辑、新建子项或删除；也可以直接拖动它调整位置。</p></div>`;
+        html += `<div class="p-edit-actions"><p class="p-note">点击这条提示词固定后，可以编辑、新建子项、创建副本或删除；也可以直接拖动它调整位置。</p></div>`;
       }
     }
     if (animate) swapPanel(html, uid);
@@ -841,11 +846,12 @@
       })
       .join("")}</ul></section>`;
     if (DATA.editable && readonly) {
-      html += `<div class="p-edit-actions"><p class="p-note">选中项里有内置示例库的提示词，不能移动或删除。</p></div>`;
+      html += `<div class="p-edit-actions"><p class="p-note">选中项里有内置示例库的提示词，不能移动、创建副本或删除。</p></div>`;
     } else if (DATA.editable && fixed) {
-      html += `<div class="p-edit-actions"><p class="p-note">选中项里有整个文件的根分组，不能一起移动或删除；<kbd>⌘</kbd> 点击把它移出选择即可。</p></div>`;
+      html += `<div class="p-edit-actions"><p class="p-note">选中项里有整个文件的根分组，不能一起移动、创建副本或删除；<kbd>⌘</kbd> 点击把它移出选择即可。</p></div>`;
     } else if (DATA.editable) {
       html += `<div class="p-edit-actions">`;
+      html += `<button class="btn" data-act="duplicate-many">${ICON("dup")}创建 ${roots.length} 个副本<kbd>⌘D</kbd></button>`;
       html += `<button class="btn btn-danger" data-act="delete-many">${ICON("trash")}删除 ${roots.length} 条${total > roots.length ? `（含子项 ${total}）` : ""}<kbd>⌫</kbd></button>`;
       html += `<button class="btn" data-act="clear-sel">取消选择<kbd>Esc</kbd></button>`;
       html += `<p class="p-note">拖动任意一条已选中的提示词，可以把它们一起移到另一条的上方、下方或里面；<kbd>⌥</kbd><kbd>↑</kbd><kbd>↓</kbd> 在同级里上下移动。</p>`;
@@ -1066,6 +1072,22 @@
       toast(`删除失败：${error.message}`, { error: true });
     }
   }
+  async function duplicateNodes(uids) {
+    if (editing && !closeEditor()) return;
+    const list = outermostUids(uids);
+    if (!list.length) return;
+    if (list.some((u) => byUid.get(u).readonly)) { toast("内置示例库的提示词不能创建副本", { error: true }); return; }
+    if (list.some((u) => byUid.get(u).fileRoot)) { toast("整个文件的根分组不能在这里创建副本，请在 Finder 里复制文件", { error: true }); return; }
+    const restoreKeys = list.map((u) => byUid.get(u).key);
+    try {
+      const res = await api("/api/edit", { op: "duplicate", items: list.map(itemFor) });
+      loadModel(res.model, { selectKeys: res.focusKeys });
+      const copy = res.focusKeys.length === 1 ? byKey.get(res.focusKeys[0]) : null;
+      offerUndo(copy ? `已创建副本「${copy.title}」` : `已创建 ${res.focusKeys.length} 个副本`, res.undoToken, restoreKeys);
+    } catch (error) {
+      toast(`创建副本失败：${error.message}`, { error: true });
+    }
+  }
   const WHERE_LABEL = { before: "前面", after: "后面", "inside-first": "里面", "inside-last": "里面" };
   async function moveNodes(uids, anchorUid, where) {
     if (editing && !closeEditor()) return;
@@ -1148,10 +1170,12 @@
     const act = e.target.closest("[data-act]");
     if (!act || act.disabled) return;
     if (act.dataset.act === "delete-many") { deleteNodes(currentSelection()); return; }
+    if (act.dataset.act === "duplicate-many") { duplicateNodes(currentSelection()); return; }
     if (act.dataset.act === "clear-sel") { unlock(); return; }
     const uid = Number(panel.dataset.uid);
     if (act.dataset.act === "edit") showEditor(uid);
     else if (act.dataset.act === "add") addChildTo(uid);
+    else if (act.dataset.act === "duplicate") duplicateNodes([uid]);
     else if (act.dataset.act === "delete") deleteNodes([uid]);
     else if (act.dataset.act === "save") saveEditor();
     else if (act.dataset.act === "cancel") closeEditor();
@@ -1345,6 +1369,11 @@
       if ((e.key === "Backspace" || e.key === "Delete") && !e.altKey && !e.ctrlKey && DATA.editable && currentSelection().length) {
         e.preventDefault();
         deleteNodes(currentSelection());
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "d" && DATA.editable && currentSelection().length) {
+        e.preventDefault();
+        if (!e.repeat) duplicateNodes(currentSelection());
         return;
       }
     }

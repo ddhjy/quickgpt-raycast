@@ -9,15 +9,15 @@ import { getCachedScripts, refreshScripts, ScriptInfo } from "../utils/script-ut
 import configurationManager from "../managers/configuration-manager";
 import { createPromptSearchIndex, getAllDescendants, searchPromptIndex } from "../utils/prompt-search";
 import type { SpecificReplacements } from "../utils/placeholder-formatter";
+import { PromptPreviews } from "../utils/placeholder-previews";
 
 const SEARCH_RESULT_LIMIT = 9;
 
 /**
  * Placeholder values captured when the command launched (selection, frontmost
- * app, browser content, ...) plus any custom launch arguments. The clipboard is
- * read when an action runs, and typed input is added per list.
+ * app, browser content, ...) plus any custom launch arguments. Typed input is added per list.
  */
-export type PromptContext = Omit<SpecificReplacements, "clipboard"> & Record<string, unknown>;
+export type PromptContext = SpecificReplacements & Record<string, unknown>;
 
 function areScriptsEqual(left: ScriptInfo[], right: ScriptInfo[]): boolean {
   return (
@@ -64,6 +64,7 @@ interface PromptListProps {
   prompts: PromptProps[];
   searchMode?: boolean;
   context: PromptContext;
+  previews?: PromptPreviews;
   allowedActions?: string[];
   initialScripts?: ScriptInfo[];
   externalOnRefreshNeeded?: () => void;
@@ -75,6 +76,7 @@ export function PromptList({
   prompts: initialPrompts,
   searchMode = false,
   context,
+  previews: inheritedPreviews,
   allowedActions,
   initialScripts,
   externalOnRefreshNeeded,
@@ -82,6 +84,7 @@ export function PromptList({
   isLoading = false,
 }: PromptListProps) {
   const [searchText, setSearchText] = useState("");
+  const [previews] = useState(() => inheritedPreviews ?? new PromptPreviews());
   const [refreshKey, setRefreshKey] = useState(0);
   const scriptDirectories = useMemo(() => configurationManager.getDirectories("scripts"), []);
   // Cached scripts are available on the first render, so the preferred action is
@@ -232,6 +235,7 @@ export function PromptList({
           prompts={prompts}
           searchMode={nextSearchMode}
           context={context}
+          previews={previews}
           allowedActions={allowedActions}
           initialScripts={initialScripts}
           externalOnRefreshNeeded={externalOnRefreshNeeded}
@@ -260,6 +264,7 @@ export function PromptList({
     displayPrompts,
     initialPrompts,
     context,
+    previews,
     allowedActions,
     initialScripts,
     externalOnRefreshNeeded,
@@ -357,6 +362,7 @@ export function PromptList({
           key={`${sourcePromptKeys.get(prompt) ?? prompt.identifier ?? prompt.title}:${refreshKey}`}
           prompt={prompt}
           replacements={itemReplacements}
+          previews={previews}
           searchMode={searchMode}
           promptSpecificRootDir={resolvePromptRootDir(prompt, configuredRootDirs)}
           allowedActions={allowedActions}

@@ -18,6 +18,7 @@ import inputHistoryStore from "../stores/input-history-store";
 import type { PromptProps } from "../managers/prompt-manager";
 import { SpecificReplacements, extractFinderSelectionPaths } from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
+import type { PromptPreviews } from "../utils/placeholder-previews";
 import { generateGitLink } from "../utils/git-utils";
 import { getEditorDisplayName, normalizeEditorApp, openPromptFileWithEditor } from "../utils/editor-launcher";
 import {
@@ -127,11 +128,12 @@ export function createRemoveTempDirAction(
 
 export function generatePromptActions(
   prompt: PromptProps,
-  baseReplacements: Omit<SpecificReplacements, "clipboard">,
+  baseReplacements: SpecificReplacements,
   promptSpecificRootDir: string | undefined,
   actions: string[] | undefined,
   scripts: ScriptInfo[],
   navigation: Navigation,
+  previews: PromptPreviews,
   onRefreshNeeded?: () => void,
   onPinToggle?: (prompt: PromptProps) => void,
 ) {
@@ -183,15 +185,26 @@ export function generatePromptActions(
     return prompt.title || "prompt";
   };
 
-  const getFinalContent = async (): Promise<string> => {
-    const currentClipboard = (await Clipboard.readText()) ?? "";
-    const finalReplacements: SpecificReplacements = {
-      ...baseReplacements,
-      clipboard: currentClipboard,
-      now: new Date().toLocaleString(),
-    };
-    return buildFormattedPromptContent(prompt, finalReplacements, promptSpecificRootDir);
-  };
+  const withFinalContent = (handler: (content: string) => Promise<void | boolean>, actionName: string) =>
+    wrapActionHandler(async () => {
+      let content: string;
+      try {
+        content = await buildFormattedPromptContent(
+          prompt,
+          { ...baseReplacements, now: new Date().toLocaleString() },
+          promptSpecificRootDir,
+          previews,
+        );
+      } catch (error) {
+        await showToast(
+          Toast.Style.Failure,
+          "Couldn't prepare prompt",
+          error instanceof Error ? error.message : String(error),
+        );
+        return false;
+      }
+      return handler(content);
+    }, actionName);
 
   const scriptActions: ActionItem[] = scripts.map(({ path: scriptPath, name: scriptName }) => ({
     name: `script_${scriptName}`,
@@ -201,9 +214,8 @@ export function generatePromptActions(
       <Action
         title={scriptName.replace(/^Raycast\s+/, "")}
         icon={scriptName.startsWith("Raycast") ? Icon.RaycastLogoPos : Icon.Terminal}
-        onAction={wrapActionHandler(async () => {
+        onAction={withFinalContent(async (finalContent) => {
           try {
-            const finalContent = await getFinalContent();
             await Clipboard.copy(finalContent);
             const args = scriptName.endsWith("ChatGPT") ? [finalContent] : [];
             const isCompiledScript = path.extname(scriptPath).toLowerCase() === ".scpt";
@@ -240,8 +252,7 @@ export function generatePromptActions(
           title="Copy"
           icon={Icon.Clipboard}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          onAction={wrapActionHandler(async () => {
-            const finalContent = await getFinalContent();
+          onAction={withFinalContent(async (finalContent) => {
             await Clipboard.copy(finalContent);
             await showToast(Toast.Style.Success, "Copied to clipboard");
             await closeMainWindow({ clearRootSearch: true });
@@ -258,9 +269,8 @@ export function generatePromptActions(
           title="Copy as File"
           icon={Icon.NewDocument}
           shortcut={{ modifiers: ["cmd", "shift"], key: "f" }}
-          onAction={wrapActionHandler(async () => {
+          onAction={withFinalContent(async (finalContent) => {
             try {
-              const finalContent = await getFinalContent();
               const filePath = writeContentToFile(finalContent, resolveCopyFileNamePrefix());
               await Clipboard.copy({ file: filePath });
               await showToast(Toast.Style.Success, "Copied as file", path.basename(filePath));
@@ -303,8 +313,7 @@ export function generatePromptActions(
           title="Paste"
           icon={Icon.Document}
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
-          onAction={wrapActionHandler(async () => {
-            const finalContent = await getFinalContent();
+          onAction={withFinalContent(async (finalContent) => {
             await Clipboard.copy(finalContent);
             await Clipboard.paste(finalContent);
             await showToast(Toast.Style.Success, "Pasted to app");
@@ -321,9 +330,8 @@ export function generatePromptActions(
           title="Open in Claude"
           icon={Icon.SpeechBubble}
           shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
-          onAction={wrapActionHandler(async () => {
+          onAction={withFinalContent(async (finalContent) => {
             try {
-              const finalContent = await getFinalContent();
               await Clipboard.copy(finalContent);
               await open(buildClaudeNewChatUrl(finalContent));
               await closeMainWindow({ clearRootSearch: true });

@@ -88,6 +88,7 @@ const PLACEHOLDER_SHORT: Record<string, string> = {
   currentApp: "app",
   allApp: "apps",
   browserContent: "web",
+  screenText: "screen",
   diff: "diff",
   pt: "pt",
   promptTitles: "pt",

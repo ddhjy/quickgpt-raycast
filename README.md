@@ -60,7 +60,8 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 - **Open in Prompt Map** (⌘⇧M) on any prompt opens Prompt Map with that prompt revealed and selected
 - Search matches titles, content, paths and Pinyin initials; the outline is fully keyboard driven (arrows, Enter, E to edit)
 - Edit titles and content, add subprompts and delete prompts in place. Edits rewrite only the changed span of the `.hjson` file, so comments and formatting are preserved
-- Drag prompts in the outline to reorder them or move them into another folder or file; ⌘-click and Shift-click select several prompts to move or delete together, ⌥↑/⌥↓ nudges within a folder, and ⌘Z undoes the last move or delete
+- **创建副本** (⌘D) duplicates the selected prompts right below the originals, subprompts included. Copies are named `标题 副本`, `标题 副本 2`, … and drop any explicit `identifier`, so they get their own pins and usage stats
+- Drag prompts in the outline to reorder them or move them into another folder or file; ⌘-click and Shift-click select several prompts to move, duplicate or delete together, ⌥↑/⌥↓ nudges within a folder, and ⌘Z undoes the last move, duplicate or delete
 - Editing runs through a small local server (127.0.0.1 only, token protected) that QuickGPT starts on demand with Raycast's Node runtime; it exits after 30 minutes of inactivity. Every write is backed up under the extension's support folder (`prompt-map/backups`)
 - Libraries kept in Git show their status in place: the footer shows the branch, ahead/behind counts and the number of uncommitted changes, cards and the detail panel carry M/A/D/R/U badges, and the Git panel lists every change with the last commit
 - Bind your own commit command in the Git panel (for example `git add -A && git commit -m "update prompts" && git push`); afterwards each repository gets a **提交** button that runs it non-interactively in the repository root and shows the output. The command is stored in the extension's support folder (`prompt-map/git.json`)
@@ -219,6 +220,7 @@ raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt
 | `{{currentApp}}`     |          | Name of frontmost application                            |
 | `{{allApp}}`         |          | Comma-separated list of all installed applications       |
 | `{{browserContent}}` |          | Markdown from the active tab (Raycast Browser Extension) |
+| `{{screenText}}`     |          | Visible text provided by macOS Accessibility             |
 | `{{now}}`            | `{{n}}`  | Current date and time                                    |
 | `{{promptTitles}}`   | `{{pt}}` | Indented list of all prompt titles                       |
 | `{{prompts}}`        | `{{ps}}` | Indented list of all prompt titles and their content     |
@@ -230,6 +232,10 @@ raycast://extensions/ddhjy2012/quickgpt/prompt-lab?arguments={"target":"quickgpt
 | `{{ph1\|ph2}}`       |          | Fallback chain (first non-empty value)                   |
 
 `{{browserContent}}` is fetched when the frontmost app is a common browser (Safari, Chrome, Arc, Edge, Brave, Firefox, and similar) and the [Raycast Browser Extension](https://www.raycast.com/browser-extension) is installed. Failures are ignored.
+
+Hover over a placeholder icon in Prompt Lab to preview its value. The text cursor shows the selection and the monitor shows the screen text. Long tooltips show an excerpt. Prompt actions use the full text.
+
+When a prompt needs `{{screenText}}`, QuickGPT reads the display containing the pointer through macOS Accessibility. The first matching row starts the read in the background. Its preview and actions share that capture until you reopen Prompt Lab. Grant Raycast access in **System Settings → Privacy & Security → Accessibility**. The capture skips Raycast and secure fields. Text drawn only in images, video, or custom controls can be missing. Use `{{selection|screenText}}` to prefer selected text, or `{{screenText|clipboard}}` to use the clipboard when screen text is unavailable.
 
 ### Fallback chains with directives
 

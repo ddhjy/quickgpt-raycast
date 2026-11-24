@@ -390,6 +390,13 @@ export function valueOf(node: PromptShadow, key: string): string | undefined {
   return undefined;
 }
 
+/** Title as Prompt Lab shows it: untitled prompts use their first content line. */
+export function effectiveTitle(node: PromptShadow): string {
+  const title = valueOf(node, "title");
+  if (title) return title;
+  return (valueOf(node, "content") ?? "").trim().split("\n")[0].trim();
+}
+
 /* Serialization helpers */
 
 /**
@@ -933,4 +940,107 @@ export function movePrompts(
     if (text === files[file]) delete texts[file];
   }
   return { texts, moved };
+}
+
+/* Duplicate */
+
+/** Removes every `key` member of the prompt at `indexPath`, with its line when nothing else shares it. */
+function removeMembers(text: string, indexPath: readonly number[], key: string): string {
+  let next = text;
+  for (;;) {
+    const m = member(resolvePrompt(next, indexPath).obj, key);
+    if (!m) return next;
+    let { start, end } = lineAwareRange(next, m.keyStart, m.value.end);
+    if (start === m.keyStart) {
+      // The member shares its line: drop the whitespace that separated it as well.
+      while (next[end] === " " || next[end] === "\t") end++;
+      if (end === next.length || next[end] === "\n" || next[end] === "\r") {
+        while (start > 0 && (next[start - 1] === " " || next[start - 1] === "\t")) start--;
+      }
+    }
+    next = splice(next, start, end, "");
+  }
+}
+
+/** Drops `identifier` from a parsed prompt and its subprompts, the parts `promptTree` treats as prompts. */
+function stripIdentifiers(prompt: Record<string, unknown>): Record<string, unknown> {
+  delete prompt.identifier;
+  if (Array.isArray(prompt.subprompts)) {
+    for (const sub of prompt.subprompts) {
+      if (sub && typeof sub === "object" && !Array.isArray(sub)) stripIdentifiers(sub as Record<string, unknown>);
+    }
+  }
+  return prompt;
+}
+
+export interface DuplicateResult {
+  text: string;
+  /** Where the copies ended up, in the order the originals were given. */
+  copies: number[][];
+}
+
+/**
+ * Inserts a copy of each prompt right after the original, keeping its source
+ * text. The copy is titled `titleFor(original title)` and loses every
+ * `identifier` member (its own and its subprompts'), so the extension derives
+ * new identifiers instead of sharing the original's pins and usage. Index
+ * paths refer to the original text; nested and repeated ones are ignored.
+ */
+export function duplicatePrompts(
+  text: string,
+  indexPaths: readonly (readonly number[])[],
+  titleFor: (title: string) => string,
+): DuplicateResult {
+  const tree = promptTree(scan(text));
+  const edits: RangeEdit[] = [];
+  const planned: { start: number; offset: number; title: string; expected: string }[] = [];
+  for (const indexPath of outermost(indexPaths)) {
+    const node = resolveIn(tree, indexPath);
+    if (!node.arr) throw new Error("这条提示词是整个文件，不能创建副本");
+    const snippet = text.slice(node.obj.start, node.obj.end);
+    const insertion = insertionFor(text, node, "after");
+    const column = node.obj.start - lineStartOf(text, node.obj.start);
+    const padChar = insertion.indent.includes("\t") ? "\t" : " ";
+    const copy = reindent(snippet, insertion.indent.length - column, padChar);
+    const title = titleFor(effectiveTitle(node));
+    const expected = stripIdentifiers(hjson.parse(snippet) as Record<string, unknown>);
+    expected.title = title;
+    edits.push({ start: insertion.start, end: insertion.end, text: insertion.before + copy + insertion.after });
+    planned.push({ start: insertion.start, offset: insertion.before.length, title, expected: canonicalJson(expected) });
+  }
+  if (!planned.length) return { text, copies: [] };
+
+  const inserted = applyEdits(text, edits);
+  const insertedTree = promptTree(scan(inserted.text));
+  const copies = planned.map((plan) => {
+    const hit = locateAt(insertedTree, inserted.map(plan.start) + plan.offset);
+    if (!hit) throw new Error("Could not locate a duplicated prompt");
+    return hit.indexPath;
+  });
+
+  // Member edits never add or remove array items, so the copies' index paths stay valid.
+  let next = inserted.text;
+  copies.forEach((indexPath, i) => {
+    const identified: number[][] = [];
+    const visit = (node: PromptShadow, path: number[]): void => {
+      if (member(node.obj, "identifier")) identified.push(path);
+      node.children.forEach((child) => visit(child, [...path, child.rawIndex]));
+    };
+    visit(resolvePrompt(next, indexPath), indexPath);
+    for (const path of identified) next = removeMembers(next, path, "identifier");
+    next = setMember(next, indexPath, "title", planned[i].title);
+  });
+
+  try {
+    hjson.parse(next);
+  } catch (error) {
+    throw new Error(`创建副本后不是合法的 HJSON，已取消：${error instanceof Error ? error.message : String(error)}`);
+  }
+  copies.forEach((indexPath, i) => {
+    const { obj } = resolvePrompt(next, indexPath);
+    if (canonicalJson(hjson.parse(next.slice(obj.start, obj.end))) !== planned[i].expected) {
+      throw new Error("创建副本后的内容校验失败，已取消");
+    }
+  });
+  return { text: next, copies };
 }

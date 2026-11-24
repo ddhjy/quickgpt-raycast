@@ -20,12 +20,13 @@ import * as path from "path";
 import {
   addChild,
   deletePrompts,
+  duplicatePrompts,
+  effectiveTitle,
   movePrompts,
   resolvePrompt,
   updateFields,
   valueOf,
   type DropPosition,
-  type PromptShadow,
 } from "../utils/hjson-edit";
 import {
   collectGitOverview,
@@ -42,6 +43,7 @@ import {
   type PromptMapModel,
 } from "../utils/prompt-map-model";
 import { renderPromptMapPage } from "../utils/prompt-map-page";
+import type { PromptProps } from "../utils/prompt-parsing";
 
 export const SERVER_STATE_FILE = "server.json";
 export const GIT_CONFIG_FILE = "git.json";
@@ -114,13 +116,13 @@ interface EditItem {
 }
 
 interface EditPayload {
-  op: "update" | "add" | "delete" | "move";
+  op: "update" | "add" | "delete" | "move" | "duplicate";
   file: string;
   indexPath: number[];
   title?: string;
   content?: string;
   expect?: Expectation;
-  /** `delete` and `move`: the prompts to act on (falls back to file + indexPath). */
+  /** `delete`, `move` and `duplicate`: the prompts to act on (falls back to file + indexPath). */
   items?: EditItem[];
   /** `move`: the prompt to drop next to or into. */
   target?: { file: string; indexPath: number[]; where: DropPosition };
@@ -133,11 +135,25 @@ interface UndoEntry {
 
 const DROP_POSITIONS: readonly DropPosition[] = ["before", "after", "inside-first", "inside-last"];
 
-/** Title as the extension sees it: an untitled prompt takes its first content line. */
-function effectiveTitle(node: PromptShadow): string {
-  const title = valueOf(node, "title");
-  if (title) return title;
-  return (valueOf(node, "content") ?? "").trim().split("\n")[0].trim();
+/**
+ * Title for a copy of `title`, Finder style: `标题 副本`, then `标题 副本 2`, …
+ * skipping names in `taken`. Copies of a copy count on from the original name.
+ */
+export function copyTitle(title: string, taken: ReadonlySet<string>): string {
+  const base = title.replace(/(?:^| )副本(?: \d+)?$/, "").trim();
+  const name = base ? `${base} 副本` : "副本";
+  if (!taken.has(name)) return name;
+  for (let n = 2; ; n++) {
+    if (!taken.has(`${name} ${n}`)) return `${name} ${n}`;
+  }
+}
+
+function collectTitles(prompts: readonly PromptProps[], titles = new Set<string>()): Set<string> {
+  for (const prompt of prompts) {
+    if (prompt.title) titles.add(prompt.title);
+    if (prompt.subprompts) collectTitles(prompt.subprompts, titles);
+  }
+  return titles;
 }
 
 class HttpError extends Error {
@@ -323,6 +339,29 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
       return { changed: Boolean(undoToken), focusKeys: [], undoToken };
     }
 
+    if (payload.op === "duplicate") {
+      const texts = readAll(new Set(items.map((item) => item.file)));
+      items.forEach((item) => checkExpect(texts[item.file], item.indexPath, item.expect));
+      const taken = collectTitles(loadPromptLibrary(options.sources).roots);
+      const nameCopy = (title: string): string => {
+        const name = copyTitle(title, taken);
+        taken.add(name);
+        return name;
+      };
+      const focusKeys: string[] = [];
+      const changes = Object.entries(texts).map(([file, before]) => {
+        const result = duplicatePrompts(
+          before,
+          items.filter((item) => item.file === file).map((item) => item.indexPath),
+          nameCopy,
+        );
+        focusKeys.push(...result.copies.map((indexPath) => `${file}#${indexPath.join(".")}`));
+        return { file, before, after: result.text };
+      });
+      const undoToken = writeFiles("duplicate", changes);
+      return { changed: Boolean(undoToken), focusKeys, undoToken };
+    }
+
     const target = payload.target;
     if (!target || !isIndexPath(target.indexPath) || !DROP_POSITIONS.includes(target.where)) {
       throw new HttpError(400, "Bad move target");
@@ -344,7 +383,7 @@ export async function startPromptMapServer(options: PromptMapServerOptions): Pro
 
   const applyEdit = (payload: EditPayload): { changed: boolean; focusKeys: string[]; undoToken?: string } => {
     if (!payload || typeof payload !== "object") throw new HttpError(400, "Bad payload");
-    if (payload.op === "delete" || payload.op === "move") return applyStructural(payload);
+    if (payload.op === "delete" || payload.op === "move" || payload.op === "duplicate") return applyStructural(payload);
     if (!Array.isArray(payload.indexPath) || !payload.indexPath.every((i) => Number.isInteger(i) && i >= 0)) {
       throw new HttpError(400, "Bad index path");
     }

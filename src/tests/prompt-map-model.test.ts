@@ -109,6 +109,7 @@ describe("prompt-map-model", () => {
       "file",
     ]);
     expect(extractPlaceholders(undefined)).toEqual([]);
+    expect(extractPlaceholders("{{selection|screenText}} {{screenText}}")).toEqual(["s", "screen"]);
   });
 
   it("checks directory containment", () => {

@@ -1,27 +1,16 @@
-import { Icon, List } from "@raycast/api";
+import { randomUUID } from "node:crypto";
 import type { PromptProps } from "../managers/prompt-manager";
-import { SpecificReplacements, placeholderFormatter, resolvePlaceholders } from "./placeholder-formatter";
+import { SpecificReplacements, placeholderFormatter } from "./placeholder-formatter";
 import promptManager from "../managers/prompt-manager";
+import { readScreenText } from "./screen-text";
 
 const IDENTIFIER_PREFIX = "quickgpt-";
-
-const placeholderIcons: { [key: string]: Icon } = {
-  input: Icon.TextInput,
-  clipboard: Icon.Clipboard,
-  selection: Icon.TextCursor,
-  currentApp: Icon.AppWindow,
-  allApp: Icon.AppWindowGrid2x2,
-  browserContent: Icon.Globe,
-  promptTitles: Icon.List,
-  file: Icon.Document,
-  diff: Icon.CodeBlock,
-};
 
 /**
  * Wraps content with the `{{key}}` placeholders named by the prompt's
  * comma-separated `prefix` and `suffix` properties, one per line.
  */
-function wrapWithPrefixAndSuffix(prompt: PromptProps): string {
+export function wrapWithPrefixAndSuffix(prompt: PromptProps): string {
   const toPlaceholders = (keysList: string | undefined) =>
     Array.from(new Set((keysList ?? "").split(",").map((key) => key.trim())))
       .filter((key) => key.length > 0)
@@ -74,11 +63,12 @@ export function getQuickPrompt(
   return [foundPrompt, cleanedText];
 }
 
-export function buildFormattedPromptContent(
+export async function buildFormattedPromptContent(
   prompt: PromptProps,
   replacements: SpecificReplacements,
   relativeRootDir?: string,
-): string {
+  readers: { screenText?: () => Promise<string>; clipboard?: () => Promise<string> } = {},
+): Promise<string> {
   const contentWithPlaceholders = wrapWithPrefixAndSuffix(prompt);
 
   const mergedReplacements = {
@@ -88,33 +78,45 @@ export function buildFormattedPromptContent(
     prompts: replacements.prompts || getIndentedPromptsWithContent(),
   };
 
-  return placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
-    resolveFile: true,
-  });
-}
-
-export function getPlaceholderIcons(
-  content: string | undefined,
-  replacements: Omit<SpecificReplacements, "clipboard">,
-): List.Item.Accessory[] {
-  if (!content) return [];
-
-  const usedPlaceholders = resolvePlaceholders(content, replacements);
-
-  const placeholderIconsArray: List.Item.Accessory[] = [];
-  usedPlaceholders.forEach((placeholder) => {
-    const icon = placeholderIcons[placeholder];
-    if (icon) {
-      placeholderIconsArray.push({ icon });
+  const clipboardMarker = readers.clipboard && replacements.clipboard === undefined ? randomUUID() : undefined;
+  if (clipboardMarker) mergedReplacements.clipboard = clipboardMarker;
+  let clipboardError: Error | undefined;
+  const format = async (screenText: string | Error) => {
+    const render = () =>
+      placeholderFormatter(contentWithPlaceholders, mergedReplacements, relativeRootDir, {
+        resolveFile: true,
+        screenText,
+        clipboardError,
+      });
+    const content = render();
+    if (!clipboardMarker || !readers.clipboard || !content.includes(clipboardMarker)) return content;
+    try {
+      mergedReplacements.clipboard = await readers.clipboard();
+    } catch (error) {
+      mergedReplacements.clipboard = "";
+      clipboardError = error instanceof Error ? error : new Error(String(error));
     }
-  });
+    return render();
+  };
 
-  const fileRegex = /{{(file|content):[^}]+}}/g;
-  if (fileRegex.test(content)) {
-    placeholderIconsArray.push({ icon: placeholderIcons.file });
+  // Let the existing formatter select fallback branches and expand nested prompt properties.
+  // Insert captured text after formatting so braces, file directives, and dollar signs stay literal.
+  const marker = randomUUID();
+  const content = await format(marker);
+  if (!content.includes(marker)) return content;
+
+  let screenText: string;
+  try {
+    screenText =
+      typeof mergedReplacements.screenText === "string"
+        ? mergedReplacements.screenText
+        : await (readers.screenText ?? readScreenText)();
+  } catch (error) {
+    return format(error instanceof Error ? error : new Error(String(error)));
   }
-
-  return placeholderIconsArray;
+  return screenText.trim()
+    ? content.replaceAll(marker, () => screenText)
+    : format(new Error("No visible text was available through macOS Accessibility."));
 }
 
 export function getIndentedPromptTitles(): string {
