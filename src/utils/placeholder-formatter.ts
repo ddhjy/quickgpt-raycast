@@ -41,6 +41,7 @@ const ALIAS_TO_KEY = new Map<string, PlaceholderKey>(
 );
 
 const PH_REG = /{{(?:(file|option|content):)?([^}]+)}}/g;
+const ESCAPED_OPENING_BRACES_REG = /\\\{\\\{/g;
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
 type FormatOptions = { resolveFile?: boolean; screenText?: string | Error; clipboardError?: Error };
@@ -229,6 +230,10 @@ function expandPromptProperties(
   return currentText;
 }
 
+export function stripPromptPlaceholders(text: string): string {
+  return text.replace(PH_REG, "").replace(ESCAPED_OPENING_BRACES_REG, "{{");
+}
+
 export function placeholderFormatter(
   text: string,
   incoming: SpecificReplacements & Record<string, unknown> = {},
@@ -295,7 +300,7 @@ export function placeholderFormatter(
     return resolvedValue;
   });
 
-  currentText = currentText.replace(/\\\{\\\{/g, "{{");
+  currentText = currentText.replace(ESCAPED_OPENING_BRACES_REG, "{{");
 
   return currentText;
 }

@@ -16,7 +16,11 @@ import defaultActionPreferenceStore from "../stores/default-action-preference-st
 import { ScriptInfo } from "../utils/script-utils";
 import inputHistoryStore from "../stores/input-history-store";
 import type { PromptProps } from "../managers/prompt-manager";
-import { SpecificReplacements, extractFinderSelectionPaths } from "../utils/placeholder-formatter";
+import {
+  SpecificReplacements,
+  extractFinderSelectionPaths,
+  stripPromptPlaceholders,
+} from "../utils/placeholder-formatter";
 import { buildFormattedPromptContent } from "../utils/prompt-formatting-utils";
 import type { PromptPreviews } from "../utils/placeholder-previews";
 import { generateGitLink } from "../utils/git-utils";
@@ -49,6 +53,12 @@ interface ActionItem {
 function getConfiguredEditor() {
   const editorApp = normalizeEditorApp(configurationManager.getPreference("customEditor"));
   return { editorApp, editorDisplayName: getEditorDisplayName(editorApp) };
+}
+
+async function pastePromptContent(content: string): Promise<void> {
+  await Clipboard.copy(content);
+  await Clipboard.paste(content);
+  await showToast(Toast.Style.Success, "Pasted to app");
 }
 
 export function getEditActionTitle(): string {
@@ -313,11 +323,27 @@ export function generatePromptActions(
           title="Paste"
           icon={Icon.Document}
           shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
-          onAction={withFinalContent(async (finalContent) => {
-            await Clipboard.copy(finalContent);
-            await Clipboard.paste(finalContent);
-            await showToast(Toast.Style.Success, "Pasted to app");
-          }, "paste")}
+          onAction={withFinalContent(pastePromptContent, "paste")}
+        />
+      ),
+    },
+    {
+      name: "pasteWithoutPlaceholder",
+      displayName: "Paste without Placeholder",
+      condition: true,
+      action: (
+        <Action
+          // eslint-disable-next-line @raycast/prefer-title-case -- Keep the requested action label.
+          title="Paste without Placeholder"
+          icon={Icon.Document}
+          onAction={wrapActionHandler(async () => {
+            const content = stripPromptPlaceholders(prompt.content ?? "");
+            if (!content.trim()) {
+              await showToast(Toast.Style.Failure, "No text to paste");
+              return false;
+            }
+            await pastePromptContent(content);
+          }, "pasteWithoutPlaceholder")}
         />
       ),
     },

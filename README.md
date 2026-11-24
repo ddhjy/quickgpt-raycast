@@ -51,7 +51,8 @@ QuickGPT lets you organize, search, and run an extensive prompt library from Ray
 
 ### Actions
 
-- Built-in: Copy, Copy as File, Paste, Open in Claude, Open in Prompt Map, Edit, Pin, Share
+- Built-in actions include Copy, Copy as File, Paste, Paste without Placeholder, Open in Claude, Open in Prompt Map, Edit, Pin, and Share.
+- **Paste without Placeholder** pastes the prompt text with template placeholders removed.
 - Custom AppleScript actions from configured script directories
 
 ### Prompt Map

@@ -20,7 +20,12 @@ export interface PromptUsageSections {
   lowUsage: PromptUsageRow[];
 }
 
-export const TRACKED_PROMPT_ACTIONS = new Set(["copyToClipboard", "copyOriginalPrompt", "paste"]);
+export const TRACKED_PROMPT_ACTIONS = new Set([
+  "copyToClipboard",
+  "copyOriginalPrompt",
+  "paste",
+  "pasteWithoutPlaceholder",
+]);
 
 const EXCLUDED_PROMPT_IDENTIFIERS = new Set([
   "settings",

@@ -1,4 +1,21 @@
-import { placeholderFormatter, SpecificReplacements, resolvePlaceholders } from "../utils/placeholder-formatter";
+import {
+  placeholderFormatter,
+  SpecificReplacements,
+  resolvePlaceholders,
+  stripPromptPlaceholders,
+} from "../utils/placeholder-formatter";
+
+describe("stripPromptPlaceholders", () => {
+  it("removes fallback chains, directives, and prompt properties while preserving surrounding text", () => {
+    const template = "  Explain this.\n{{i|s|c}}\n{{file:source.txt}}{{content:reference.txt}}{{option:tone}}{{notes}}";
+
+    expect(stripPromptPlaceholders(template)).toBe("  Explain this.\n\n");
+  });
+
+  it("keeps escaped placeholders as literal text", () => {
+    expect(stripPromptPlaceholders(String.raw`Example: \{\{input}}. {{screenText}}`)).toBe("Example: {{input}}. ");
+  });
+});
 
 describe("placeholderFormatter", () => {
   it("should replace {{input}} and {{clipboard}}", () => {

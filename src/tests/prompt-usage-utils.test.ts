@@ -12,6 +12,7 @@ describe("prompt usage tracking rules", () => {
 
     expect(shouldTrackPromptUsage(prompt, "copyToClipboard")).toBe(true);
     expect(shouldTrackPromptUsage(prompt, "paste")).toBe(true);
+    expect(shouldTrackPromptUsage(prompt, "pasteWithoutPlaceholder")).toBe(true);
     expect(shouldTrackPromptUsage(prompt, "copyOriginalPrompt")).toBe(true);
     expect(shouldTrackPromptUsage(prompt, "script_My Script")).toBe(true);
   });
